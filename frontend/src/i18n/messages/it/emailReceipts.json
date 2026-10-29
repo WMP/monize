@@ -763,8 +763,7 @@
     },
     "search": {
       "label": "Cerca email",
-      "text": "Cerca",
-      "placeholder": "Oggetto, mittente o contenuto",
+      "placeholder": "Cerca per oggetto, mittente o contenuto...",
       "in": "Cerca in",
       "fields": {
         "all": "Tutti i campi",
@@ -806,10 +805,10 @@
       "body": "Le conferme d'ordine compaiono qui una volta letta la casella di posta.",
       "filteredTitle": "Nessuna email con questo stato",
       "filteredBody": "Scegli un altro stato per vedere le altre.",
-      "noMailboxBody": "Nessuna casella di posta è ancora collegata. Collegane una per iniziare a leggere le conferme d'ordine.",
-      "connectButton": "Collega una casella di posta",
       "searchTitle": "Nessuna email corrisponde alla ricerca",
-      "searchBody": "Modifica le parole o le date, oppure cancella la ricerca per vedere tutte le email."
+      "searchBody": "Modifica le parole o le date, oppure cancella la ricerca per vedere tutte le email.",
+      "noMailboxBody": "Nessuna casella di posta è ancora collegata. Collegane una per iniziare a leggere le conferme d'ordine.",
+      "connectButton": "Collega una casella di posta"
     },
     "actions": {
       "view": "Vedi",
@@ -1092,9 +1091,7 @@
     "help": "Nessuna transazione è stata abbinata automaticamente. Queste sono le tue transazioni nell'intervallo di date qui sotto, che parte dai giorni intorno all'acquisto. Scegli quella che ha pagato, oppure cambia le date per cercare più lontano.",
     "fromLabel": "Da",
     "toLabel": "A",
-    "searchLabel": "Cerca",
-    "searchPlaceholder": "Beneficiario, descrizione o importo",
-    "searchButton": "Cerca",
+    "searchPlaceholder": "Cerca per beneficiario, descrizione o importo...",
     "loading": "Caricamento delle transazioni",
     "error": "Impossibile caricare le transazioni.",
     "retry": "Riprova",
@@ -1331,7 +1328,7 @@
       "reviseHelp": "Di' all'assistente cosa cambiare. Aggiorna la stessa bozza a partire da queste email e transazioni.",
       "tradeHelp": "L'assistente legge queste conferme e scrive una bozza di profilo per {domain} che propone la transazione di investimento riportata da ciascuna. Non è ancora approvato nulla.",
       "tradeSample": "Conferma di operazione",
-      "feedbackLabel": "Cosa deve cambiare",
+      "feedbackLabel": "Modifiche richieste",
       "feedbackPlaceholder": "Ad esempio: il totale è la riga che dice Importo pagato, non il subtotale.",
       "send": "Invia all'IA",
       "sendFeedback": "Invia una nota all'IA",

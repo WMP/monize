@@ -81,12 +81,13 @@ describe('WarrantyDetailCard', () => {
 
   it('shows what the warranty is from the server view', async () => {
     await renderCard(warranty());
-    expect(screen.getByText('1 year, 346 days left')).toBeInTheDocument();
     expect(screen.getByText('Extended')).toBeInTheDocument();
     expect(screen.getByText('XPS-13')).toBeInTheDocument();
     expect(screen.getByText('SN-1')).toBeInTheDocument();
     expect(screen.getByText('SN-2')).toBeInTheDocument();
-    expect(screen.getByText('$1,299.99 CAD')).toBeInTheDocument();
+    // Expiry, days left, purchase date and price are the summary row's.
+    expect(screen.queryByText('1 year, 346 days left')).not.toBeInTheDocument();
+    expect(screen.queryByText('$1,299.99 CAD')).not.toBeInTheDocument();
     expect(screen.getByText('Keep the box')).toBeInTheDocument();
   });
 
@@ -116,12 +117,6 @@ describe('WarrantyDetailCard', () => {
     expect(screen.queryByRole('link', { name: /javascript/ })).not.toBeInTheDocument();
   });
 
-  it('says Lifetime with no days left for a lifetime warranty', async () => {
-    await renderCard(warranty({ isLifetime: true, expiresOn: null, status: 'lifetime', daysLeft: null }));
-    expect(screen.getByText('Lifetime')).toBeInTheDocument();
-    expect(screen.queryByText('Time left')).not.toBeInTheDocument();
-  });
-
   it('says None for the fields that are not filled in', async () => {
     await renderCard(warranty({
           vendorName: null,
@@ -134,7 +129,7 @@ describe('WarrantyDetailCard', () => {
           productUrl: null,
           notes: null,
         }));
-    expect(screen.getAllByText('None')).toHaveLength(6);
+    expect(screen.getAllByText('None')).toHaveLength(5);
   });
 
   it('edits the purchase in place, named by its date, payee and amount in its currency', async () => {

@@ -21,7 +21,6 @@
     "passwordConfirmNote": "La conferma della password è necessaria quando si cambia l'indirizzo email.",
     "pendingEmailNotice": "È stato inviato un link di conferma a {email}. Il tuo indirizzo email cambierà quando lo aprirai.",
     "saveButton": "Salva profilo",
-    "savingButton": "Salvataggio...",
     "toasts": {
       "success": "Profilo aggiornato con successo",
       "confirmationSent": "Controlla {email} per trovare il link di conferma del nuovo indirizzo email",
@@ -46,7 +45,6 @@
     "confirmPasswordLabel": "Conferma nuova password",
     "confirmPasswordPlaceholder": "Conferma la nuova password",
     "changePasswordButton": "Cambia password",
-    "changingPasswordButton": "Modifica in corso...",
     "toasts": {
       "passwordChanged": "Password cambiata con successo",
       "passwordChangeFailed": "Impossibile cambiare la password"
@@ -106,6 +104,8 @@
       "noDevices": "Nessun dispositivo attendibile. Quando selezioni \"Non chiedere di nuovo su questo browser\" durante il login con 2FA, il dispositivo apparirà qui.",
       "currentBadge": "Attuale",
       "revokeButton": "Revoca",
+      "ipAddress": "IP: {ip}",
+      "dates": "Aggiunto il {added} · Ultimo utilizzo {lastUsed} · Scade il {expires}",
       "revokeAllModal": {
         "title": "Revoca tutti i dispositivi attendibili",
         "description": "Verranno rimossi tutti i dispositivi attendibili. Dovrai inserire il codice 2FA al prossimo accesso da qualsiasi dispositivo."
@@ -226,7 +226,7 @@
       "hideRegisterYearLabel": "Nascondi l’anno nelle date del registro",
       "chartCollapsedLabel": "Inizia con il grafico della pagina Transazioni compresso",
       "widgetsCollapsedLabel": "Inizia con le info di conto, beneficiario e categoria compresse",
-      "accountOpenTargetLabel": "Quando apro un conto",
+      "accountOpenTargetLabel": "Vista predefinita del conto",
       "accountOpenTargetOptions": {
         "register": "Mostra le sue transazioni",
         "dashboard": "Mostra la sua dashboard"
@@ -308,6 +308,10 @@
       "sendTestButton": "Invia notifica di prova",
       "sendingTestButton": "Invio...",
       "removeButton": "Rimuovi",
+      "removeDialog": {
+        "title": "Rimuovi dispositivo",
+        "message": "Rimuovere {device}? Non riceverà più notifiche push finché il push non verrà riattivato su di esso."
+      },
       "thisDevice": "Questo dispositivo",
       "held": "Disconnesso su questo dispositivo. Le notifiche push riprendono quando accedi di nuovo qui.",
       "unifiedpushBadge": "UnifiedPush",
@@ -486,7 +490,7 @@
   "supportBackup": {
     "title": "Crea backup di supporto",
     "howItWorks": "Produce una copia de-identificata del tuo backup: i nomi sono mascherati (restano i primi e gli ultimi due caratteri), note/descrizioni/numeri di conto vengono rimossi e ogni importo è moltiplicato per un unico fattore nascosto, mentre i valori pubblici (tassi di cambio, prezzi, tassi d'interesse) restano intatti. Il file è sempre cifrato con la password qui sotto e si ripristina come un backup normale. Protegge dall'esposizione casuale, non da chi ti conosce già: date, frequenze e struttura sono preservate perché i bug restino riproducibili.",
-    "sectionsLabel": "Cosa includere",
+    "sectionsLabel": "Sezioni da includere",
     "sections": {
       "investments": "Investimenti (titoli, posizioni, prezzi)",
       "scheduled": "Transazioni pianificate",
@@ -652,11 +656,7 @@
       "reason": "Un token può accedere al tuo account senza effettuare l'accesso, quindi conferma la tua identità prima di crearne uno."
     },
     "relative": {
-      "never": "Mai",
-      "today": "Oggi",
-      "yesterday": "Ieri",
-      "daysAgo": "{count} giorni fa",
-      "monthsAgo": "{count} mesi fa"
+      "never": "Mai"
     }
   },
   "autoBackup": {
@@ -700,7 +700,6 @@
       "failed": "Fallito"
     },
     "saveButton": "Salva politica",
-    "savingButton": "Salvataggio...",
     "runNowButton": "Esegui il backup di ogni account",
     "runningButton": "Backup in corso...",
     "toasts": {
@@ -821,7 +820,6 @@
     },
     "restoreResult": {
       "title": "Ripristino completato",
-      "description": "I tuoi dati sono stati ripristinati con successo. Ecco un riepilogo di quanto è stato ripristinato:",
       "totalRecords": "Record totali",
       "skippedAttachments": "{count, plural, one {# allegato non è stato ripristinato} other {# allegati non sono stati ripristinati}}: il backup non conteneva byte utilizzabili per essi — erano assenti o non hanno superato il checksum al momento dell'esportazione, oppure il file precede i backup autonomi. Esporta un nuovo backup quando l'archivio degli allegati è integro.",
       "unusableAiProviderKeys": "{count, plural, one {# provider AI è stato ripristinato senza una chiave API utilizzabile} other {# provider AI sono stati ripristinati senza chiavi API utilizzabili}}: il backup è stato creato prima che le chiavi dei provider viaggiassero al suo interno, quindi la chiave memorizzata appartiene al server che ha prodotto il file, oppure questo server non ha una chiave di cifratura configurata per conservarla. Apri Impostazioni → Provider AI e inserisci di nuovo la chiave API.",
@@ -874,12 +872,11 @@
         "retryButton": "Riprova",
         "demoNote": "Le destinazioni fuori sede non possono essere modificate nella demo.",
         "saveButton": "Salva destinazioni",
-        "savingButton": "Salvataggio...",
         "saved": "Destinazioni fuori sede salvate",
         "saveFailed": "Impossibile salvare le tue destinazioni di backup fuori sede",
         "s3": {
           "heading": "Storage S3",
-          "modeLabel": "Dove vengono inviate le copie",
+          "modeLabel": "Destinazione delle copie",
           "modeOff": "Disattivo",
           "modeDeployment": "Bucket di questo server",
           "modeOwn": "Un mio bucket",
@@ -992,21 +989,57 @@
       "sections": "Sezioni",
       "shared": "Dati condivisi"
     },
+    "ops": {
+      "read": "Lettura",
+      "create": "Creazione",
+      "edit": "Modifica",
+      "delete": "Elimina",
+      "joint": "Cointestato"
+    },
     "sections": {
       "description": "Concedi accesso in sola lettura a intere sezioni dell'app. I dati limitati per conto richiedono comunque l'accesso per singolo conto.",
+      "bills": {
+        "label": "Fatture & Versamenti",
+        "description": "Transazioni pianificate dei conti concessi"
+      },
+      "investments": {
+        "label": "Investimenti",
+        "description": "Posizioni e transazioni di investimento dei conti concessi"
+      },
+      "budgets": {
+        "label": "Budget",
+        "description": "Dati di budget in sola lettura"
+      },
+      "reports": {
+        "label": "Report",
+        "description": "Report in sola lettura"
+      },
+      "ai": {
+        "label": "Assistente AI",
+        "description": "Usa il provider IA configurato dal titolare"
+      },
       "aiRequiresFullAccess": "L'Assistente AI legge tutti i conti e le sezioni, quindi risponde per questo delegato solo quando può leggere tutti i tuoi conti e ogni altra sezione.",
       "warranties": {
         "label": "Garanzie",
         "description": "Le garanzie, i loro documenti e le richieste di assistenza. Un acquisto collegato è visibile solo se si trova in un conto che il delegato può leggere."
-      }
+      },
+      "toggleLabel": "Sezione {section}"
     },
     "accounts": {
       "noAccounts": "Nessun conto da concedere.",
       "grantAll": "Concedi tutto",
-      "jointRequiresFullAccount": "I conti cointestati possono essere condivisi solo con utenti che hanno un proprio account Monize"
+      "jointRequiresFullAccount": "I conti cointestati possono essere condivisi solo con utenti che hanno un proprio account Monize",
+      "grantAllLabel": "{op} tutti i conti {type}",
+      "grantLabel": "Accesso {op} a {account}"
     },
     "shared": {
-      "description": "La LETTURA di beneficiari, categorie ed etichette è sempre consentita. Questi controlli riguardano creazione/modifica/eliminazione."
+      "description": "La LETTURA di beneficiari, categorie ed etichette è sempre consentita. Questi controlli riguardano creazione/modifica/eliminazione.",
+      "toggleLabel": "{op} {resource}",
+      "resources": {
+        "payees": "Beneficiari",
+        "categories": "Categorie",
+        "tags": "Etichette"
+      }
     },
     "saveButton": "Salva",
     "toasts": {
@@ -1160,7 +1193,6 @@
       "editMessageButton": "Modifica",
       "messagePlaceholder": "Note, istruzioni, posizione di documenti importanti...",
       "maxCharsNote": "Massimo 4000 caratteri. Archiviato cifrato a riposo.",
-      "cancelButton": "Annulla",
       "saveButton": "Salva messaggio",
       "toasts": {
         "saved": "Messaggio salvato",
@@ -1205,7 +1237,7 @@
       "grantStatus": "Stato concessione: ",
       "unknown": "sconosciuto",
       "never": "mai",
-      "daysAgo": "{count} giorno{plural} fa",
+      "withRelative": "{timestamp} ({relative})",
       "grantedOn": "concesso il {timestamp}",
       "notYetGranted": "non ancora concesso",
       "timerNote": "Il timer si reimposta automaticamente ogni volta che usi l'app -- accedendo, visualizzando una pagina, registrando una transazione, qualsiasi azione autenticata."
@@ -1222,6 +1254,17 @@
     },
     "stepUp": {
       "reason": "Verifica la tua identità per visualizzare o modificare il messaggio di accesso di emergenza."
+    },
+    "validation": {
+      "wholeDays": "Solo giorni interi",
+      "minDays": "{min, plural, one {Deve essere almeno # giorno} other {Deve essere almeno # giorni}}",
+      "maxDays": "{max, plural, one {Deve essere al massimo # giorno} other {Deve essere al massimo # giorni}}",
+      "reminderBeforeGrant": "I giorni del promemoria devono essere inferiori ai giorni di concessione",
+      "messageMax": "Il messaggio deve contenere al massimo {max} caratteri",
+      "firstNameRequired": "Il nome è obbligatorio",
+      "firstNameMax": "Il nome deve contenere al massimo {max} caratteri",
+      "emailInvalid": "Inserisci un indirizzo email valido",
+      "emailMax": "L’email deve contenere al massimo {max} caratteri"
     },
     "toasts": {
       "loadFailed": "Impossibile caricare l'accesso di emergenza",
@@ -1255,6 +1298,10 @@
       "enableButton": "Attiva",
       "editButton": "Modifica",
       "deleteButton": "Elimina"
+    },
+    "deleteDialog": {
+      "title": "Elimina provider IA",
+      "message": "Eliminare {name}? Anche la chiave API salvata viene rimossa. L’operazione non può essere annullata."
     },
     "configForm": {
       "addTitle": "Aggiungi provider AI",

@@ -763,8 +763,7 @@
     },
     "search": {
       "label": "搜尋郵件",
-      "text": "搜尋",
-      "placeholder": "主旨、寄件者或內容",
+      "placeholder": "依主旨、寄件者或內容搜尋...",
       "in": "搜尋範圍",
       "fields": {
         "all": "所有欄位",
@@ -806,10 +805,10 @@
       "body": "讀取信箱後，訂單確認郵件會顯示在這裡。",
       "filteredTitle": "沒有此狀態的郵件",
       "filteredBody": "選擇其他狀態以檢視其餘郵件。",
-      "noMailboxBody": "尚未連接信箱。請連接一個信箱以開始讀取訂單確認郵件。",
-      "connectButton": "連接信箱",
       "searchTitle": "沒有符合搜尋的郵件",
-      "searchBody": "請變更關鍵字或日期，或清除搜尋以檢視所有郵件。"
+      "searchBody": "請變更關鍵字或日期，或清除搜尋以檢視所有郵件。",
+      "noMailboxBody": "尚未連接信箱。請連接一個信箱以開始讀取訂單確認郵件。",
+      "connectButton": "連接信箱"
     },
     "actions": {
       "view": "檢視",
@@ -1092,9 +1091,7 @@
     "help": "沒有自動比對到交易。以下是下方日期範圍內的交易，範圍起初為購買前後幾天。請選擇它所支付的那一筆，或修改日期以查看更早或更晚的交易。",
     "fromLabel": "開始日期",
     "toLabel": "結束日期",
-    "searchLabel": "搜尋",
-    "searchPlaceholder": "收款人、說明或金額",
-    "searchButton": "搜尋",
+    "searchPlaceholder": "依收款人、說明或金額搜尋...",
     "loading": "正在載入交易",
     "error": "無法載入交易。",
     "retry": "重試",
@@ -1331,7 +1328,7 @@
       "reviseHelp": "告訴助理需要變更什麼。它會根據這些郵件和交易更新同一份草稿。",
       "tradeHelp": "助理會讀取這些交易確認，並為 {domain} 撰寫解析器草稿，提出每封郵件所回報的投資交易。目前還沒有核准任何內容。",
       "tradeSample": "交易確認",
-      "feedbackLabel": "需要變更什麼",
+      "feedbackLabel": "要求的變更",
       "feedbackPlaceholder": "例如：合計是標有「實付金額」的那一行，而不是小計。",
       "send": "傳送給 AI",
       "sendFeedback": "向 AI 傳送備註",

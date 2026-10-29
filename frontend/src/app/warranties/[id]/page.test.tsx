@@ -115,10 +115,12 @@ const mockListClaims = vi.fn();
 const mockCreateClaim = vi.fn();
 const mockUpdateClaim = vi.fn();
 const mockDeleteClaim = vi.fn();
+const mockListAll = vi.fn();
 vi.mock('@/lib/warranties', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/warranties')>()),
   warrantiesApi: {
     getById: (...args: unknown[]) => mockGetById(...args),
+    listAll: (...args: unknown[]) => mockListAll(...args),
     update: (...args: unknown[]) => mockUpdate(...args),
     delete: (...args: unknown[]) => mockDelete(...args),
     archive: (...args: unknown[]) => mockArchive(...args),
@@ -187,6 +189,8 @@ function warranty(overrides: Partial<Warranty> = {}): Warranty {
   };
 }
 
+const OTHER_ID = '44444444-4444-4444-8444-444444444444';
+
 const CLAIM: WarrantyClaim = {
   id: 'c-1',
   warrantyId: W_ID,
@@ -232,6 +236,7 @@ describe('WarrantyDetailPage', () => {
     mockUpdateClaim.mockResolvedValue(CLAIM);
     mockDeleteClaim.mockResolvedValue(undefined);
     mockListAttachments.mockResolvedValue([DOCUMENT]);
+    mockListAll.mockResolvedValue([warranty(), warranty({ id: OTHER_ID, name: 'Phone', vendorName: 'Costco' })]);
   });
 
   afterEach(() => {
@@ -271,10 +276,42 @@ describe('WarrantyDetailPage', () => {
   it('shows the status card', async () => {
     await renderPage();
     const card = screen.getByRole('region', { name: 'Details' });
-    expect(within(card).getByText('20 days left')).toBeInTheDocument();
     expect(within(card).getByText('Manufacturer')).toBeInTheDocument();
     expect(within(card).getByText('XPS-13')).toBeInTheDocument();
     expect(within(card).getByText('SN-1')).toBeInTheDocument();
+  });
+
+  it('leads with the key figures as summary cards, not inside the Details list', async () => {
+    await renderPage();
+    const expires = screen.getByRole('article', { name: 'Expires' });
+    expect(expires).toHaveTextContent('11/10/2026');
+    expect(expires).toHaveTextContent('20 days left');
+    expect(screen.getByRole('article', { name: 'Purchased' })).toHaveTextContent('10/01/2026');
+    expect(screen.getByRole('article', { name: 'Purchase Price' })).toHaveTextContent('None');
+    expect(screen.getByRole('article', { name: 'Open Claims' })).toHaveTextContent('1');
+    const details = screen.getByRole('region', { name: 'Details' });
+    expect(within(details).queryByText('20 days left')).not.toBeInTheDocument();
+  });
+
+  it('switches to another current warranty from the caret beside the title', async () => {
+    await renderPage();
+    expect(mockListAll).toHaveBeenCalledWith({ archived: false, sort: 'name', sortDir: 'asc' });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Switch warranty' }));
+    });
+    const menu = screen.getByRole('menu', { name: 'Switch warranty' });
+    // The warranty on screen is not offered.
+    expect(within(menu).queryByRole('menuitem', { name: /Laptop/ })).not.toBeInTheDocument();
+    await act(async () => {
+      fireEvent.click(within(menu).getByRole('menuitem', { name: /Phone/ }));
+    });
+    expect(router.push).toHaveBeenCalledWith(`/warranties/${OTHER_ID}`);
+  });
+
+  it('offers the archived warranties from an archived one', async () => {
+    mockGetById.mockResolvedValue(warranty({ archivedAt: '2026-10-21T00:00:00Z' }));
+    await renderPage();
+    expect(mockListAll).toHaveBeenCalledWith({ archived: true, sort: 'name', sortDir: 'asc' });
   });
 
   it("lists the warranty's documents through the shared attachment section", async () => {
@@ -343,6 +380,9 @@ describe('WarrantyDetailPage', () => {
       expect(router.push).not.toHaveBeenCalled();
       const dialog = screen.getByRole('dialog', { name: 'Edit Transaction' });
       expect(within(dialog).getByTestId('editing-transaction')).toHaveTextContent('tx-1');
+      // One size and padding for the TransactionForm dialog wherever it
+      // opens, as on Transactions: the panel's own p-6, not Modal's md body.
+      expect(dialog).toHaveClass('p-6', '!max-w-[69rem]');
       // The form links the purchase's warranties; no Add warranty on a
       // warranty's own page.
       expect(within(dialog).getByTestId('transaction-hosts')).toHaveTextContent('1');

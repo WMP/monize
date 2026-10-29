@@ -203,6 +203,7 @@ function withLayers(...layers: Array<'transactions' | 'values' | 'dailyChange'>)
     surfaces: {
       transactions: { view: 'table', layers: ['transactions'] },
       investments: { view: 'calendar', layers },
+      bills: { view: 'table', layers: ['transactions'] },
     },
   });
 }
@@ -765,6 +766,7 @@ describe('InvestmentCalendarView', () => {
         surfaces: {
           transactions: { view: 'calendar', layers: ['transactions'] },
           investments: { view: 'table', layers: ['transactions'] },
+          bills: { view: 'table', layers: ['transactions'] },
         },
       });
 

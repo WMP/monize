@@ -16,12 +16,13 @@
     "chartUnavailable": "Графік тимчасово недоступний"
   },
   "viewTabs": {
-    "list": "Список",
-    "calendar": "Календар",
+    "filterLabel": "Тип розкладу",
     "filterAll": "Усі ({count})",
     "filterBills": "Рахунки ({count})",
     "filterDeposits": "Надходження ({count})",
-    "todayButton": "Сьогодні"
+    "todayButton": "Сьогодні",
+    "previousMonth": "Попередній місяць",
+    "nextMonth": "Наступний місяць"
   },
   "form": {
     "titleNew": "Нова запланована транзакція",

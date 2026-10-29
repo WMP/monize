@@ -29,7 +29,7 @@ import { CHART_COLOURS } from '@/lib/chart-colours';
 import { chartColors } from '@/lib/chart-colors';
 import { ReportToolbarActions } from '@/components/reports/ReportToolbarActions';
 import { SortableHeader } from '@/components/ui/SortableHeader';
-import { CAPTION_CLASS, CellLabel, PHONE_HEADER_CLASS } from '@/components/ui/Table';
+import { CAPTION_CLASS, CellLabel, PHONE_HEADER_CLASS, TH_CLASS, Th } from '@/components/ui/Table';
 import type {
   SortColumn as TableSortColumn,
   SortColumnsByField as TableSortColumnsByField,
@@ -43,6 +43,7 @@ import { partialTotalFor } from '@/lib/net-worth-completeness';
 import { periodResultUnknownReason } from '@/components/investments/portfolio-period-result';
 import { parseLocalDate } from '@/lib/utils';
 import type { InvestmentAccountPerformance } from '@/types/monthly-comparison';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 type ComparisonSortField = 'category' | 'current' | 'previous' | 'change' | 'changePercent';
 type TopMoversSortField = 'symbol' | 'name' | 'price' | 'change' | 'changePercent';
@@ -56,11 +57,6 @@ type TopMoversSortField = 'symbol' | 'name' | 'price' | 'change' | 'changePercen
  */
 type ComparisonSortColumn = TableSortColumn<ComparisonSortField, 'right'>;
 type TopMoversSortColumn = TableSortColumn<TopMoversSortField, 'right'>;
-
-// Today's header cell, unchanged: what both tables already render (no
-// `tracking-wider`). Kept local -- `PHONE_HEADER_CLASS`/`CAPTION_CLASS`/`CellLabel`
-// are shared, but a table's own header and money cells stay per-report.
-const HEADER_CLASS = 'px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase';
 
 // A money (or percentage) cell inside a wrapped row: no padding of its own below
 // `sm` (the row supplies it and the grid does the spacing), this table's own
@@ -102,9 +98,7 @@ function DeltaBadge({
   formatSignedPercent: (value: number, decimals?: number) => string;
 }) {
   const positive = invert ? value <= 0 : value >= 0;
-  const color = positive
-    ? 'text-green-600 dark:text-green-400'
-    : 'text-red-600 dark:text-red-400';
+  const color = gainLossColor(positive ? 1 : -1);
   // The sign comes from the amount, never from the percentage: the server
   // reports a flat +100 whenever the previous period was 0, so a decline from
   // zero would otherwise render "+100.0%" in red.
@@ -601,7 +595,7 @@ export function MonthlyComparisonReport() {
                       sortDirection={comparisonSort.sortDirection}
                       onSort={comparisonSort.handleSort}
                       align={col.align}
-                      className={HEADER_CLASS}
+                      className={TH_CLASS}
                     >
                       {col.label}
                     </SortableHeader>
@@ -633,11 +627,11 @@ export function MonthlyComparisonReport() {
                       <CellLabel className={CAPTION_CLASS}>{previousMonthLabel}</CellLabel>
                       {formatCurrency(item.previousTotal, currency)}
                     </td>
-                    <td role="cell" className={`col-start-2 row-start-2 font-medium ${item.change <= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} ${MONEY_CELL}`}>
+                    <td role="cell" className={`col-start-2 row-start-2 font-medium ${gainLossColor(-item.change)} ${MONEY_CELL}`}>
                       <CellLabel className={CAPTION_CLASS}>{t('monthlyComparison.colChange')}</CellLabel>
                       {item.change >= 0 ? '+' : ''}{formatCurrency(item.change, currency)}
                     </td>
-                    <td role="cell" className={`col-start-3 row-start-2 font-medium ${item.changePercent <= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} ${MONEY_CELL}`}>
+                    <td role="cell" className={`col-start-3 row-start-2 font-medium ${gainLossColor(-item.changePercent)} ${MONEY_CELL}`}>
                       <CellLabel className={CAPTION_CLASS}>{t('monthlyComparison.colChangePercent')}</CellLabel>
                       {formatSignedPercent(item.changePercent, 1)}
                     </td>
@@ -735,7 +729,7 @@ export function MonthlyComparisonReport() {
             </div>
           </>
         ) : (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">{t('monthlyComparison.noNetWorthData')}</p>
+          <EmptyState title={t('monthlyComparison.noNetWorthData')} />
         )}
       </div>
 
@@ -846,7 +840,7 @@ export function MonthlyComparisonReport() {
                           sortDirection={topMoversSort.sortDirection}
                           onSort={topMoversSort.handleSort}
                           align={col.align}
-                          className={HEADER_CLASS}
+                          className={TH_CLASS}
                         >
                           {col.label}
                         </SortableHeader>
@@ -978,9 +972,9 @@ function TopCategoriesTable({
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead>
             <tr>
-              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{colHash}</th>
-              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{colCategory}</th>
-              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{colAmount}</th>
+              <Th className="px-3 py-2">{colHash}</Th>
+              <Th className="px-3 py-2">{colCategory}</Th>
+              <Th align="right" className="px-3 py-2">{colAmount}</Th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 dark:divide-gray-700">

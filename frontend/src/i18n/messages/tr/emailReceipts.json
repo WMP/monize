@@ -763,8 +763,7 @@
     },
     "search": {
       "label": "E-postalarda ara",
-      "text": "Ara",
-      "placeholder": "Konu, gönderen veya içerik",
+      "placeholder": "Konu, gönderen veya içeriğe göre ara...",
       "in": "Şurada ara",
       "fields": {
         "all": "Tüm alanlar",
@@ -806,10 +805,10 @@
       "body": "Sipariş onayları, posta kutusu okunduktan sonra burada görünür.",
       "filteredTitle": "Bu durumda e-posta yok",
       "filteredBody": "Geri kalanları görmek için başka bir durum seçin.",
-      "noMailboxBody": "Henüz bağlı bir posta kutusu yok. Sipariş onaylarını okumaya başlamak için bir tane bağlayın.",
-      "connectButton": "Posta kutusu bağla",
       "searchTitle": "Aramayla eşleşen e-posta yok",
-      "searchBody": "Tüm e-postaları görmek için kelimeleri veya tarihleri değiştirin ya da aramayı temizleyin."
+      "searchBody": "Tüm e-postaları görmek için kelimeleri veya tarihleri değiştirin ya da aramayı temizleyin.",
+      "noMailboxBody": "Henüz bağlı bir posta kutusu yok. Sipariş onaylarını okumaya başlamak için bir tane bağlayın.",
+      "connectButton": "Posta kutusu bağla"
     },
     "actions": {
       "view": "Görüntüle",
@@ -1092,9 +1091,7 @@
     "help": "Hiçbir işlem otomatik olarak eşleşmedi. Bunlar, aşağıdaki tarih aralığındaki işlemleriniz; aralık başlangıçta satın alma çevresindeki günlerdir. E-postanın ödediği işlemi seçin veya daha uzağa bakmak için tarihleri değiştirin.",
     "fromLabel": "Başlangıç",
     "toLabel": "Bitiş",
-    "searchLabel": "Ara",
-    "searchPlaceholder": "Alıcı, açıklama veya tutar",
-    "searchButton": "Ara",
+    "searchPlaceholder": "Alıcı, açıklama veya tutara göre ara...",
     "loading": "İşlemler yükleniyor",
     "error": "İşlemler yüklenemedi.",
     "retry": "Yeniden dene",
@@ -1331,7 +1328,7 @@
       "reviseHelp": "Asistana neyi değiştireceğini söyleyin. Aynı taslağı bu e-postalar ve işlemlerden yeniden günceller.",
       "tradeHelp": "Asistan bu işlem onaylarını okur ve her birinin bildirdiği yatırım işlemini öneren {domain} için bir profil taslağı yazar. Henüz hiçbir şey onaylanmadı.",
       "tradeSample": "İşlem onayı",
-      "feedbackLabel": "Neyin değişmesi gerekiyor",
+      "feedbackLabel": "İstenen değişiklikler",
       "feedbackPlaceholder": "Örneğin: toplam, ara toplam değil, Ödenen tutar yazan satırdır.",
       "send": "Yapay zekâya gönder",
       "sendFeedback": "Yapay zekâya not gönder",

@@ -479,7 +479,7 @@ describe('GeographicAllocationReport: the country view owns its own request', ()
     mockGetCountryWeightings.mockRejectedValue(new Error('500'));
     await openCountryView();
 
-    expect(await screen.findByText('Try again')).toBeInTheDocument();
+    expect(await screen.findByText('Try Again')).toBeInTheDocument();
     expect(screen.queryByText('100%')).not.toBeInTheDocument();
     expect(screen.queryByText('$0.00')).not.toBeInTheDocument();
     expect(screen.queryByText('Country Allocation (look-through)')).not.toBeInTheDocument();
@@ -487,7 +487,7 @@ describe('GeographicAllocationReport: the country view owns its own request', ()
 
     mockGetCountryWeightings.mockResolvedValue(countryAnswer);
     await act(async () => {
-      fireEvent.click(screen.getByText('Try again'));
+      fireEvent.click(screen.getByText('Try Again'));
     });
     expect(await screen.findByText('Country Allocation (look-through)')).toBeInTheDocument();
     expect(screen.getByTitle('Export PDF')).toBeEnabled();
@@ -510,7 +510,7 @@ describe('GeographicAllocationReport: the country view owns its own request', ()
     });
     await screen.findByText('By Country');
     expect(screen.getByTitle('Export PDF')).toBeEnabled();
-    expect(screen.queryByText('Try again')).not.toBeInTheDocument();
+    expect(screen.queryByText('Try Again')).not.toBeInTheDocument();
   });
 
   it('prints the screen card figure as the PDF Total Portfolio in the country view', async () => {

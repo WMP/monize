@@ -22,7 +22,14 @@
       "expiring": "Akan berakhir",
       "active": "Aktif",
       "expired": "Berakhir",
-      "lifetime": "Seumur hidup"
+      "lifetime": "Seumur hidup",
+      "counted": {
+        "all": "Semua ({count})",
+        "expiring": "Akan berakhir ({count})",
+        "active": "Aktif ({count})",
+        "expired": "Berakhir ({count})",
+        "lifetime": "Seumur hidup ({count})"
+      }
     },
     "search": {
       "label": "Cari garansi",
@@ -163,14 +170,21 @@
     "notFound": "Garansi ini tidak ditemukan.",
     "retry": "Coba lagi",
     "archivedBadge": "Diarsipkan",
+    "switcher": {
+      "trigger": "Pindah garansi",
+      "placeholder": "Saring garansi...",
+      "noMatches": "Tidak ada garansi yang cocok"
+    },
+    "summary": {
+      "expires": "Berakhir",
+      "purchased": "Dibeli",
+      "price": "Harga pembelian",
+      "openClaims": "Klaim terbuka"
+    },
     "card": {
       "title": "Detail",
-      "expires": "Berakhir",
-      "daysLeft": "Sisa waktu",
       "kind": "Jenis garansi",
       "vendor": "Penjual",
-      "purchaseDate": "Dibeli",
-      "price": "Harga pembelian",
       "serialNumbers": "Nomor seri",
       "model": "Nomor model",
       "productUrl": "Halaman produk",
@@ -228,7 +242,7 @@
     "form": {
       "claimDateLabel": "Tanggal klaim",
       "statusLabel": "Status",
-      "descriptionLabel": "Apa yang bermasalah",
+      "descriptionLabel": "Deskripsi",
       "resolutionLabel": "Penyelesaian",
       "resolvedOnLabel": "Ditutup pada",
       "resolvedOnHint": "Hanya untuk klaim yang selesai atau ditolak",

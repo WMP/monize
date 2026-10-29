@@ -23,8 +23,8 @@
     "empty": "Brak zaległych lub nadchodzących rachunków, wpłat czy przelewów w ich oknach przypomnień.",
     "postTransaction": "Zaksięguj tę transakcję",
     "manual": "Ręczne",
-    "manualTitle": "Wymaga ręcznego zaksięgowania",
     "negativeBalanceWarning": "Ta transakcja spowoduje, że saldo konta spadnie poniżej zera",
+    "negativeBalanceLegend": "Obniża saldo konta poniżej zera",
     "moreItems": "+{count} więcej",
     "overdue": "Zaległe",
     "today": "Dzisiaj",
@@ -110,9 +110,9 @@
     "refreshPrices": "Odśwież ceny",
     "viewPortfolio": "Zobacz portfel",
     "filter": {
-      "all": "Wszystkie",
-      "gainers": "Wzrosty",
-      "losers": "Spadki",
+      "all": "Wszystkie ({count})",
+      "gainers": "Wzrosty ({count})",
+      "losers": "Spadki ({count})",
       "label": "Kierunek"
     },
     "metric": {

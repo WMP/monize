@@ -21,7 +21,6 @@
     "passwordConfirmNote": "Wachtwoordbevestiging is vereist bij het wijzigen van jouw e-mailadres.",
     "pendingEmailNotice": "Er is een bevestigingslink naar {email} gestuurd. Je e-mailadres wordt gewijzigd zodra je die link volgt.",
     "saveButton": "Profiel opslaan",
-    "savingButton": "Opslaan...",
     "toasts": {
       "success": "Profiel succesvol bijgewerkt",
       "confirmationSent": "Kijk in {email} voor een link om je nieuwe e-mailadres te bevestigen",
@@ -46,7 +45,6 @@
     "confirmPasswordLabel": "Bevestig nieuw wachtwoord",
     "confirmPasswordPlaceholder": "Bevestig nieuw wachtwoord",
     "changePasswordButton": "Wachtwoord wijzigen",
-    "changingPasswordButton": "Wijzigen...",
     "toasts": {
       "passwordChanged": "Wachtwoord succesvol gewijzigd",
       "passwordChangeFailed": "Wijzigen van wachtwoord mislukt"
@@ -106,6 +104,8 @@
       "noDevices": "Geen vertrouwde apparaten. Wanneer je \"Niet opnieuw vragen op deze browser\" aanvinkt tijdens 2FA-aanmelding, verschijnt het apparaat hier.",
       "currentBadge": "Huidig",
       "revokeButton": "Intrekken",
+      "ipAddress": "IP: {ip}",
+      "dates": "Toegevoegd {added} · Laatst gebruikt {lastUsed} · Vervalt {expires}",
       "revokeAllModal": {
         "title": "Alle vertrouwde apparaten intrekken",
         "description": "Dit verwijdert alle vertrouwde apparaten. Je moet jouw 2FA-code invoeren bij jouw volgende aanmelding vanaf elk apparaat."
@@ -226,7 +226,7 @@
       "hideRegisterYearLabel": "Jaar verbergen in registerdatums",
       "chartCollapsedLabel": "Beginnen met de grafiek op de pagina Transacties ingeklapt",
       "widgetsCollapsedLabel": "Beginnen met de rekening-, begunstigde- en categorie-info ingeklapt",
-      "accountOpenTargetLabel": "Als ik een rekening open",
+      "accountOpenTargetLabel": "Standaardweergave van rekening",
       "accountOpenTargetOptions": {
         "register": "De transacties tonen",
         "dashboard": "Het dashboard tonen"
@@ -308,6 +308,10 @@
       "sendTestButton": "Testmelding versturen",
       "sendingTestButton": "Versturen...",
       "removeButton": "Verwijderen",
+      "removeDialog": {
+        "title": "Apparaat verwijderen",
+        "message": "{device} verwijderen? Het ontvangt geen pushmeldingen meer totdat push daar weer wordt ingeschakeld."
+      },
       "thisDevice": "Dit apparaat",
       "held": "Afgemeld op dit apparaat. Pushmeldingen worden hervat zodra je hier weer inlogt.",
       "unifiedpushBadge": "UnifiedPush",
@@ -486,7 +490,7 @@
   "supportBackup": {
     "title": "Supportback-up maken",
     "howItWorks": "Dit maakt een gede-identificeerde kopie van je back-up: namen worden gemaskeerd (eerste en laatste twee tekens blijven), notities/omschrijvingen/rekeningnummers worden verwijderd en elk bedrag wordt vermenigvuldigd met één verborgen factor, terwijl publieke waarden (wisselkoersen, koersen, rentetarieven) intact blijven. Het bestand wordt altijd versleuteld met het onderstaande wachtwoord en herstelt als een normale back-up. Dit beschermt tegen terloopse blootstelling, niet tegen iemand die je al kent — datums, frequenties en structuur blijven behouden zodat bugs reproduceerbaar zijn.",
-    "sectionsLabel": "Wat opnemen",
+    "sectionsLabel": "Op te nemen onderdelen",
     "sections": {
       "investments": "Beleggingen (effecten, posities, koersen)",
       "scheduled": "Geplande transacties",
@@ -652,11 +656,7 @@
       "reason": "Met een token is je account bereikbaar zonder in te loggen, dus bevestig dat jij het bent voordat je er een aanmaakt."
     },
     "relative": {
-      "never": "Nooit",
-      "today": "Vandaag",
-      "yesterday": "Gisteren",
-      "daysAgo": "{count} dagen geleden",
-      "monthsAgo": "{count} maanden geleden"
+      "never": "Nooit"
     }
   },
   "autoBackup": {
@@ -700,7 +700,6 @@
       "failed": "Mislukt"
     },
     "saveButton": "Beleid opslaan",
-    "savingButton": "Opslaan...",
     "runNowButton": "Nu elk account back-uppen",
     "runningButton": "Back-up bezig...",
     "toasts": {
@@ -821,7 +820,6 @@
     },
     "restoreResult": {
       "title": "Herstel voltooid",
-      "description": "Jouw gegevens zijn succesvol hersteld. Hier is een overzicht van wat is hersteld:",
       "totalRecords": "Totaal records",
       "skippedAttachments": "{count, plural, one {# bijlage is niet teruggezet} other {# bijlagen zijn niet teruggezet}}: de back-up bevatte er geen bruikbare bytes voor — ze ontbraken of kwamen niet door hun checksum bij het exporteren, of het bestand is van vóór zelfstandige back-ups. Maak een nieuwe back-up zodra de bijlageopslag in orde is.",
       "unusableAiProviderKeys": "{count, plural, one {# AI-provider is teruggezet zonder bruikbare API-sleutel} other {# AI-providers zijn teruggezet zonder bruikbare API-sleutels}}: de back-up is gemaakt voordat providersleutels erin werden meegenomen, dus de opgeslagen sleutel hoort bij de server die het bestand maakte, of deze server heeft geen versleutelingssleutel ingesteld om er een op te slaan. Open Instellingen → AI-providers en voer de API-sleutel opnieuw in.",
@@ -874,12 +872,11 @@
         "retryButton": "Opnieuw proberen",
         "demoNote": "Externe bestemmingen kunnen niet worden gewijzigd in de demo.",
         "saveButton": "Bestemmingen opslaan",
-        "savingButton": "Opslaan...",
         "saved": "Externe bestemmingen opgeslagen",
         "saveFailed": "Uw externe back-upbestemmingen konden niet worden opgeslagen",
         "s3": {
           "heading": "S3-opslag",
-          "modeLabel": "Waar kopieën naartoe gaan",
+          "modeLabel": "Bestemming van kopieën",
           "modeOff": "Uit",
           "modeDeployment": "Bucket van deze server",
           "modeOwn": "Mijn eigen bucket",
@@ -992,21 +989,57 @@
       "sections": "Secties",
       "shared": "Gedeelde gegevens"
     },
+    "ops": {
+      "read": "Lezen",
+      "create": "Aanmaken",
+      "edit": "Bewerken",
+      "delete": "Verwijderen",
+      "joint": "Gezamenlijk"
+    },
     "sections": {
       "description": "Verleen alleen-lezentoegang tot hele appsecties. Rekeninggebonden gegevens vereisen ook per-rekeningtoegang.",
+      "bills": {
+        "label": "Facturen & stortingen",
+        "description": "Geplande transacties voor verleende rekeningen"
+      },
+      "investments": {
+        "label": "Beleggingen",
+        "description": "Posities en beleggingstransacties voor verleende rekeningen"
+      },
+      "budgets": {
+        "label": "Budget",
+        "description": "Budgetcijfers, alleen-lezen"
+      },
+      "reports": {
+        "label": "Rapporten",
+        "description": "Rapporten, alleen-lezen"
+      },
+      "ai": {
+        "label": "AI-assistent",
+        "description": "Gebruikt de AI-provider die de eigenaar heeft ingesteld"
+      },
       "aiRequiresFullAccess": "De AI-assistent leest alle rekeningen en secties en antwoordt daarom pas voor deze gedelegeerde zodra die al je rekeningen en elke andere sectie kan lezen.",
       "warranties": {
         "label": "Garanties",
         "description": "Garanties met hun documenten en claims. Een gekoppelde aankoop is alleen zichtbaar bij een rekening die de gemachtigde mag lezen."
-      }
+      },
+      "toggleLabel": "Onderdeel {section}"
     },
     "accounts": {
       "noAccounts": "Geen rekeningen om te verlenen.",
       "grantAll": "Alles verlenen",
-      "jointRequiresFullAccount": "Gezamenlijke rekeningen kunnen alleen worden gedeeld met gebruikers die een eigen Monize-account hebben"
+      "jointRequiresFullAccount": "Gezamenlijke rekeningen kunnen alleen worden gedeeld met gebruikers die een eigen Monize-account hebben",
+      "grantAllLabel": "{op} alle {type}-rekeningen",
+      "grantLabel": "{op}-toegang tot {account}"
     },
     "shared": {
-      "description": "LEZEN van begunstigden, categorieën en labels is altijd toegestaan. Dit regelt aanmaken/bewerken/verwijderen."
+      "description": "LEZEN van begunstigden, categorieën en labels is altijd toegestaan. Dit regelt aanmaken/bewerken/verwijderen.",
+      "toggleLabel": "{op} {resource}",
+      "resources": {
+        "payees": "Begunstigden",
+        "categories": "Categorieën",
+        "tags": "Labels"
+      }
     },
     "saveButton": "Opslaan",
     "toasts": {
@@ -1160,7 +1193,6 @@
       "editMessageButton": "Bewerken",
       "messagePlaceholder": "Notities, instructies, locaties van belangrijke documenten...",
       "maxCharsNote": "Maximaal 4000 tekens. Versleuteld opgeslagen.",
-      "cancelButton": "Annuleren",
       "saveButton": "Bericht opslaan",
       "toasts": {
         "saved": "Bericht opgeslagen",
@@ -1205,7 +1237,7 @@
       "grantStatus": "Verleningsstatus: ",
       "unknown": "onbekend",
       "never": "nooit",
-      "daysAgo": "{count} dag{plural} geleden",
+      "withRelative": "{timestamp} ({relative})",
       "grantedOn": "verleend op {timestamp}",
       "notYetGranted": "nog niet verleend",
       "timerNote": "De timer wordt automatisch gereset elke keer dat je de app gebruikt -- aanmelden, een pagina bekijken, een transactie vastleggen, alles wat geauthenticeerd is."
@@ -1222,6 +1254,17 @@
     },
     "stepUp": {
       "reason": "Verifieer jouw identiteit opnieuw om jouw noodtoegang-bericht te bekijken of te bewerken."
+    },
+    "validation": {
+      "wholeDays": "Alleen hele dagen",
+      "minDays": "{min, plural, one {Moet minstens # dag zijn} other {Moet minstens # dagen zijn}}",
+      "maxDays": "{max, plural, one {Mag hoogstens # dag zijn} other {Mag hoogstens # dagen zijn}}",
+      "reminderBeforeGrant": "Het aantal herinneringsdagen moet kleiner zijn dan het aantal toegangsdagen",
+      "messageMax": "Het bericht mag hoogstens {max} tekens bevatten",
+      "firstNameRequired": "Voornaam is verplicht",
+      "firstNameMax": "De voornaam mag hoogstens {max} tekens bevatten",
+      "emailInvalid": "Voer een geldig e-mailadres in",
+      "emailMax": "Het e-mailadres mag hoogstens {max} tekens bevatten"
     },
     "toasts": {
       "loadFailed": "Laden van noodtoegang mislukt",
@@ -1255,6 +1298,10 @@
       "enableButton": "Inschakelen",
       "editButton": "Bewerken",
       "deleteButton": "Verwijderen"
+    },
+    "deleteDialog": {
+      "title": "AI-provider verwijderen",
+      "message": "{name} verwijderen? De opgeslagen API-sleutel wordt mee verwijderd. Dit kan niet ongedaan worden gemaakt."
     },
     "configForm": {
       "addTitle": "AI-provider toevoegen",

@@ -114,8 +114,8 @@
       "matchAll": "次のすべて",
       "matchAny": "次のいずれか",
       "matchLabel": "一致条件",
-      "not": "NOT",
-      "notLabel": "このグループを否定：条件を満たさないときに一致します",
+      "not": "グループを否定",
+      "notHelp": "否定したグループは、その条件を満たさないときに一致します。",
       "title": "グループ",
       "addCondition": "+ 条件を追加",
       "addGroup": "+ グループを追加",
@@ -201,7 +201,7 @@
       "tags": "タグ",
       "category": "カテゴリ",
       "payee": "支払先",
-      "instruction": "確認してほしい内容",
+      "instruction": "確認の指示",
       "instructionPlaceholder": "例：この購入をレシートに従って分割する",
       "instructionHelp": "ルールはレビューを依頼するだけです。変更は、実行される前に必ず人が承認します。",
       "onlyIfEmpty": "空の場合のみ",
@@ -220,7 +220,7 @@
       "createIfMissing": "支払先がなければ作成する",
       "createIfMissingHelp": "オンにすると、名前(名前、エイリアス、近い一致)に合う支払先がない場合に新しい支払先を作成します。ルールが作成した支払先は、実行を元に戻しても残ります。",
       "onlyIfEmptyDescriptionHelp": "オンにすると、取引に説明がない場合にのみルールが説明を書き込みます。毎回書き込むにはオフにします。",
-      "mode": "書き込み方",
+      "mode": "説明の書き込み方",
       "modes": {
         "replace": "説明を置き換える",
         "append": "説明の後ろに追加",
@@ -262,12 +262,12 @@
         "windowHelp": "銀行が支払いを行える、期日からの許容範囲です。返済の期日の前後、この日数以内の引き落としはその返済に当てられます。範囲外の引き落としは変更されません。",
         "daysBefore": "期日より前の日数",
         "daysAfter": "期日より後の日数",
-        "excess": "引き落としが返済額より多い場合",
+        "excess": "返済額を上回る引き落とし",
         "excessPolicies": {
           "extra_principal": "差額を追加の元金として支払う",
           "refuse": "取引を変更しない"
         },
-        "shortfall": "引き落としが返済額より少ない場合",
+        "shortfall": "返済額を下回る引き落とし",
         "shortfallPolicies": {
           "refuse": "取引を変更しない",
           "interest_first": "まず利息を支払い、残りを元金とする"

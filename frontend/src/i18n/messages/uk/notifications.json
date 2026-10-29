@@ -35,7 +35,7 @@
     "createFailed": "Не вдалося встановити нагадування",
     "dialogTitle": "Нагадати мені",
     "dialogDescription": "Отримайте це сповіщення знову пізніше, доки не відреагуєте.",
-    "modeLabel": "Як часто",
+    "modeLabel": "Частота",
     "modeRepeat": "Повторювати, доки не зупиню",
     "modeOnce": "Лише ще раз",
     "intervalLabelRepeat": "Нагадувати кожні",

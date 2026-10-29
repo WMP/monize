@@ -161,16 +161,26 @@ export function InstitutionAccountsManager({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} maxWidth="lg" className="p-6">
-      <div className="flex items-center gap-3 mb-4">
-        <InstitutionLogo institution={institution ?? undefined} size={32} fallbackGlyph="$" />
-        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 truncate">
-          {institution
-            ? t('accountsManager.title', { name: institution.name })
-            : ''}
-        </h2>
-      </div>
-
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      maxWidth="lg"
+      className="p-6"
+      title={
+        institution ? (
+          <span className="flex items-center gap-3 min-w-0">
+            {/* The logo's alt text is the institution's name, which the
+                title already says: hidden so the dialog's name reads once. */}
+            <span aria-hidden="true" className="shrink-0 inline-flex">
+              <InstitutionLogo institution={institution} size={32} fallbackGlyph="$" />
+            </span>
+            <span className="truncate" title={t('accountsManager.title', { name: institution.name })}>
+              {t('accountsManager.title', { name: institution.name })}
+            </span>
+          </span>
+        ) : undefined
+      }
+    >
       {isLoading ? (
         <LoadingSpinner text={t('accountsManager.loading')} />
       ) : assignedMain.length === 0 ? (
@@ -250,7 +260,7 @@ export function InstitutionAccountsManager({
         </>
       )}
 
-      <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+      <div className="mt-6">
         <Combobox
           label={t('accountsManager.addLabel')}
           placeholder={t('accountsManager.addPlaceholder')}

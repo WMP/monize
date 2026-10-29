@@ -36,6 +36,8 @@ import { ColumnChooserMenu, type ColumnChooserItem } from '@/components/ui/Colum
 import { useHiddenColumns } from '@/hooks/useHiddenColumns';
 import { useColumnHeaderActions } from '@/hooks/useColumnHeaderActions';
 import type { HideableColumn } from '@/lib/hidden-columns';
+import { Button } from '@/components/ui/Button';
+import { FunnelIcon } from '@heroicons/react/24/outline';
 
 type BrokerageColumn = HideableColumn<'investmentRegister'>;
 
@@ -559,12 +561,9 @@ export function InvestmentTransactionList({
             {viewModeToggle}
           </div>
           {onNewTransaction && (
-            <button
-              onClick={onNewTransaction}
-              className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 sm:min-w-[14rem]"
-            >
+            <Button size="sm" onClick={onNewTransaction} className="sm:min-w-[14rem]">
               {t('transactionList.newBrokerageTransaction')}
-            </button>
+            </Button>
           )}
         </div>
         <p className="text-gray-500 dark:text-gray-400">
@@ -605,32 +604,39 @@ export function InvestmentTransactionList({
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
         {onNewTransaction && (
-          <button
-            onClick={onNewTransaction}
-            className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 sm:min-w-[14rem]"
-          >
+          <Button size="sm" onClick={onNewTransaction} className="sm:min-w-[14rem]">
             <span className="sm:hidden">{t('transactionList.newBrokerageTransactionShort')}</span>
             <span className="hidden sm:inline">{t('transactionList.newBrokerageTransaction')}</span>
-          </button>
+          </Button>
         )}
         {onFiltersChange && (
           <button
+            type="button"
             onClick={() => setShowFilters(!showFilters)}
-            className={`inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md ${
+            aria-expanded={showFilters}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md ${
               hasActiveFilters
                 ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30'
                 : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
             }`}
           >
-            <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-            </svg>
+            <FunnelIcon className="w-4 h-4" aria-hidden="true" />
             {t('transactionList.filter')}
             {hasActiveFilters && (
-              <span className="ml-1.5 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-blue-600 rounded-full">
+              <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-blue-600 rounded-full">
                 {[filters?.symbol, filters?.action, filters?.startDate, filters?.endDate].filter(Boolean).length}
               </span>
             )}
+          </button>
+        )}
+        {/* A folded filter bar still offers Clear beside its count. */}
+        {onFiltersChange && hasActiveFilters && !showFilters && (
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+          >
+            {t('transactionList.clearFilters')}
           </button>
         )}
         {!ownsPaging && (

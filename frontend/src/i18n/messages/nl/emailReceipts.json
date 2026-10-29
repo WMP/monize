@@ -763,8 +763,7 @@
     },
     "search": {
       "label": "E-mails zoeken",
-      "text": "Zoeken",
-      "placeholder": "Onderwerp, afzender of inhoud",
+      "placeholder": "Zoek op onderwerp, afzender of inhoud...",
       "in": "Zoeken in",
       "fields": {
         "all": "Alle velden",
@@ -806,10 +805,10 @@
       "body": "Bestelbevestigingen verschijnen hier zodra de mailbox is gelezen.",
       "filteredTitle": "Geen e-mails met deze status",
       "filteredBody": "Kies een andere status om de rest te zien.",
-      "noMailboxBody": "Er is nog geen mailbox gekoppeld. Koppel er een om bestelbevestigingen te gaan lezen.",
-      "connectButton": "Een mailbox koppelen",
       "searchTitle": "Geen e-mail komt overeen met de zoekopdracht",
-      "searchBody": "Wijzig de woorden of de datums, of wis de zoekopdracht om alle e-mails te zien."
+      "searchBody": "Wijzig de woorden of de datums, of wis de zoekopdracht om alle e-mails te zien.",
+      "noMailboxBody": "Er is nog geen mailbox gekoppeld. Koppel er een om bestelbevestigingen te gaan lezen.",
+      "connectButton": "Een mailbox koppelen"
     },
     "actions": {
       "view": "Bekijken",
@@ -1092,9 +1091,7 @@
     "help": "Er is automatisch geen transactie gekoppeld. Dit zijn je transacties in het datumbereik hieronder, dat begint met de dagen rond de aankoop. Kies de transactie die ermee is betaald, of wijzig de datums om verder te zoeken.",
     "fromLabel": "Van",
     "toLabel": "Tot",
-    "searchLabel": "Zoeken",
-    "searchPlaceholder": "Begunstigde, omschrijving of bedrag",
-    "searchButton": "Zoeken",
+    "searchPlaceholder": "Zoek op begunstigde, omschrijving of bedrag...",
     "loading": "Transacties laden",
     "error": "De transacties konden niet worden geladen.",
     "retry": "Opnieuw proberen",
@@ -1331,7 +1328,7 @@
       "reviseHelp": "Vertel de assistent wat er moet veranderen. Hij werkt hetzelfde concept bij op basis van deze e-mails en transacties.",
       "tradeHelp": "De assistent leest deze handelsbevestigingen en schrijft een conceptprofiel voor {domain} dat de beleggingstransactie voorstelt die elk meldt. Er is nog niets goedgekeurd.",
       "tradeSample": "Handelsbevestiging",
-      "feedbackLabel": "Wat moet er veranderen",
+      "feedbackLabel": "Gewenste wijzigingen",
       "feedbackPlaceholder": "Bijvoorbeeld: het totaal is de regel met Betaald bedrag, niet het subtotaal.",
       "send": "Naar AI sturen",
       "sendFeedback": "Notitie naar AI sturen",

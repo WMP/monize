@@ -4,6 +4,7 @@
     "subtitle": "產生有關財務狀況的洞察",
     "searchPlaceholder": "依名稱或描述搜尋報表...",
     "allReports": "所有報表",
+    "categoryWithCount": "{label}（{count}）",
     "removeFavourite": "從最愛移除",
     "addFavourite": "加入最愛",
     "tableReport": "報表",
@@ -137,7 +138,8 @@
   },
   "reportPage": {
     "notFound": "找不到報表",
-    "notFoundDesc": "所請求的報表不存在。"
+    "notFoundDesc": "所請求的報表不存在。",
+    "viewLabel": "檢視"
   },
   "error": {
     "defaultMessage": "載入報表資料失敗。請再試一次。",
@@ -514,8 +516,6 @@
     "viewMonthly": "每月",
     "viewDaily": "每日",
     "viewBySecurity": "依證券",
-    "displayChart": "圖表",
-    "displayTable": "表格",
     "showLabel": "顯示：",
     "seriesDividends": "股利",
     "seriesInterest": "利息",
@@ -1251,7 +1251,6 @@
     "incompleteTooltip": "此期間內有些天缺少價格、匯率或現金餘額，因此依賴每一天資料的數字不會顯示。",
     "measuredFromClose": "自 {date} 收盤起",
     "notAvailable": "不適用",
-    "intradayUnavailable": "無法取得詳細的盤中報價",
     "intradayUnavailableTitle": "此科目組合無法使用盤中檢視",
     "intradayUnavailableDesc": "一個或多個持倉使用不提供盤中資料的報價來源（MSN Money）{skipped}，請切換至較長的時間範圍以查看每日快照。",
     "intradayUnavailableSkipped": "：{symbols}",
@@ -1302,8 +1301,6 @@
     "costBasis": "成本基礎",
     "realizedGainLoss": "已實現損益",
     "securitiesSold": "已出售證券",
-    "viewChart": "圖表",
-    "viewTable": "表格",
     "noTransactions": "此期間找不到賣出交易。",
     "noGainsLosses": "無損益可顯示。",
     "bySecurityTitle": "依證券分析已實現獲利",
@@ -1339,7 +1336,7 @@
     "sixMonthTotal": "6 個月總計",
     "monthlyEstimate": "每月估計",
     "identifiedPayees": "個已識別收款人",
-    "minOccurrencesLabel": "最少出現次數：",
+    "minOccurrencesLabel": "最少出現次數",
     "inLast6Months": "（過去 6 個月內）",
     "noRecurring": "過去 6 個月內未找到出現 {count} 次以上的固定支出。",
     "failedToLoad": "載入固定支出資料失敗。",
@@ -1699,8 +1696,6 @@
     "activeBills": "有效帳單",
     "overdue": "逾期",
     "thisMonth": "本月",
-    "autoPostsTitle": "到期自動過帳",
-    "manualPostTitle": "需手動過帳",
     "autoLabel": "自動",
     "manualLabel": "手動",
     "overdueLabel": "逾期",
@@ -1834,6 +1829,7 @@
     "removeAriaLabel": "從比較中移除{title}",
     "removeTitle": "從比較中移除",
     "runFailed": "執行失敗",
+    "never": "從未",
     "errors": {
       "loadScenarioFailed": "載入情境失敗。",
       "simulationFailed": "模擬失敗。"
@@ -1847,7 +1843,6 @@
     "backToReports": "返回報表",
     "deleteButton": "刪除報表",
     "deleteConfirmMessage": "確定要刪除「{name}」嗎？此操作無法復原。",
-    "deleting": "刪除中...",
     "toasts": {
       "loadFailed": "載入報表失敗",
       "updated": "報表已更新",

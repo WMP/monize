@@ -340,7 +340,10 @@ export function PayeeInfoWidget({
             <dt className="text-gray-500 dark:text-gray-400">
               {t('payeeWidget.defaultCategory')}
             </dt>
-            <dd className="text-gray-900 dark:text-gray-100 text-right truncate">
+            <dd
+              className="min-w-0 break-words text-gray-900 dark:text-gray-100 text-right sm:truncate"
+              title={defaultCategoryName}
+            >
               {defaultCategoryName}
             </dd>
           </div>

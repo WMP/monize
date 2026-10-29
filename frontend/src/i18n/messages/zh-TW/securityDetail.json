@@ -34,7 +34,6 @@
     "units": "單位數",
     "avgCostPerUnit": "平均成本 / 單位",
     "heldInAccounts": "持有帳戶",
-    "openAccount": "在「投資」頁面中查看 {name}",
     "unitsShare": "{units}（{share}）",
     "valueUnknown": "無法估值",
     "approx": "约 {amount}"

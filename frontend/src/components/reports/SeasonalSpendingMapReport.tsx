@@ -12,6 +12,7 @@ import { SortableHeader } from '@/components/ui/SortableHeader';
 import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { useReportData } from '@/hooks/useReportData';
 import { ReportError } from '@/components/reports/ReportError';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 type SeasonalMapSortField = 'category' | 'typical' | `month${number}`;
 
@@ -208,11 +209,9 @@ export function SeasonalSpendingMapReport() {
       </div>
 
       {/* Heatmap */}
-      <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4 sm:p-6">
+      <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
         {gridData.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            {t('seasonalSpendingMap.noData')}
-          </p>
+          <EmptyState title={t('seasonalSpendingMap.noData')} />
         ) : (
           <>
             <div className="overflow-x-auto">

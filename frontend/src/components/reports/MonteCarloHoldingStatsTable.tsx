@@ -2,8 +2,9 @@
 
 import { AccountHoldingStats } from '@/lib/monte-carlo';
 import { useTranslations } from 'next-intl';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import type { NumberFormatters } from '@/hooks/useNumberFormat';
-import { CAPTION_CLASS, CellLabel } from '@/components/ui/Table';
+import { CAPTION_CLASS, CellLabel, Th } from '@/components/ui/Table';
 
 // A money (or percentage) cell inside a wrapped row: no padding of its own
 // below `sm` (the row supplies it and the grid does the spacing), this table's
@@ -33,9 +34,9 @@ export function HoldingStatsTable({
 
   if (loading) {
     return (
-      <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-        {t('monteCarloHoldingStats.loading')}
-      </p>
+      <div className="mb-3 text-xs">
+        <LoadingSpinner size="sm" fullContainer={false} text={t('monteCarloHoldingStats.loading')} />
+      </div>
     );
   }
   if (!data || data.length === 0) {
@@ -99,17 +100,17 @@ export function HoldingStatsTable({
                   className="hidden bg-gray-50 dark:bg-gray-900/30 text-gray-500 dark:text-gray-400 sm:table-header-group"
                 >
                   <tr role="row">
-                    <th role="columnheader" className="px-3 py-1.5 text-left font-medium">{t('monteCarloHoldingStats.colSymbol')}</th>
-                    <th role="columnheader" className="px-3 py-1.5 text-left font-medium">
+                    <Th role="columnheader" className="px-3 py-1.5">{t('monteCarloHoldingStats.colSymbol')}</Th>
+                    <Th role="columnheader" className="px-3 py-1.5">
                       {t('monteCarloHoldingStats.colName')}
-                    </th>
-                    <th role="columnheader" className="px-3 py-1.5 text-right font-medium">{t('monteCarloHoldingStats.colValue')}</th>
-                    <th role="columnheader" className="px-3 py-1.5 text-right font-medium whitespace-nowrap">
+                    </Th>
+                    <Th role="columnheader" align="right" className="px-3 py-1.5">{t('monteCarloHoldingStats.colValue')}</Th>
+                    <Th role="columnheader" align="right" className="px-3 py-1.5 whitespace-nowrap">
                       {t('monteCarloHoldingStats.colMean')}
-                    </th>
-                    <th role="columnheader" className="px-3 py-1.5 text-right font-medium">
+                    </Th>
+                    <Th role="columnheader" align="right" className="px-3 py-1.5">
                       {t('monteCarloHoldingStats.colVolatility')}
-                    </th>
+                    </Th>
                   </tr>
                 </thead>
                 <tbody

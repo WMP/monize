@@ -6,7 +6,7 @@
       "category": "Categoria",
       "amount": "Valor",
       "schedule": "Agendamento",
-      "auto": "Auto",
+      "auto": "Lançamento automático",
       "actions": "Ações"
     },
     "empty": {
@@ -25,7 +25,6 @@
     "modifiedDateTitle": "Data alterada para esta ocorrência",
     "splitBadge": "Dividida ({count})",
     "autoPostBadge": "Ativo",
-    "autoPostTitle": "Lançado automaticamente na data de vencimento",
     "inactiveSuffix": " — Inativo",
     "actionTitles": {
       "post": "Lançar transação",
@@ -76,9 +75,7 @@
     "accountsLabel": "Contas",
     "accountsPlaceholder": "Todas as contas",
     "categoriesLabel": "Categorias",
-    "categoriesPlaceholder": "Todas as categorias",
-    "collapseAriaLabel": "Recolher filtros",
-    "expandAriaLabel": "Expandir filtros"
+    "categoriesPlaceholder": "Todas as categorias"
   },
   "postDialog": {
     "title": "Lançar Transação",

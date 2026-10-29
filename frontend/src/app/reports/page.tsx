@@ -29,6 +29,7 @@ import {
 
 import { useDensityPreference } from '@/store/densityStore';
 import { DensityToggle } from '@/components/ui/DensityToggle';
+import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
 
 const logger = createLogger('Reports');
 
@@ -277,24 +278,33 @@ function ReportsContent() {
   const getReportDescription = (report: Report): string =>
     report.description ?? t(`page.descriptions.${report.id}` as Parameters<typeof t>[0]);
 
+  // The reports the search admits, before the category filter: what each
+  // category segment counts, so a count says what pressing it would show.
+  const searchMatches = useMemo(() => {
+    if (!debouncedSearchQuery) return allReports;
+    const q = debouncedSearchQuery.toLowerCase();
+    return allReports.filter(r => {
+      const name = r.name ?? t(`page.names.${r.id}` as Parameters<typeof t>[0]);
+      const desc = r.description ?? t(`page.descriptions.${r.id}` as Parameters<typeof t>[0]);
+      return name.toLowerCase().includes(q) || desc.toLowerCase().includes(q);
+    });
+  }, [allReports, debouncedSearchQuery, t]);
+
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<ReportCategory, number>();
+    for (const r of searchMatches) counts.set(r.category, (counts.get(r.category) ?? 0) + 1);
+    return counts;
+  }, [searchMatches]);
+
   const filteredReports = useMemo(() => {
     const isFavourite = (report: Report): boolean =>
       report.isCustom || report.isInvestment
         ? report.isFavourite ?? false
         : favouriteReportIds.includes(report.id);
-    const q = debouncedSearchQuery.toLowerCase();
-    return allReports
-      .filter(r => {
-        if (effectiveCategory !== 'all' && r.category !== effectiveCategory) return false;
-        if (debouncedSearchQuery) {
-          const name = r.name ?? t(`page.names.${r.id}` as Parameters<typeof t>[0]);
-          const desc = r.description ?? t(`page.descriptions.${r.id}` as Parameters<typeof t>[0]);
-          return name.toLowerCase().includes(q) || desc.toLowerCase().includes(q);
-        }
-        return true;
-      })
+    return searchMatches
+      .filter(r => effectiveCategory === 'all' || r.category === effectiveCategory)
       .sort((a, b) => Number(isFavourite(b)) - Number(isFavourite(a)));
-  }, [allReports, effectiveCategory, debouncedSearchQuery, favouriteReportIds, t]);
+  }, [searchMatches, effectiveCategory, favouriteReportIds]);
 
   const handleReportClick = (reportId: string) => {
     router.push(`/reports/${reportId}`);
@@ -344,29 +354,37 @@ function ReportsContent() {
 
         {/* Category Filter */}
         <div className="mb-6 flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => selectCategory('all')}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-              effectiveCategory === 'all'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600'
-            }`}
+          <div
+            className={`${SEGMENTED_GROUP_CLASS} flex-wrap`}
+            role="group"
+            aria-label={t('page.tableCategory')}
           >
-            {t('page.allReports')}
-          </button>
-          {REPORT_CATEGORIES.map((cat) => (
             <button
-              key={cat}
-              onClick={() => selectCategory(cat)}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                effectiveCategory === cat
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600'
-              }`}
+              type="button"
+              aria-pressed={effectiveCategory === 'all'}
+              onClick={() => selectCategory('all')}
+              className={segmentClass(effectiveCategory === 'all')}
             >
-              {t(`page.categories.${cat}` as Parameters<typeof t>[0])}
+              {t('page.categoryWithCount', {
+                label: t('page.allReports'),
+                count: searchMatches.length,
+              })}
             </button>
-          ))}
+            {REPORT_CATEGORIES.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                aria-pressed={effectiveCategory === cat}
+                onClick={() => selectCategory(cat)}
+                className={segmentClass(effectiveCategory === cat)}
+              >
+                {t('page.categoryWithCount', {
+                  label: t(`page.categories.${cat}` as Parameters<typeof t>[0]),
+                  count: categoryCounts.get(cat) ?? 0,
+                })}
+              </button>
+            ))}
+          </div>
           {/* Density is a desktop-only concern: the mobile tile grid ignores it
               entirely, so the toggle is hidden there rather than silently
               mutating the persisted desktop density from a control that does

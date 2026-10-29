@@ -42,7 +42,7 @@ import {
   type IncompleteDataCauses,
 } from '@/lib/incomplete-data-ranges';
 import { SortableHeader } from '@/components/ui/SortableHeader';
-import { CAPTION_CLASS, CellLabel, PHONE_HEADER_CLASS } from '@/components/ui/Table';
+import { CAPTION_CLASS, CellLabel, PHONE_HEADER_CLASS, TH_CLASS } from '@/components/ui/Table';
 import type {
   SortColumn as TableSortColumn,
   SortColumnsByField as TableSortColumnsByField,
@@ -152,13 +152,6 @@ const NO_INCOMPLETE_DATA: IncompleteDataCauses = {
 };
 const RANGE_STORAGE_KEY = 'monize-reports-portfolio-value-range';
 const ACCOUNTS_STORAGE_KEY = 'monize-reports-portfolio-value-accounts';
-
-// Today's header cell for the Portfolio Breakdown table, unchanged (no
-// `tracking-wider`, matching what this table renders). Kept local --
-// `PHONE_HEADER_CLASS`/`CAPTION_CLASS`/`CellLabel` are the shared chrome, but a
-// table's own header and money cells stay per-report because their track
-// budgets differ.
-const HEADER_CLASS = 'px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase';
 
 // A money cell inside a wrapped breakdown row: no padding of its own below `sm`
 // (the row's grid supplies it), this table's own `px-4 py-3 text-sm` from `sm`
@@ -1461,12 +1454,7 @@ export function PortfolioValueReport() {
           )}
           {intradayFallbackNotice && (
             <span
-              role="img"
-              aria-label={t('portfolioValue.intradayUnavailable')}
-              title={intradayFallbackNotice.skipped.length > 0
-                ? t('portfolioValue.intradayFallbackTitle', { symbols: intradayFallbackNotice.skipped.join(', ') })
-                : t('portfolioValue.intradayFallbackTitleGeneric')}
-              className="inline-flex text-amber-500 dark:text-amber-400 cursor-help"
+              className="inline-flex items-center text-amber-500 dark:text-amber-400"
               data-testid="report-intraday-fallback-warning"
             >
               <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
@@ -1476,6 +1464,14 @@ export function PortfolioValueReport() {
                   clipRule="evenodd"
                 />
               </svg>
+              {/* The explanation is the tooltip's, not a `title`: a phone has
+                  no hover to read it by. */}
+              <InfoTooltip
+                text={intradayFallbackNotice.skipped.length > 0
+                  ? t('portfolioValue.intradayFallbackTitle', { symbols: intradayFallbackNotice.skipped.join(', ') })
+                  : t('portfolioValue.intradayFallbackTitleGeneric')}
+                usePortal
+              />
             </span>
           )}
         </h3>
@@ -1498,9 +1494,7 @@ export function PortfolioValueReport() {
             })}
           />
         ) : chartPoints.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            {t('portfolioValue.noData')}
-          </p>
+          <EmptyState title={t('portfolioValue.noData')} />
         ) : securitiesActive && breakdown ? (
           chartViewType === 'table' ? (
             <div className="overflow-x-auto">
@@ -1512,14 +1506,14 @@ export function PortfolioValueReport() {
                       sortField={chartTableSort.sortField}
                       sortDirection={chartTableSort.sortDirection}
                       onSort={chartTableSort.handleSort}
-                      className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap"
+                      className={`${TH_CLASS} whitespace-nowrap`}
                     >
                       {t('portfolioValue.colDate')}
                     </SortableHeader>
                     {securitiesSeries.map((s) => (
                       <th
                         key={s.key}
-                        className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap"
+                        className={`${TH_CLASS} text-right whitespace-nowrap`}
                       >
                         <span className="inline-flex items-center gap-1.5 justify-end">
                           <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: s.color }} />
@@ -1533,7 +1527,7 @@ export function PortfolioValueReport() {
                       sortDirection={chartTableSort.sortDirection}
                       onSort={chartTableSort.handleSort}
                       align="right"
-                      className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap"
+                      className={`${TH_CLASS} whitespace-nowrap`}
                     >
                       {t('portfolioValue.colTotal')}
                     </SortableHeader>
@@ -1573,7 +1567,7 @@ export function PortfolioValueReport() {
                   />
                   <YAxis domain={yAxisDomain} tickFormatter={fmtAxis} tick={{ fontSize: 12 }} />
                   <Tooltip content={<SecuritiesTooltip fmtFull={fmtFull} totalLabel={t('portfolioValue.colTotal')} />} />
-                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Legend />
                   {securitiesSeries.map((s) => (
                     <Area
                       key={s.key}
@@ -1603,7 +1597,7 @@ export function PortfolioValueReport() {
                     sortField={chartTableSort.sortField}
                     sortDirection={chartTableSort.sortDirection}
                     onSort={chartTableSort.handleSort}
-                    className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
+                    className={TH_CLASS}
                   >
                     {t('portfolioValue.colDate')}
                   </SortableHeader>
@@ -1613,7 +1607,7 @@ export function PortfolioValueReport() {
                     sortDirection={chartTableSort.sortDirection}
                     onSort={chartTableSort.handleSort}
                     align="right"
-                    className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
+                    className={TH_CLASS}
                   >
                     {t('portfolioValue.colPortfolioValue')}
                   </SortableHeader>
@@ -1795,7 +1789,7 @@ export function PortfolioValueReport() {
                       sortDirection={sortDirection}
                       onSort={handleSort}
                       align={col.align}
-                      className={HEADER_CLASS}
+                      className={TH_CLASS}
                     >
                       {col.label}
                     </SortableHeader>

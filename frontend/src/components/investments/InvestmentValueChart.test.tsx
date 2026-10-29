@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act } from 'react';
-import { render, screen, waitFor, fireEvent } from '@/test/render';
+import { render, screen, waitFor, fireEvent, within } from '@/test/render';
 import {
   InvestmentValueChart,
   INVESTMENT_CHART_REFRESH_EVENT,
@@ -1139,8 +1139,10 @@ describe('InvestmentValueChart', () => {
     render(<InvestmentValueChart />);
     const warning = await screen.findByTestId('intraday-fallback-warning');
     expect(warning).toBeInTheDocument();
-    expect(warning.getAttribute('title')).toContain('VFV.TO');
-    expect(warning.getAttribute('title')).toContain('MSN Money');
+    const help = within(warning).getByRole('button').getAttribute('aria-label');
+    expect(help).toContain('VFV.TO');
+    expect(help).toContain('MSN Money');
+    expect(warning.querySelector('[title]')).toBeNull();
   });
 
   it('does not show the warning icon when intraday data is fully available', async () => {
@@ -1428,9 +1430,10 @@ describe('InvestmentValueChart', () => {
     render(<InvestmentValueChart />);
     const warning = await screen.findByTestId('intraday-fallback-warning');
     expect(warning).toBeInTheDocument();
-    expect(warning.getAttribute('title')).toContain('one or more holdings');
-    // No ticker symbols should appear in the title when skippedSymbols is empty
-    expect(warning.getAttribute('title')).not.toMatch(/[A-Z]{2,5}\.[A-Z]{2}/); // e.g. VFV.TO
+    const help = within(warning).getByRole('button').getAttribute('aria-label');
+    expect(help).toContain('one or more holdings');
+    // No ticker symbols should appear in the help when skippedSymbols is empty
+    expect(help).not.toMatch(/[A-Z]{2,5}\.[A-Z]{2}/); // e.g. VFV.TO
   });
 
   it('does not re-fetch on refresh event when range is not intraday', async () => {

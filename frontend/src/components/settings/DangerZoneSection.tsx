@@ -35,6 +35,7 @@ interface DangerZoneSectionProps {
 
 export function DangerZoneSection({ user }: DangerZoneSectionProps) {
   const t = useTranslations('settings.dangerZone');
+  const tc = useTranslations('common');
   const router = useRouter();
   const { logout } = useAuthStore();
   // A delegate of another account sees a tailored warning explaining
@@ -269,7 +270,7 @@ export function DangerZoneSection({ user }: DangerZoneSectionProps) {
                       setDeleteExchangeRates(false);
                     }}
                   >
-                    Cancel
+                    {tc('cancel')}
                   </Button>
                 </div>
               ) : (
@@ -307,7 +308,7 @@ export function DangerZoneSection({ user }: DangerZoneSectionProps) {
                         setDeleteExchangeRates(false);
                       }}
                     >
-                      Cancel
+                      {tc('cancel')}
                     </Button>
                   </div>
                 </>
@@ -378,7 +379,7 @@ export function DangerZoneSection({ user }: DangerZoneSectionProps) {
                   setDeleteAccountPassword('');
                 }}
               >
-                Cancel
+                {tc('cancel')}
               </Button>
             </div>
           </div>

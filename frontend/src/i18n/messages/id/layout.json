@@ -132,12 +132,6 @@
       "updatedSecurityTransfer": "Transfer sekuritas diperbarui",
       "ranTransactionRule": "Aturan “{name}” dijalankan pada {count, plural, other {# transaksi}}"
     },
-    "timeAgo": {
-      "justNow": "baru saja",
-      "minutes": "{count} menit lalu",
-      "hours": "{count} jam lalu",
-      "days": "{count} hari lalu"
-    },
     "undonePrefix": "Dibatalkan: {description}",
     "redonePrefix": "Diulangi: {description}"
   },

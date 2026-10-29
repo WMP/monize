@@ -35,7 +35,7 @@
     "createFailed": "De herinnering kon niet worden ingesteld",
     "dialogTitle": "Herinner mij",
     "dialogDescription": "Ontvang deze melding later opnieuw totdat je actie onderneemt.",
-    "modeLabel": "Hoe vaak",
+    "modeLabel": "Frequentie",
     "modeRepeat": "Herhalen tot ik stop",
     "modeOnce": "Nog een keer",
     "intervalLabelRepeat": "Herinner mij elke",

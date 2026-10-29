@@ -224,7 +224,11 @@ function AdminNotificationsContent() {
   return (
     <PageLayout>
       <main className="px-4 pt-6 pb-8 sm:px-6 lg:px-12">
-        <PageHeader title={t('title')} subtitle={t('subtitle')} />
+        <PageHeader
+          title={t('title')}
+          subtitle={t('subtitle')}
+          helpUrl="https://github.com/kenlasko/monize/wiki/Settings-and-Security#instance-notification-settings"
+        />
 
         {isLoading ? (
           <LoadingSpinner text={t('loading')} />

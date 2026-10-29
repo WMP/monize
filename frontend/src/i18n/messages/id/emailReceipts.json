@@ -763,8 +763,7 @@
     },
     "search": {
       "label": "Cari email",
-      "text": "Cari",
-      "placeholder": "Subjek, pengirim, atau isi",
+      "placeholder": "Cari menurut subjek, pengirim, atau isi...",
       "in": "Cari di",
       "fields": {
         "all": "Semua bidang",
@@ -806,10 +805,10 @@
       "body": "Konfirmasi pesanan muncul di sini setelah kotak surel dibaca.",
       "filteredTitle": "Tidak ada surel dengan status ini",
       "filteredBody": "Pilih status lain untuk melihat sisanya.",
-      "noMailboxBody": "Belum ada kotak surel yang terhubung. Hubungkan satu untuk mulai membaca konfirmasi pesanan.",
-      "connectButton": "Hubungkan kotak surel",
       "searchTitle": "Tidak ada email yang cocok dengan pencarian",
-      "searchBody": "Ubah kata atau tanggal, atau hapus pencarian untuk melihat semua email."
+      "searchBody": "Ubah kata atau tanggal, atau hapus pencarian untuk melihat semua email.",
+      "noMailboxBody": "Belum ada kotak surel yang terhubung. Hubungkan satu untuk mulai membaca konfirmasi pesanan.",
+      "connectButton": "Hubungkan kotak surel"
     },
     "actions": {
       "view": "Lihat",
@@ -1092,9 +1091,7 @@
     "help": "Tidak ada transaksi yang cocok secara otomatis. Berikut transaksi Anda dalam rentang tanggal di bawah, yang semula berupa hari-hari di sekitar pembelian. Pilih transaksi yang dibayarnya, atau ubah tanggal untuk mencari lebih jauh.",
     "fromLabel": "Dari tanggal",
     "toLabel": "Sampai tanggal",
-    "searchLabel": "Cari",
-    "searchPlaceholder": "Penerima, deskripsi, atau jumlah",
-    "searchButton": "Cari",
+    "searchPlaceholder": "Cari menurut penerima, deskripsi, atau jumlah...",
     "loading": "Memuat transaksi",
     "error": "Transaksi tidak dapat dimuat.",
     "retry": "Coba lagi",
@@ -1331,7 +1328,7 @@
       "reviseHelp": "Beri tahu asisten apa yang perlu diubah. Asisten akan memperbarui draf yang sama dari surel dan transaksi ini.",
       "tradeHelp": "Asisten membaca konfirmasi perdagangan ini dan menulis draf profil untuk {domain} yang mengusulkan transaksi investasi yang dilaporkan masing-masing. Belum ada yang disetujui.",
       "tradeSample": "Konfirmasi perdagangan",
-      "feedbackLabel": "Apa yang perlu diubah",
+      "feedbackLabel": "Perubahan yang diminta",
       "feedbackPlaceholder": "Contoh: total adalah baris yang bertuliskan Jumlah dibayar, bukan subtotal.",
       "send": "Kirim ke AI",
       "sendFeedback": "Kirim catatan ke AI",

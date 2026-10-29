@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { UnknownAmount } from '@/components/ui/UnknownAmount';
+import { gainLossColor } from '@/lib/format';
 
 interface InvestmentIncomePanelProps {
   /** `null` when a payment could not be expressed in `currencyCode`. */
@@ -14,10 +15,6 @@ interface InvestmentIncomePanelProps {
   realizedGainsKnownYtd?: number;
   currencyCode: string;
   isLoading: boolean;
-}
-
-function gainClass(value: number | null): string {
-  return value !== null && value < 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400';
 }
 
 /** Year-to-date investment income: dividends/interest plus realized gains. */
@@ -63,7 +60,9 @@ export function InvestmentIncomePanel({
               <dt className="text-xs text-gray-500 dark:text-gray-400">
                 {t('income.realizedGains')}
               </dt>
-              <dd className={`text-xl font-bold ${gainClass(realizedGainsYtd)}`}>
+              <dd
+                className={`text-xl font-bold ${realizedGainsYtd === null ? '' : gainLossColor(realizedGainsYtd)}`}
+              >
                 {realizedGainsYtd === null ? (
                   <UnknownAmount reasonText={t('income.realizedUnknownReason')} />
                 ) : (

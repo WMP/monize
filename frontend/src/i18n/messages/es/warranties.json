@@ -22,7 +22,14 @@
       "expiring": "Por vencer",
       "active": "Activas",
       "expired": "Vencidas",
-      "lifetime": "De por vida"
+      "lifetime": "De por vida",
+      "counted": {
+        "all": "Todas ({count})",
+        "expiring": "Por vencer ({count})",
+        "active": "Activas ({count})",
+        "expired": "Vencidas ({count})",
+        "lifetime": "De por vida ({count})"
+      }
     },
     "search": {
       "label": "Buscar garantías",
@@ -163,14 +170,21 @@
     "notFound": "No se encontró esta garantía.",
     "retry": "Reintentar",
     "archivedBadge": "Archivada",
+    "switcher": {
+      "trigger": "Cambiar de garantía",
+      "placeholder": "Filtrar garantías...",
+      "noMatches": "Ninguna garantía coincide"
+    },
+    "summary": {
+      "expires": "Vence",
+      "purchased": "Comprada",
+      "price": "Precio de compra",
+      "openClaims": "Reclamaciones abiertas"
+    },
     "card": {
       "title": "Detalles",
-      "expires": "Vence",
-      "daysLeft": "Tiempo restante",
       "kind": "Tipo de garantía",
       "vendor": "Vendedor",
-      "purchaseDate": "Comprada",
-      "price": "Precio de compra",
       "serialNumbers": "Números de serie",
       "model": "Número de modelo",
       "productUrl": "Página del producto",
@@ -228,7 +242,7 @@
     "form": {
       "claimDateLabel": "Fecha de la reclamación",
       "statusLabel": "Estado",
-      "descriptionLabel": "Qué falló",
+      "descriptionLabel": "Descripción",
       "resolutionLabel": "Resolución",
       "resolvedOnLabel": "Cerrada el",
       "resolvedOnHint": "Solo para una reclamación resuelta o denegada",

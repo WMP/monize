@@ -13,17 +13,19 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-} from "recharts";
-import { budgetsApi } from "@/lib/budgets";
-import { useNumberFormat } from "@/hooks/useNumberFormat";
-import { useDateFormat } from "@/hooks/useDateFormat";
-import { useChartMonthFormat } from "@/hooks/useChartMonthFormat";
-import { useTranslations } from "next-intl";
-import { useReportData } from "@/hooks/useReportData";
-import { ReportToolbarActions } from "@/components/reports/ReportToolbarActions";
-import { ReportError } from "@/components/reports/ReportError";
-import { chartColors } from "@/lib/chart-colors";
-import { resolvePdfColor } from "@/components/reports/resolve-pdf-color";
+} from 'recharts';
+import { budgetsApi } from '@/lib/budgets';
+import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { useDateFormat } from '@/hooks/useDateFormat';
+import { useChartMonthFormat } from '@/hooks/useChartMonthFormat';
+import { useTranslations } from 'next-intl';
+import { useReportData } from '@/hooks/useReportData';
+import { ReportToolbarActions } from '@/components/reports/ReportToolbarActions';
+import { ReportError } from '@/components/reports/ReportError';
+import { chartColors } from '@/lib/chart-colors';
+import { resolvePdfColor } from '@/components/reports/resolve-pdf-color';
+import { EmptyState } from '@/components/ui/EmptyState';
+
 
 export function BudgetTrendReport() {
   const { withPdfBasis } = useReportExportMetadata();
@@ -185,9 +187,7 @@ export function BudgetTrendReport() {
         className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6"
       >
         {trendData.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            {t("budgetTrend.noData")}
-          </p>
+          <EmptyState title={t('budgetTrend.noData')} />
         ) : (
           <>
             <div className="h-80">

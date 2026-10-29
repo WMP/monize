@@ -128,6 +128,7 @@
     "search": "Suchen...",
     "selectAll": "Alle auswählen",
     "clear": "Löschen",
+    "clearSearch": "Suche löschen",
     "noOptions": "Keine Optionen gefunden",
     "selectedCount": "{count} ausgewählt"
   },

@@ -191,11 +191,12 @@ test.describe("Warranties", () => {
     await expect(activeRow).toBeVisible();
     await expect(expiredRow).toBeVisible();
 
-    // Status pills, not the summary cards above them that share the labels.
+    // Status segments, not the summary cards above them that share the labels.
+    // A segment reads "Active (3)" once the summary's counts have arrived and
+    // "Active" before, so the name is matched with or without its count.
     const filters = page.getByRole("group", { name: "Filter by status" });
     const activePill = filters.getByRole("button", {
-      name: "Active",
-      exact: true,
+      name: /^Active( \(\d+\))?$/,
     });
     await expect(async () => {
       await activePill.click();
@@ -206,11 +207,11 @@ test.describe("Warranties", () => {
     await expect(expiredRow).toHaveCount(0);
     await expect(activeRow).toBeVisible();
 
-    await filters.getByRole("button", { name: "Expired", exact: true }).click();
+    await filters.getByRole("button", { name: /^Expired( \(\d+\))?$/ }).click();
     await expect(activeRow).toHaveCount(0);
     await expect(expiredRow).toBeVisible();
 
-    await filters.getByRole("button", { name: "All", exact: true }).click();
+    await filters.getByRole("button", { name: /^All( \(\d+\))?$/ }).click();
     await page.getByLabel("Search warranties").fill(active.name);
     await expect(expiredRow).toHaveCount(0);
     await expect(activeRow).toBeVisible();
@@ -254,7 +255,10 @@ test.describe("Warranties", () => {
       await expect(dialog).toBeVisible({ timeout: 2000 });
     }).toPass({ timeout: 30000 });
 
-    await dialog.getByLabel("CSV file").setInputFiles({
+    // Exact: the dialog's description is an InfoTooltip whose accessible name
+    // is the sentence "A CSV file in Warracker's columns...", which a
+    // substring match on "CSV file" would also reach.
+    await dialog.getByLabel("CSV file", { exact: true }).setInputFiles({
       name: "warracker.csv",
       mimeType: "text/csv",
       buffer: Buffer.from(csv, "utf8"),

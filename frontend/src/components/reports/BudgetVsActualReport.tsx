@@ -35,16 +35,19 @@ import {
 import type {
   SortColumn as TableSortColumn,
   SortColumnsByField as TableSortColumnsByField,
-} from "@/components/ui/Table";
-import { useSortableTable, compareValues } from "@/hooks/useSortableTable";
-import { chartColors } from "@/lib/chart-colors";
-import { TaggedFundsControls } from "@/components/reports/TaggedFundsControls";
-import { BudgetFundsNote } from "@/components/reports/BudgetFundsNote";
-import { BudgetFundsTooltip } from "@/components/reports/BudgetFundsTooltip";
-import { useTaggedFundsFilter } from "@/hooks/useTaggedFundsFilter";
-import { useTaggedFunding } from "@/hooks/useTaggedFunding";
-import { useDefaultTransferScope } from "@/hooks/useReportAccountScope";
-import { budgetFundsSeries, trendWindow } from "@/lib/budget-available-funds";
+} from '@/components/ui/Table';
+import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
+import { chartColors } from '@/lib/chart-colors';
+import { TaggedFundsControls } from '@/components/reports/TaggedFundsControls';
+import { BudgetFundsNote } from '@/components/reports/BudgetFundsNote';
+import { BudgetFundsTooltip } from '@/components/reports/BudgetFundsTooltip';
+import { useTaggedFundsFilter } from '@/hooks/useTaggedFundsFilter';
+import { useTaggedFunding } from '@/hooks/useTaggedFunding';
+import { useDefaultTransferScope } from '@/hooks/useReportAccountScope';
+import { budgetFundsSeries, trendWindow } from '@/lib/budget-available-funds';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
+import { gainLossColor } from '@/lib/format';
 
 const INCLUDE_TRANSFERS_STORAGE_KEY =
   "monize-reports-budget-vs-actual-include-transfers";
@@ -510,24 +513,20 @@ export function BudgetVsActualReport() {
             <TaggedFundsControls filter={fundsFilter} />
           )}
           <div className="flex items-center gap-2">
-            <div className="flex gap-1 bg-gray-100 dark:bg-gray-700 rounded-md p-0.5">
+            <div className={SEGMENTED_GROUP_CLASS} role="group" aria-label={t('reportPage.viewLabel')}>
               <button
-                onClick={() => setViewMode("overview")}
-                className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
-                  viewMode === "overview"
-                    ? "bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm"
-                    : "text-gray-500 dark:text-gray-400"
-                }`}
+                type="button"
+                onClick={() => setViewMode('overview')}
+                aria-pressed={viewMode === 'overview'}
+                className={segmentClass(viewMode === 'overview')}
               >
                 {t("budgetVsActual.viewOverview")}
               </button>
               <button
-                onClick={() => setViewMode("categories")}
-                className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
-                  viewMode === "categories"
-                    ? "bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm"
-                    : "text-gray-500 dark:text-gray-400"
-                }`}
+                type="button"
+                onClick={() => setViewMode('categories')}
+                aria-pressed={viewMode === 'categories'}
+                className={segmentClass(viewMode === 'categories')}
               >
                 {t("budgetVsActual.viewByCategory")}
               </button>
@@ -552,9 +551,7 @@ export function BudgetVsActualReport() {
           className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6"
         >
           {trendData.length === 0 ? (
-            <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-              {t("budgetVsActual.noData")}
-            </p>
+            <EmptyState title={t('budgetVsActual.noData')} />
           ) : (
             <>
               <div className="h-80">
@@ -628,15 +625,9 @@ export function BudgetVsActualReport() {
                           const variance = payload[0]?.value as number;
                           return (
                             <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
-                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                {formatChartMonth(String(label))}
-                              </p>
-                              <p
-                                className={`text-sm font-medium ${variance > 0 ? "text-red-500" : "text-green-500"}`}
-                              >
-                                {t("budgetVsActual.tooltipVariance")}{" "}
-                                {variance > 0 ? "+" : ""}
-                                {formatCurrency(variance)}
+                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{formatChartMonth(String(label))}</p>
+                              <p className={`text-sm font-medium ${gainLossColor(-variance)}`}>
+                                {t('budgetVsActual.tooltipVariance')} {variance > 0 ? '+' : ''}{formatCurrency(variance)}
                               </p>
                             </div>
                           );
@@ -776,15 +767,9 @@ export function BudgetVsActualReport() {
                         </td>
                         {/* The variance takes the middle of line 1 beside the
                             month: it is the figure the row is read for. */}
-                        <td
-                          role="cell"
-                          className={`col-start-2 row-start-1 font-medium ${point.variance > 0 ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"} ${cellPadding(columns.variance)} ${MONEY_CELL}`}
-                        >
-                          <CellLabel className={CAPTION_CLASS}>
-                            {columns.variance.label}
-                          </CellLabel>
-                          {varianceSign(point)}
-                          {formatCurrency(point.variance)}
+                        <td role="cell" className={`col-start-2 row-start-1 font-medium ${gainLossColor(-point.variance)} ${cellPadding(columns.variance)} ${MONEY_CELL}`}>
+                          <CellLabel className={CAPTION_CLASS}>{columns.variance.label}</CellLabel>
+                          {varianceSign(point)}{formatCurrency(point.variance)}
                         </td>
                         {/* Percent used sits under the actual figure it is a
                             share of. Its caption wraps at its own space in

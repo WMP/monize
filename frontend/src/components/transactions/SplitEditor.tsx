@@ -23,6 +23,7 @@ import { RemoveSplitLineButton } from './SplitLineButtons';
 import { TRANSACTION_NOTE_MAX_LENGTH } from '@/lib/transaction-note';
 import { isUuid } from '@/lib/uuid';
 import { buildTagOptions } from '@/lib/tag-options';
+import { Th } from '@/components/ui/Table';
 
 export type SplitType = 'category' | 'transfer' | 'investment';
 
@@ -725,25 +726,25 @@ export function SplitEditor({
           <thead className="bg-gray-50 dark:bg-gray-800 rounded-t-lg">
             <tr>
               {supportsTransfers && (
-                <th className="px-1 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase" style={{ width: '14%' }}>
+                <Th className="px-1 py-2" style={{ width: '14%' }}>
                   {t('splitEditor.columns.type')}
-                </th>
+                </Th>
               )}
-              <th className="px-1 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase" style={{ width: supportsTransfers ? '32%' : '45%' }}>
+              <Th className="px-1 py-2" style={{ width: supportsTransfers ? '32%' : '45%' }}>
                 {supportsTransfers ? t('splitEditor.columns.categoryAccount') : t('splitEditor.columns.category')}
-              </th>
-              <th className="px-1 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase" style={{ width: supportsTransfers ? '20%' : '13%' }}>
+              </Th>
+              <Th className="px-1 py-2" style={{ width: supportsTransfers ? '20%' : '13%' }}>
                 {t('splitEditor.columns.amount')}
-              </th>
-              <th className="px-1 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase" style={{ width: '17%' }}>
+              </Th>
+              <Th className="px-1 py-2" style={{ width: '17%' }}>
                 {t('splitEditor.columns.memo')}
-              </th>
+              </Th>
               {tagOptions.length > 0 && (
-                <th className="px-1 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase" style={{ width: '15%' }}>
+                <Th className="px-1 py-2" style={{ width: '15%' }}>
                   {t('splitEditor.columns.tags')}
-                </th>
+                </Th>
               )}
-              <th className="px-1 py-2" style={{ width: '5%' }}></th>
+              <Th className="px-1 py-2" style={{ width: '5%' }} />
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">

@@ -23,6 +23,7 @@ import {
   MAX_CASH_FLOWS,
 } from '@/lib/monte-carlo';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { useDateFormat } from '@/hooks/useDateFormat';
 import { getCurrencySymbol } from '@/lib/format';
 import { showErrorToast } from '@/lib/errors';
 import { Button } from '@/components/ui/Button';
@@ -49,7 +50,7 @@ import { NumericInput } from '@/components/ui/NumericInput';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { MultiSelect } from '@/components/ui/MultiSelect';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { ChevronDownIcon } from '@heroicons/react/20/solid';
+import { ChevronDownIcon } from '@heroicons/react/24/outline';
 import { createLogger } from '@/lib/logger';
 import { chartColors } from '@/lib/chart-colors';
 import { useMonteCarloScenarios, MAX_COMPARE_SCENARIOS } from './useMonteCarloScenarios';
@@ -60,6 +61,7 @@ const logger = createLogger('MonteCarloReport');
 export function MonteCarloReport() {
   const t = useTranslations('reports');
   const { formatCurrency, formatCurrencyLabel, formatNumber, formatPercent, defaultCurrency } = useNumberFormat();
+  const { formatDate } = useDateFormat();
   // One bundle for the pure helpers below (the summary table, the holdings
   // stats and the CSV rows), which format money, counts and percentages and
   // must do all three in the reader's number locale.
@@ -545,7 +547,7 @@ export function MonteCarloReport() {
                       <div className="font-medium truncate">{s.name}</div>
                       {s.lastRunAt && (
                         <div className="text-xs text-gray-500 dark:text-gray-400">
-                          {t('monteCarlo.lastRun', { date: new Date(s.lastRunAt).toLocaleDateString() })}
+                          {t('monteCarlo.lastRun', { date: formatDate(new Date(s.lastRunAt)) })}
                         </div>
                       )}
                     </div>
@@ -570,7 +572,7 @@ export function MonteCarloReport() {
                     <div className="font-medium truncate">{s.name}</div>
                     {s.lastRunAt && (
                       <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {t('monteCarlo.lastRun', { date: new Date(s.lastRunAt).toLocaleDateString() })}
+                        {t('monteCarlo.lastRun', { date: formatDate(new Date(s.lastRunAt)) })}
                       </div>
                     )}
                   </button>

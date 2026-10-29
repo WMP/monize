@@ -13,6 +13,8 @@ import { MAX_ATTACHMENT_BYTES } from '@/types/attachment';
 import { useScanSettingsStore } from '@/store/scanSettingsStore';
 import { NEUTRAL_ADJUSTMENTS } from '@/lib/document-scanner/adjust-image';
 import { DEFAULT_SCAN_STYLE } from '@/lib/document-scanner/document-scan.types';
+import { buttonClassName } from '@/components/ui/Button';
+import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
 
 /**
  * The review step, where the user decides what to keep.
@@ -265,6 +267,20 @@ describe('DocumentScanDialog', () => {
       );
     });
     expect(onAccept).toHaveBeenCalledWith({ file: original });
+  });
+
+  it('switches the preview with a segmented control, leaving Use enhanced the one primary', async () => {
+    await open();
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Use enhanced' })).toBeEnabled(),
+    );
+    const group = screen.getByRole('group', { name: 'Version' });
+    expect(group.className).toBe(SEGMENTED_GROUP_CLASS);
+    expect(screen.getByRole('button', { name: 'Enhanced' }).className).toBe(segmentClass(true));
+    const primaries = screen
+      .getAllByRole('button')
+      .filter((button) => button.className.includes(buttonClassName('primary')));
+    expect(primaries.map((b) => b.textContent)).toEqual(['Use enhanced']);
   });
 
   describe('the corner handles', () => {

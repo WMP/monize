@@ -1305,7 +1305,7 @@ describe('TransactionForm', () => {
       // transfer category field is available (lets the transfer surface in the
       // monthly category breakdown).
       expect(screen.queryByText('Category')).not.toBeInTheDocument();
-      expect(screen.getByText('Category (Optional)')).toBeInTheDocument();
+      expect(screen.getByText('Category (optional)')).toBeInTheDocument();
 
       // Switch back to normal
       fireEvent.click(screen.getByText('Transaction'));
@@ -2067,8 +2067,8 @@ describe('TransactionForm', () => {
       await waitFor(() => {
         expect(screen.getByText('From Account')).toBeInTheDocument();
         expect(screen.getByText('To Account')).toBeInTheDocument();
-        // Transfer mode shows Payee (Optional) label
-        expect(screen.getByText('Payee (Optional)')).toBeInTheDocument();
+        // Transfer mode shows Payee (optional) label
+        expect(screen.getByText('Payee (optional)')).toBeInTheDocument();
       });
     });
 
@@ -3240,17 +3240,17 @@ describe('TransactionForm', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByTestId('combobox-input-Payee (Optional)')).toBeInTheDocument();
+        expect(screen.getByTestId('combobox-input-Payee (optional)')).toBeInTheDocument();
       });
 
       // Clear the payee field — the mocked Combobox forwards the empty string
       // via onChange('', '') because allowCustomValue=true. We change to a
       // non-empty value first so React registers a different value on the
       // second change to ''.
-      fireEvent.change(screen.getByTestId('combobox-input-Payee (Optional)'), {
+      fireEvent.change(screen.getByTestId('combobox-input-Payee (optional)'), {
         target: { value: 'x' },
       });
-      fireEvent.change(screen.getByTestId('combobox-input-Payee (Optional)'), {
+      fireEvent.change(screen.getByTestId('combobox-input-Payee (optional)'), {
         target: { value: '' },
       });
 
@@ -3472,8 +3472,8 @@ describe('TransactionForm', () => {
           <TransactionForm transaction={incoming} onSuccess={mockOnSuccess} onCancel={mockOnCancel} />,
         );
       });
-      await waitFor(() => expect(screen.getByLabelText('Transfer Amount (USD)')).toBeInTheDocument());
-      expect((screen.getByLabelText('Transfer Amount (USD)') as HTMLInputElement).value).toBe('100.00');
+      await waitFor(() => expect(screen.getByLabelText('Transfer Amount')).toBeInTheDocument());
+      expect((screen.getByLabelText('Transfer Amount') as HTMLInputElement).value).toBe('100.00');
 
       await act(async () => {
         fireEvent.click(screen.getByRole('button', { name: /Update Transfer/i }));
@@ -3492,7 +3492,7 @@ describe('TransactionForm', () => {
           <TransactionForm duplicateFrom={incoming} onSuccess={mockOnSuccess} onCancel={mockOnCancel} />,
         );
       });
-      await waitFor(() => expect(screen.getByLabelText('Transfer Amount (USD)')).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByLabelText('Transfer Amount')).toBeInTheDocument());
 
       await act(async () => {
         fireEvent.click(screen.getByRole('button', { name: /Create Transfer/i }));
@@ -3511,7 +3511,7 @@ describe('TransactionForm', () => {
           <TransactionForm transaction={incoming} onSuccess={mockOnSuccess} onCancel={mockOnCancel} />,
         );
       });
-      await waitFor(() => expect(screen.getByLabelText('Transfer Amount (USD)')).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByLabelText('Transfer Amount')).toBeInTheDocument());
 
       await act(async () => {
         fireEvent.click(screen.getByRole('button', { name: /Update Transfer/i }));
@@ -3529,10 +3529,10 @@ describe('TransactionForm', () => {
           <TransactionForm transaction={incoming} onSuccess={mockOnSuccess} onCancel={mockOnCancel} />,
         );
       });
-      await waitFor(() => expect(screen.getByLabelText('Transfer Amount (USD)')).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByLabelText('Transfer Amount')).toBeInTheDocument());
 
       // 135 is the received figure; as a SOURCE amount it is an edit of 100.
-      const source = screen.getByLabelText('Transfer Amount (USD)');
+      const source = screen.getByLabelText('Transfer Amount');
       fireEvent.focus(source);
       fireEvent.change(source, { target: { value: '135.00' } });
       fireEvent.blur(source);
@@ -4948,7 +4948,7 @@ describe('TransactionForm', () => {
       // Choose the expense category "Groceries" (cat-1, isIncome=false) on the
       // optional transfer category field.
       await act(async () => {
-        fireEvent.change(screen.getByTestId('combobox-input-Category (Optional)'), {
+        fireEvent.change(screen.getByTestId('combobox-input-Category (optional)'), {
           target: { value: 'Groceries' },
         });
       });
@@ -4984,8 +4984,8 @@ describe('TransactionForm', () => {
         if (toAccountSelect) fireEvent.change(toAccountSelect, { target: { value: 'acc-3' } });
       });
 
-      // Cross-currency reveals the "Payee (Optional)" combobox and a second amount input
-      await waitFor(() => expect(screen.getByTestId('combobox-Payee (Optional)')).toBeInTheDocument());
+      // Cross-currency reveals the "Payee (optional)" combobox and a second amount input
+      await waitFor(() => expect(screen.getByTestId('combobox-Payee (optional)')).toBeInTheDocument());
 
       const refreshedInputs = screen.getAllByPlaceholderText('0.00');
       expect(refreshedInputs.length).toBeGreaterThan(1);
@@ -4995,7 +4995,7 @@ describe('TransactionForm', () => {
 
       // Choose a transfer payee via the mocked combobox
       await act(async () => {
-        fireEvent.change(screen.getByTestId('combobox-input-Payee (Optional)'), { target: { value: 'Grocery Store' } });
+        fireEvent.change(screen.getByTestId('combobox-input-Payee (optional)'), { target: { value: 'Grocery Store' } });
       });
 
       await act(async () => {

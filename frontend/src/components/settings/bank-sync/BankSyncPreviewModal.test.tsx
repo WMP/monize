@@ -164,8 +164,11 @@ const loaded = async (over: { strict?: boolean } = {}) => {
   return view;
 };
 
-const tab = (name: RegExp | string) => screen.getByRole('tab', { name });
-const bodyRows = () => within(screen.getByRole('tabpanel')).getAllByRole('row').slice(1);
+// The rows sit in a region named by the pressed filter, e.g. "New (2)".
+const rowsPanel = () => screen.getByRole('region', { name: /\(\d+\)$/ });
+const tab = (name: RegExp | string) =>
+  within(screen.getByRole('group', { name: 'Show transactions' })).getByRole('button', { name });
+const bodyRows = () => within(rowsPanel()).getAllByRole('row').slice(1);
 
 const PHONE_QUERY = '(max-width: 639px)';
 const originalMatchMedia = window.matchMedia;
@@ -287,7 +290,7 @@ describe('BankSyncPreviewModal', () => {
       await loaded();
       await screen.findByText('Monize balance now');
       expect(tab('All (6)')).toBeInTheDocument();
-      expect(tab('New (2)')).toHaveAttribute('aria-selected', 'true');
+      expect(tab('New (2)')).toHaveAttribute('aria-pressed', 'true');
       expect(tab('Already imported (1)')).toBeInTheDocument();
       expect(tab('Refused (1)')).toBeInTheDocument();
       expect(tab('Pending (1)')).toBeInTheDocument();
@@ -304,7 +307,7 @@ describe('BankSyncPreviewModal', () => {
       );
       await loaded();
       await screen.findByText('Monize balance now');
-      expect(tab('All (1)')).toHaveAttribute('aria-selected', 'true');
+      expect(tab('All (1)')).toHaveAttribute('aria-pressed', 'true');
       expect(bodyRows()).toHaveLength(1);
     });
 
@@ -317,11 +320,11 @@ describe('BankSyncPreviewModal', () => {
 
       fireEvent.click(tab('Already imported (1)'));
       expect(bodyRows()).toHaveLength(1);
-      expect(within(screen.getByRole('tabpanel')).getByText('Kiosk')).toBeInTheDocument();
+      expect(within(rowsPanel()).getByText('Kiosk')).toBeInTheDocument();
 
       fireEvent.click(tab('Refused (1)'));
-      expect(within(screen.getByRole('tabpanel')).getByText('Abroad')).toBeInTheDocument();
-      expect(within(screen.getByRole('tabpanel')).queryByText('Kiosk')).not.toBeInTheDocument();
+      expect(within(rowsPanel()).getByText('Abroad')).toBeInTheDocument();
+      expect(within(rowsPanel()).queryByText('Kiosk')).not.toBeInTheDocument();
     });
 
     it('shows the date, payee, category, description and signed amount of a new row', async () => {
@@ -451,16 +454,16 @@ describe('BankSyncPreviewModal', () => {
 
       // Header on top, footer at the bottom, neither one squeezed by the rows.
       const heading = within(dialog).getByRole('heading', { level: 2 });
-      expect(heading.parentElement!.parentElement!.className).toContain('shrink-0');
-      // The header's close icon comes first; the footer's Close button is the last.
-      const closeButton = within(dialog).getAllByRole('button', { name: 'Close' }).at(-1)!;
-      const footer = closeButton.closest('div.border-t') as HTMLElement;
+      expect(heading.parentElement!.className).toContain('shrink-0');
+      // The footer's Close button is the dialog's one way out besides Escape.
+      const closeButton = within(dialog).getByRole('button', { name: 'Close' });
+      const footer = closeButton.parentElement!;
       expect(footer.className).toContain('shrink-0');
       expect(footer.parentElement).toBe(dialog);
       expect(dialog.lastElementChild).toBe(footer);
 
       // Between them, the body takes the rest and the rows scroll inside it.
-      const panel = screen.getByRole('tabpanel');
+      const panel = rowsPanel();
       expect(panel.className).toContain('flex-1');
       expect(panel.className).toContain('min-h-0');
       const scroller = within(panel).getByRole('table').parentElement as HTMLElement;
@@ -469,7 +472,7 @@ describe('BankSyncPreviewModal', () => {
       // The summary and the tabs keep their own height above the rows.
       const summary = screen.getByText('Monize balance now').closest('dl') as HTMLElement;
       expect(summary.parentElement!.className).toContain('shrink-0');
-      expect(summary.parentElement!.contains(screen.getByRole('tablist'))).toBe(true);
+      expect(summary.parentElement!.contains(screen.getByRole('group', { name: 'Show transactions' }))).toBe(true);
     });
 
     it('scrolls the cards, not the dialog, on a phone', async () => {
@@ -478,7 +481,7 @@ describe('BankSyncPreviewModal', () => {
       await screen.findByText('Monize balance now');
       const dialog = screen.getByRole('dialog');
       expect(dialog.className).toContain('max-sm:h-dvh');
-      const list = within(screen.getByRole('tabpanel')).getByRole('list');
+      const list = within(rowsPanel()).getByRole('list');
       expect(list.className).toContain('flex-1');
       expect(list.className).toContain('overflow-y-auto');
       expect(list.className).not.toContain('max-h-');
@@ -495,7 +498,7 @@ describe('BankSyncPreviewModal', () => {
     it('draws six fixed-width columns, with the category hidden below lg', async () => {
       await loaded();
       await screen.findByText('Monize balance now');
-      const panel = screen.getByRole('tabpanel');
+      const panel = rowsPanel();
       const headers = within(panel).getAllByRole('columnheader');
       expect(headers.map((h) => h.textContent)).toEqual([
         'Select and details',
@@ -520,7 +523,7 @@ describe('BankSyncPreviewModal', () => {
     it('keeps the header row in place while the rows scroll, and scrolls only vertically', async () => {
       await loaded();
       await screen.findByText('Monize balance now');
-      const panel = screen.getByRole('tabpanel');
+      const panel = rowsPanel();
       for (const header of within(panel).getAllByRole('columnheader')) {
         expect(header.className).toContain('sticky');
         expect(header.className).toContain('top-0');
@@ -594,13 +597,15 @@ describe('BankSyncPreviewModal', () => {
       expect(description.className).toContain('text-gray-500');
     });
 
-    it('wraps the outcome tabs instead of scrolling them sideways', async () => {
+    it('filters with a wrapping segmented control, not tabs', async () => {
       await loaded();
       await screen.findByText('Monize balance now');
-      const tablist = screen.getByRole('tablist');
-      expect(tablist.className).toContain('flex-wrap');
-      const scroller = tablist.parentElement as HTMLElement;
-      expect(scroller.className).not.toContain('overflow-x-auto');
+      // One list filtered by outcome: the segmented control with counts.
+      expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+      const group = screen.getByRole('group', { name: 'Show transactions' });
+      expect(group.className).toContain('flex-wrap');
+      expect(group.parentElement!.className).not.toContain('overflow-x-auto');
+      expect(screen.getByRole('region', { name: 'New (2)' })).toBeInTheDocument();
     });
 
     describe('on a phone', () => {
@@ -609,7 +614,7 @@ describe('BankSyncPreviewModal', () => {
       it('draws a card per row and no table', async () => {
         await loaded();
         await screen.findByText('Monize balance now');
-        const panel = screen.getByRole('tabpanel');
+        const panel = rowsPanel();
         expect(within(panel).queryByRole('table')).not.toBeInTheDocument();
         expect(within(panel).queryAllByRole('columnheader')).toHaveLength(0);
         expect(within(panel).getAllByRole('listitem')).toHaveLength(2);
@@ -618,7 +623,7 @@ describe('BankSyncPreviewModal', () => {
       it('shows the date and amount, then the payee, description and outcome', async () => {
         await loaded();
         await screen.findByText('Monize balance now');
-        const [first, second] = within(screen.getByRole('tabpanel')).getAllByRole('listitem');
+        const [first, second] = within(rowsPanel()).getAllByRole('listitem');
         expect(within(first).getByText('on 2026-09-10')).toBeInTheDocument();
         const amount = within(first).getByText('PLN -50.00');
         expect(amount.className).toContain('text-red-600');
@@ -637,7 +642,7 @@ describe('BankSyncPreviewModal', () => {
         await loaded();
         await screen.findByText('Monize balance now');
         fireEvent.click(tab('Refused (1)'));
-        const [card] = within(screen.getByRole('tabpanel')).getAllByRole('listitem');
+        const [card] = within(rowsPanel()).getAllByRole('listitem');
         expect(within(card).getByText('EUR -5.00')).toBeInTheDocument();
         expect(within(card).getByText('Other currency')).toBeInTheDocument();
         expect(within(card).getByText('Abroad')).toBeInTheDocument();
@@ -651,7 +656,7 @@ describe('BankSyncPreviewModal', () => {
         );
         await loaded();
         await screen.findByText('Monize balance now');
-        const card = within(screen.getByRole('tabpanel')).getAllByRole('listitem')[0];
+        const card = within(rowsPanel()).getAllByRole('listitem')[0];
         expect(within(card).getByText('Unknown')).toBeInTheDocument();
         expect(within(card).getByText('Weekly')).toBeInTheDocument();
         expect(within(card).getByText('Food')).toBeInTheDocument();
@@ -830,7 +835,7 @@ describe('BankSyncPreviewModal', () => {
       await screen.findByText('Monize balance now');
       fireEvent.click(tab('All (4)'));
       // Three rows' boxes and the header's; the already imported row has none.
-      expect(within(screen.getByRole('tabpanel')).getAllByRole('checkbox')).toHaveLength(4);
+      expect(within(rowsPanel()).getAllByRole('checkbox')).toHaveLength(4);
     });
 
     it('unchecking a row leaves it out of the count and offers skip now or add to exceptions, skip first', async () => {
@@ -1003,7 +1008,7 @@ describe('BankSyncPreviewModal', () => {
       it('puts a checkbox on each new card, a select-all above them and the choice under an unchecked one', async () => {
         await loaded();
         await screen.findByText('Monize balance now');
-        const panel = screen.getByRole('tabpanel');
+        const panel = rowsPanel();
         expect(within(panel).queryByRole('table')).not.toBeInTheDocument();
         expect(within(panel).getAllByRole('listitem')).toHaveLength(3);
         for (const payee of ['Alpha', 'Beta', 'Gamma']) expect(rowBox(payee)).toBeChecked();
@@ -1046,8 +1051,8 @@ describe('BankSyncPreviewModal', () => {
       expect(tab('Already imported (1)')).toBeInTheDocument();
       fireEvent.click(tab('Exceptions (2)'));
       expect(bodyRows()).toHaveLength(2);
-      expect(within(screen.getByRole('tabpanel')).getByText('Mistake')).toBeInTheDocument();
-      expect(within(screen.getByRole('tabpanel')).queryByText('Done')).not.toBeInTheDocument();
+      expect(within(rowsPanel()).getByText('Mistake')).toBeInTheDocument();
+      expect(within(rowsPanel()).queryByText('Done')).not.toBeInTheDocument();
       expect(within(bodyRows()[0]).getAllByText('Exception').length).toBeGreaterThan(0);
       expect(
         screen.getByText(/Transactions in the exceptions are never imported/),
@@ -1058,7 +1063,7 @@ describe('BankSyncPreviewModal', () => {
       await loaded();
       await screen.findByText('Monize balance now');
       fireEvent.click(tab('All (4)'));
-      expect(within(screen.getByRole('tabpanel')).getByText('Mistake')).toBeInTheDocument();
+      expect(within(rowsPanel()).getByText('Mistake')).toBeInTheDocument();
       expect(screen.queryByRole('checkbox', { name: 'Remove Mistake from the exceptions' })).not.toBeInTheDocument();
     });
 
@@ -1182,7 +1187,7 @@ describe('BankSyncPreviewModal', () => {
       await loaded();
       await screen.findByText('Monize balance now');
       fireEvent.click(tab('Exceptions (2)'));
-      expect(within(screen.getByRole('tabpanel')).getAllByRole('listitem')).toHaveLength(2);
+      expect(within(rowsPanel()).getAllByRole('listitem')).toHaveLength(2);
       fireEvent.click(exceptionBox('Duplicate charge'));
       await act(async () => {
         fireEvent.click(removeButton('Remove 1 from exceptions'));
@@ -1282,7 +1287,7 @@ describe('BankSyncPreviewModal', () => {
       await loaded();
       await screen.findByText('Monize balance now');
       expect(
-        within(within(screen.getByRole('tabpanel')).getAllByRole('listitem')[0]).getByRole('button', {
+        within(within(rowsPanel()).getAllByRole('listitem')[0]).getByRole('button', {
           name: /From the bank: BIEDRONKA 4711\. Maps to: Biedronka S\.A\. \(alias/,
         }),
       ).toBeInTheDocument();
@@ -1563,7 +1568,7 @@ describe('BankSyncPreviewModal', () => {
       await loaded();
       await screen.findByText('Monize balance now');
       await expand();
-      const card = within(screen.getByRole('tabpanel')).getAllByRole('listitem')[0];
+      const card = within(rowsPanel()).getAllByRole('listitem')[0];
       expect(within(card).getByRole('link', { name: 'Open the rule Food rule in a new tab' })).toBeInTheDocument();
       expect(within(card).getByText('Import rules')).toBeInTheDocument();
     });

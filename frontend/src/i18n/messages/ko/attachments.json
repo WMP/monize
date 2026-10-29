@@ -77,6 +77,8 @@
     "unsupported": "이 파일 형식은 미리 볼 수 없습니다. 다운로드는 가능합니다.",
     "fit": "화면에 맞춤",
     "actualSize": "실제 크기",
+    "versionLabel": "버전",
+    "zoomLabel": "확대/축소",
     "pageCount": "{count, plural, other {#페이지}}",
     "page": "{total}페이지 중 {page}페이지",
     "open": "{name} 미리보기"

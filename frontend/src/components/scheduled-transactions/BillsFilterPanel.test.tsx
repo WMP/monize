@@ -73,6 +73,25 @@ describe('BillsFilterPanel', () => {
     expect(props.onClearFilters).toHaveBeenCalledTimes(1);
   });
 
+  it('folds behind one aria-expanded toggle whose folded header keeps the count and Clear', () => {
+    // A folded filter panel is allowed only while its header still says how
+    // many filters apply and offers Clear, and the fold is one keyboard-
+    // reachable `<button aria-expanded>` -- the chevron inside it, not a second
+    // unlabelled-state toggle beside it.
+    const props = makeProps({ filtersExpanded: false, activeFilterCount: 1, nameSearch: 'net' });
+    render(<BillsFilterPanel {...props} />);
+
+    const toggle = screen.getByRole('button', { name: /Filters/ });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(toggle).toHaveTextContent('1');
+    expect(screen.getAllByRole('button').filter((b) => b.hasAttribute('aria-expanded'))).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: 'Expand filters' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Clear' })).toBeInTheDocument();
+    // Heroicons from the outline set, not inline copies of their paths.
+    expect(document.querySelector('path[d="M19 9l-7 7-7-7"]')).toBeNull();
+    expect(document.querySelector('path[d="M6 18L18 6M6 6l12 12"]')).toBeNull();
+  });
+
   it('toggles expansion when the header is clicked', () => {
     const props = makeProps({ filtersExpanded: true });
     render(<BillsFilterPanel {...props} />);

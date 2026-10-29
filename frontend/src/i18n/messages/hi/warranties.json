@@ -22,7 +22,14 @@
       "expiring": "समाप्त होने वाली",
       "active": "सक्रिय",
       "expired": "समाप्त",
-      "lifetime": "आजीवन"
+      "lifetime": "आजीवन",
+      "counted": {
+        "all": "सभी ({count})",
+        "expiring": "समाप्त होने वाली ({count})",
+        "active": "सक्रिय ({count})",
+        "expired": "समाप्त ({count})",
+        "lifetime": "आजीवन ({count})"
+      }
     },
     "search": {
       "label": "वारंटी खोजें",
@@ -163,14 +170,21 @@
     "notFound": "यह वारंटी नहीं मिली।",
     "retry": "फिर से कोशिश करें",
     "archivedBadge": "संग्रहीत",
+    "switcher": {
+      "trigger": "वारंटी बदलें",
+      "placeholder": "वारंटी फ़िल्टर करें...",
+      "noMatches": "कोई मेल खाती वारंटी नहीं"
+    },
+    "summary": {
+      "expires": "समाप्ति",
+      "purchased": "खरीद तिथि",
+      "price": "खरीद मूल्य",
+      "openClaims": "खुले दावे"
+    },
     "card": {
       "title": "विवरण",
-      "expires": "समाप्ति",
-      "daysLeft": "शेष समय",
       "kind": "वारंटी का प्रकार",
       "vendor": "विक्रेता",
-      "purchaseDate": "खरीद तिथि",
-      "price": "खरीद मूल्य",
       "serialNumbers": "सीरियल नंबर",
       "model": "मॉडल नंबर",
       "productUrl": "उत्पाद पेज",
@@ -228,7 +242,7 @@
     "form": {
       "claimDateLabel": "दावे की तिथि",
       "statusLabel": "स्थिति",
-      "descriptionLabel": "क्या खराबी हुई",
+      "descriptionLabel": "विवरण",
       "resolutionLabel": "समाधान",
       "resolvedOnLabel": "बंद होने की तिथि",
       "resolvedOnHint": "केवल सुलझे हुए या अस्वीकृत दावे के लिए",

@@ -30,6 +30,8 @@ import { usePersistedAccountId } from '@/hooks/usePersistedAccountFilter';
 import { ReportError } from '@/components/reports/ReportError';
 import { useTranslations } from 'next-intl';
 import { useDateFormat } from '@/hooks/useDateFormat';
+import { useChartDateFormat } from '@/hooks/useChartDateFormat';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 
 type AmortizationSortField = 'paymentNumber' | 'date' | 'payment' | 'principal' | 'interest' | 'balance';
@@ -53,6 +55,7 @@ const NO_RATE_CHANGES: LoanRateChange[] = [];
 export function LoanAmortizationReport() {
   const t = useTranslations('reports');
   const { formatDate } = useDateFormat();
+  const formatChartDate = useChartDateFormat();
   const { formatCurrency, formatPercentTrimmed } = useNumberFormat();
 
   const friendlyAccountType = (type: string): string => {
@@ -362,7 +365,7 @@ export function LoanAmortizationReport() {
         { label: t('loanAmortization.paymentsMade'), value: String(historicalCount), color: '#16a34a' },
       );
       if (summary?.projectedPayoffDate) {
-        cards.push({ label: t('loanAmortization.estPayoff'), value: format(parseISO(summary.projectedPayoffDate), 'MMM yyyy'), color: '#9333ea' });
+        cards.push({ label: t('loanAmortization.estPayoff'), value: formatChartDate(summary.projectedPayoffDate, 'MMM yyyy'), color: '#9333ea' });
       }
     }
     await exportToPdf({
@@ -455,9 +458,7 @@ export function LoanAmortizationReport() {
   if (accounts.length === 0) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-        <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-          {t('loanAmortization.empty')}
-        </p>
+        <EmptyState title={t('loanAmortization.empty')} />
       </div>
     );
   }
@@ -563,7 +564,7 @@ export function LoanAmortizationReport() {
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
               <div className="text-sm text-gray-500 dark:text-gray-400">{t('loanAmortization.estPayoff')}</div>
               <div className="text-lg font-bold text-purple-600 dark:text-purple-400">
-                {format(parseISO(summary.projectedPayoffDate), 'MMM yyyy')}
+                {formatChartDate(summary.projectedPayoffDate, 'MMM yyyy')}
               </div>
             </div>
           )}
@@ -741,7 +742,7 @@ export function LoanAmortizationReport() {
                             {row.paymentNumber}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                            {format(parseISO(row.date), 'MMM d, yyyy')}
+                            {formatDate(row.date)}
                             {row.isProjected && (
                               <span className="ml-1.5 text-xs text-blue-500 dark:text-blue-400">*</span>
                             )}

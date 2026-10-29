@@ -35,7 +35,7 @@
     "createFailed": "Impossibile impostare il promemoria",
     "dialogTitle": "Ricordamelo",
     "dialogDescription": "Ricevi di nuovo questa notifica più tardi finché non intervieni.",
-    "modeLabel": "Con quale frequenza",
+    "modeLabel": "Frequenza",
     "modeRepeat": "Ripeti finché non lo interrompo",
     "modeOnce": "Solo un'altra volta",
     "intervalLabelRepeat": "Ricordamelo ogni",

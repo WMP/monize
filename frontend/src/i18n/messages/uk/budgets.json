@@ -83,7 +83,6 @@
     "baseIncomePlaceholder": "Очікуваний місячний дохід",
     "active": "Активний",
     "saveChanges": "Зберегти зміни",
-    "saving": "Збереження...",
     "typeOptions": {
       "MONTHLY": "Щомісячний",
       "ANNUAL": "Річний",
@@ -109,7 +108,8 @@
     "title": "Теплова карта витрат — {monthLabel}",
     "ariaLabel": "Теплова карта витрат",
     "less": "Менше",
-    "more": "Більше"
+    "more": "Більше",
+    "readout": "{date}: {amount}"
   },
   "periodDetail": {
     "summaryCards": {
@@ -134,7 +134,8 @@
     "rolloverBadge": "+{amount} перенесення",
     "underBudgetLabel": "{amount} в межах бюджету",
     "overBudgetLabel": "{amount} перевищення",
-    "carriedForward": "{amount} перенесено вперед"
+    "carriedForward": "{amount} перенесено вперед",
+    "dateRange": "з {start} по {end}"
   },
   "periodSelector": {
     "label": "Період:",
@@ -471,11 +472,18 @@
         "description": "Створіть перший бюджет, проаналізувавши свою історію витрат. Майстер запропонує реалістичні суми на основі ваших транзакцій.",
         "cta": "Створити перший бюджет"
       },
+      "loading": "Завантаження бюджетів...",
+      "columns": {
+        "name": "Назва",
+        "strategy": "Стратегія",
+        "type": "Тип",
+        "categories": "Категорії",
+        "started": "Початок",
+        "status": "Статус"
+      },
       "card": {
         "active": "Активний",
-        "inactive": "Неактивний",
-        "categories": "{count} категорій",
-        "started": "Розпочато {date}"
+        "inactive": "Неактивний"
       }
     },
     "create": {
@@ -484,6 +492,9 @@
     },
     "detail": {
       "backToBudgets": "Повернутися до бюджетів",
+      "switchBudget": "Перейти до іншого бюджету",
+      "switchPlaceholder": "Фільтр бюджетів...",
+      "switchNoMatches": "Немає відповідних бюджетів",
       "notFound": "Бюджет не знайдено",
       "delete": {
         "title": "Видалити бюджет",
@@ -501,7 +512,7 @@
     "edit": {
       "subtitlePrefix": "Редагування: ",
       "subtitle": "Оновіть налаштування бюджету та розподіл категорій",
-      "backToDashboard": "Повернутися до інформаційної панелі",
+      "backToBudget": "Назад до «{name}»",
       "budgetSettings": "Налаштування бюджету",
       "categoryAllocations": "Розподіл категорій",
       "income": "Дохід",

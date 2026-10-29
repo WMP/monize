@@ -209,8 +209,8 @@ export function WarrantyClaimList({ warrantyId, today, onChanged, readOnly = fal
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('claims.title')}</h2>
         {!readOnly && (
-          <Button variant="outline" size="sm" onClick={openCreate}>
-            <PlusIcon className="h-4 w-4 mr-1" aria-hidden="true" />
+          <Button variant="outline" size="sm" onClick={openCreate} className="gap-1">
+            <PlusIcon className="h-4 w-4" aria-hidden="true" />
             {t('claims.add')}
           </Button>
         )}

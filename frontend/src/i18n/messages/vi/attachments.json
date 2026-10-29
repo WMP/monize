@@ -77,6 +77,8 @@
     "unsupported": "Không thể xem trước loại tệp này. Bạn vẫn có thể tải nó xuống.",
     "fit": "Vừa màn hình",
     "actualSize": "Kích thước thật",
+    "versionLabel": "Phiên bản",
+    "zoomLabel": "Thu phóng",
     "pageCount": "{count, plural, other {# trang}}",
     "page": "Trang {page} / {total}",
     "open": "Xem trước {name}"

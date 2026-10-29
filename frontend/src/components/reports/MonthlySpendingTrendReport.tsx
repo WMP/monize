@@ -33,6 +33,7 @@ import { ChartTooltip } from "@/components/reports/ChartTooltip";
 import { ReportError } from "@/components/reports/ReportError";
 import { chartColors } from "@/lib/chart-colors";
 import { resolvePdfColor } from '@/components/reports/resolve-pdf-color';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 type MonthlySpendingSortField = 'name' | 'income' | 'expenses' | 'net';
 
@@ -239,9 +240,7 @@ export function MonthlySpendingTrendReport() {
         ) : error ? (
           <ReportError onRetry={reload} />
         ) : chartData.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            {t('monthlySpendingTrend.noData')}
-          </p>
+          <EmptyState title={t('monthlySpendingTrend.noData')} />
         ) : viewType === 'table' ? (
           <>
             <div className="overflow-x-auto">

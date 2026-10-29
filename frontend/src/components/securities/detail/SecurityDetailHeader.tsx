@@ -131,7 +131,10 @@ export function SecurityDetailHeader({
                 breakpoint so the name only clamps once it shares its line. The
                 caret stays beside it either way -- same treatment as the
                 mobile-table identity cells. */}
-            <h1 className="break-words text-2xl font-bold text-gray-900 lg:truncate dark:text-gray-100">
+            <h1
+              className="break-words text-2xl font-bold text-gray-900 lg:truncate dark:text-gray-100"
+              title={security.name}
+            >
               {security.name}
             </h1>
             {/* Jump straight to another security instead of going back to the

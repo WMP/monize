@@ -23,8 +23,8 @@
     "empty": "No hay facturas, depósitos ni transferencias vencidas o próximas dentro de sus ventanas de recordatorio.",
     "postTransaction": "Registrar esta transacción",
     "manual": "Manual",
-    "manualTitle": "Requiere registro manual",
     "negativeBalanceWarning": "Esta transacción hará que el saldo de la cuenta quede en negativo",
+    "negativeBalanceLegend": "Deja su cuenta por debajo de cero",
     "moreItems": "+{count} más",
     "overdue": "Vencida",
     "today": "Hoy",
@@ -110,9 +110,9 @@
     "refreshPrices": "Actualizar precios",
     "viewPortfolio": "Ver cartera",
     "filter": {
-      "all": "Todas",
-      "gainers": "Ganadoras",
-      "losers": "Perdedoras",
+      "all": "Todas ({count})",
+      "gainers": "Ganadoras ({count})",
+      "losers": "Perdedoras ({count})",
       "label": "Dirección"
     },
     "metric": {

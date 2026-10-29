@@ -293,7 +293,10 @@ export function AccountInfoWidget({
           )}
           <div className="min-w-0">
             <div className="flex min-w-0 items-center gap-1">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
+              <h3
+                className="min-w-0 break-words text-lg font-semibold text-gray-900 sm:truncate dark:text-gray-100"
+                title={account.name}
+              >
                 {account.name}
               </h3>
               {/* Jump straight to another account the Accounts filter offers,
@@ -312,7 +315,10 @@ export function AccountInfoWidget({
             {(institutionName || account.isClosed) && (
               <div className="flex items-center gap-2 min-w-0">
                 {institutionName && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                  <p
+                    className="min-w-0 break-words text-sm text-gray-500 sm:truncate dark:text-gray-400"
+                    title={institutionName}
+                  >
                     {institutionName}
                   </p>
                 )}
@@ -454,7 +460,10 @@ export function AccountInfoWidget({
                 </button>
               </dd>
             ) : (
-              <dd className="text-gray-900 dark:text-gray-100 text-right truncate">
+              <dd
+                className="min-w-0 break-words text-gray-900 dark:text-gray-100 text-right sm:truncate"
+                title={detail.value}
+              >
                 {detail.value}
               </dd>
             )}

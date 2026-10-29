@@ -7,6 +7,7 @@
     "filterAll": "全部 ({count})",
     "filterExpenses": "支出 ({count})",
     "filterIncome": "收入 ({count})",
+    "typeFilterLabel": "类型",
     "modalTitleNew": "新增分类",
     "modalTitleEdit": "编辑分类",
     "countSingle": "1 个分类",
@@ -71,8 +72,8 @@
     "submitUpdate": "更新分类"
   },
   "list": {
-    "emptyHeading": "无分类",
-    "emptyDescription": "从创建新分类开始。",
+    "emptyHeading": "未找到分类",
+    "emptyDescription": "没有与当前搜索或筛选条件匹配的分类。",
     "colName": "名称",
     "colType": "类型",
     "colCount": "数量",
@@ -85,7 +86,7 @@
     "viewTransactionsTitle": "查看此分类的交易"
   },
   "deleteDialog": {
-    "title": "删除 \"{name}\"？",
+    "title": "删除 \"{name}\"",
     "checkingUsage": "检查使用情况...",
     "usedBy": "此分类被 {count, plural, one {# 项} other {# 项}}（交易和/或定期账单及存款）使用。",
     "reassignLabel": "重新分配至：",

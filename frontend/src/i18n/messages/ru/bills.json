@@ -16,12 +16,13 @@
     "chartUnavailable": "График временно недоступен"
   },
   "viewTabs": {
-    "list": "Список",
-    "calendar": "Календарь",
+    "filterLabel": "Тип расписания",
     "filterAll": "Все ({count})",
     "filterBills": "Счета ({count})",
     "filterDeposits": "Поступления ({count})",
-    "todayButton": "Сегодня"
+    "todayButton": "Сегодня",
+    "previousMonth": "Предыдущий месяц",
+    "nextMonth": "Следующий месяц"
   },
   "form": {
     "titleNew": "Новая запланированная проводка",

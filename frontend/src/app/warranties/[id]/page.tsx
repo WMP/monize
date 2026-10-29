@@ -20,6 +20,8 @@ import { WarrantyClaimList } from '@/components/warranties/WarrantyClaimList';
 import { WarrantyDetailCard } from '@/components/warranties/WarrantyDetailCard';
 import { WarrantyDocumentsSection } from '@/components/warranties/WarrantyDocumentsSection';
 import { WarrantyStatusBadge } from '@/components/warranties/WarrantyStatusBadge';
+import { WarrantySummaryCards } from '@/components/warranties/WarrantySummaryCards';
+import { WarrantySwitcher } from '@/components/warranties/WarrantySwitcher';
 import { useFormModal } from '@/hooks/useFormModal';
 import { useOnAiAction } from '@/hooks/useOnAiAction';
 import { useOnUndoRedo } from '@/hooks/useOnUndoRedo';
@@ -145,6 +147,28 @@ function WarrantyDetailContent({ warrantyId }: { warrantyId: string }) {
   const [busy, setBusy] = useState(false);
 
   const warranty = loaded !== null && loaded.id === warrantyId ? loaded.warranty : null;
+
+  // The caret beside the title offers the warranties listed beside this one:
+  // the current list for a current warranty, the archived list for an
+  // archived one. Read again on every reload, so a rename shows there too.
+  const archivedState = warranty === null ? null : warranty.archivedAt !== null;
+  const [siblings, setSiblings] = useState<{ archived: boolean; list: Warranty[] } | null>(null);
+  useEffect(() => {
+    if (archivedState === null) return;
+    let cancelled = false;
+    warrantiesApi
+      .listAll({ archived: archivedState, sort: 'name', sortDir: 'asc' })
+      .then((list) => {
+        if (!cancelled) setSiblings({ archived: archivedState, list });
+      })
+      .catch((error) => {
+        logger.warn('Failed to load the warranties for the switcher:', error);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [archivedState, reloadToken]);
+  const switcherWarranties = siblings !== null && siblings.archived === archivedState ? siblings.list : [];
 
   const handleFormSubmit = async (data: CreateWarrantyData): Promise<Warranty> => {
     try {
@@ -282,6 +306,13 @@ function WarrantyDetailContent({ warrantyId }: { warrantyId: string }) {
           title={warranty.name}
           titleAdornment={
             <span className="inline-flex flex-wrap items-center gap-2">
+              {/* Jump straight to another warranty instead of going back to
+                  the list. */}
+              <WarrantySwitcher
+                currentId={warranty.id}
+                warranties={switcherWarranties}
+                onSelect={(id) => router.push(`/warranties/${id}`)}
+              />
               <WarrantyStatusBadge warranty={warranty} />
               {archived && <Badge variant="gray">{t('detail.archivedBadge')}</Badge>}
             </span>
@@ -304,6 +335,7 @@ function WarrantyDetailContent({ warrantyId }: { warrantyId: string }) {
         />
 
         <div className="space-y-6">
+          <WarrantySummaryCards warranty={warranty} />
           <WarrantyDetailCard warranty={warranty} onEditPurchase={readOnly ? undefined : handleEditPurchase} />
           <WarrantyDocumentsSection warrantyId={warranty.id} readOnly={readOnly} />
           <WarrantyClaimList warrantyId={warranty.id} today={warranty.today} onChanged={reload} readOnly={readOnly} />
@@ -336,8 +368,7 @@ function WarrantyDetailContent({ warrantyId }: { warrantyId: string }) {
           onClose={handleClosePurchase}
           {...purchaseModal.modalProps}
           maxWidth="6xl"
-          className="!max-w-[69rem]"
-          padding="md"
+          className="p-6 !max-w-[69rem]"
           title={tt('page.editModal.editTitle')}
         >
           {purchaseModal.showForm && purchaseModal.editingItem && (

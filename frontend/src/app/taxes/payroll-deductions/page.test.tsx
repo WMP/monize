@@ -131,7 +131,7 @@ describe('PayrollDeductionsPage', () => {
     expect(screen.getByText('$1,077.48')).toBeInTheDocument();
     expect(screen.getByText('$64.00')).toBeInTheDocument();
     expect(screen.getByText("From the bill's line")).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Taxes/ })).toHaveAttribute('href', '/taxes');
+    expect(screen.getByRole('link', { name: 'Back to Taxes' })).toHaveAttribute('href', '/taxes');
   });
 
   it('keeps the year-to-date table collapsed until asked, then shows paid, maximum and remaining', async () => {

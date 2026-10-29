@@ -16,12 +16,13 @@
     "chartUnavailable": "チャートは一時的に利用できません"
   },
   "viewTabs": {
-    "list": "リスト",
-    "calendar": "カレンダー",
+    "filterLabel": "スケジュールの種類",
     "filterAll": "すべて ({count})",
     "filterBills": "請求 ({count})",
     "filterDeposits": "入金 ({count})",
-    "todayButton": "今日"
+    "todayButton": "今日",
+    "previousMonth": "前の月",
+    "nextMonth": "次の月"
   },
   "form": {
     "titleNew": "新規スケジュール済み取引",

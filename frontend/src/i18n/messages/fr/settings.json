@@ -21,7 +21,6 @@
     "passwordConfirmNote": "La confirmation du mot de passe est requise lors du changement de votre adresse e-mail.",
     "pendingEmailNotice": "Un lien de confirmation a été envoyé à {email}. Votre adresse e-mail sera modifiée une fois que vous l'aurez suivi.",
     "saveButton": "Enregistrer le profil",
-    "savingButton": "Enregistrement...",
     "toasts": {
       "success": "Profil mis à jour avec succès",
       "confirmationSent": "Consultez {email} pour trouver le lien de confirmation de votre nouvelle adresse e-mail",
@@ -46,7 +45,6 @@
     "confirmPasswordLabel": "Confirmer le nouveau mot de passe",
     "confirmPasswordPlaceholder": "Confirmez le nouveau mot de passe",
     "changePasswordButton": "Changer le mot de passe",
-    "changingPasswordButton": "Modification...",
     "toasts": {
       "passwordChanged": "Mot de passe modifié avec succès",
       "passwordChangeFailed": "Échec de la modification du mot de passe"
@@ -106,6 +104,8 @@
       "noDevices": "Aucun appareil de confiance. Lorsque vous cochez « Ne plus demander sur ce navigateur » lors de la connexion avec la 2FA, l'appareil apparaîtra ici.",
       "currentBadge": "Actuel",
       "revokeButton": "Révoquer",
+      "ipAddress": "IP : {ip}",
+      "dates": "Ajouté le {added} · Dernière utilisation le {lastUsed} · Expire le {expires}",
       "revokeAllModal": {
         "title": "Révoquer tous les appareils de confiance",
         "description": "Cela supprimera tous les appareils de confiance. Vous devrez saisir votre code 2FA lors de votre prochaine connexion depuis n'importe quel appareil."
@@ -226,7 +226,7 @@
       "hideRegisterYearLabel": "Masquer l’année dans les dates du registre",
       "chartCollapsedLabel": "Afficher d’abord le graphique de la page Transactions replié",
       "widgetsCollapsedLabel": "Afficher d’abord les informations de compte, de bénéficiaire et de catégorie repliées",
-      "accountOpenTargetLabel": "Quand j’ouvre un compte",
+      "accountOpenTargetLabel": "Vue par défaut du compte",
       "accountOpenTargetOptions": {
         "register": "Afficher ses transactions",
         "dashboard": "Afficher son tableau de bord"
@@ -308,6 +308,10 @@
       "sendTestButton": "Envoyer une notification de test",
       "sendingTestButton": "Envoi...",
       "removeButton": "Supprimer",
+      "removeDialog": {
+        "title": "Supprimer l’appareil",
+        "message": "Supprimer {device} ? Il ne recevra plus de notifications push tant que le push n’y sera pas réactivé."
+      },
       "thisDevice": "Cet appareil",
       "held": "Déconnecté sur cet appareil. Les notifications push reprennent lorsque vous vous reconnectez ici.",
       "unifiedpushBadge": "UnifiedPush",
@@ -486,7 +490,7 @@
   "supportBackup": {
     "title": "Créer une sauvegarde de support",
     "howItWorks": "Produit une copie dé-identifiée de votre sauvegarde : les noms sont masqués (les deux premiers et deux derniers caractères sont conservés), les notes/descriptions/numéros de compte sont supprimés, et chaque montant est multiplié par un facteur caché unique tandis que les valeurs publiques (taux de change, cours, taux d'intérêt) restent intactes. Le fichier est toujours chiffré avec le mot de passe ci-dessous et se restaure comme une sauvegarde normale. Cela protège d'une exposition fortuite, pas de quelqu'un qui vous connaît déjà — dates, fréquences et structure sont préservées pour que les bugs restent reproductibles.",
-    "sectionsLabel": "Quoi inclure",
+    "sectionsLabel": "Sections à inclure",
     "sections": {
       "investments": "Investissements (titres, positions, cours)",
       "scheduled": "Transactions planifiées",
@@ -652,11 +656,7 @@
       "reason": "Un jeton peut accéder à votre compte sans connexion ; confirmez donc votre identité avant d'en créer un."
     },
     "relative": {
-      "never": "Jamais",
-      "today": "Aujourd'hui",
-      "yesterday": "Hier",
-      "daysAgo": "Il y a {count} jour(s)",
-      "monthsAgo": "Il y a {count} mois"
+      "never": "Jamais"
     }
   },
   "autoBackup": {
@@ -700,7 +700,6 @@
       "failed": "Échec"
     },
     "saveButton": "Enregistrer la politique",
-    "savingButton": "Enregistrement...",
     "runNowButton": "Sauvegarder tous les comptes",
     "runningButton": "Sauvegarde en cours...",
     "toasts": {
@@ -821,7 +820,6 @@
     },
     "restoreResult": {
       "title": "Restauration terminée",
-      "description": "Vos données ont été restaurées avec succès. Voici un résumé de ce qui a été restauré :",
       "totalRecords": "Total des enregistrements",
       "skippedAttachments": "{count, plural, one {# pièce jointe n'a pas été restaurée} other {# pièces jointes n'ont pas été restaurées}} : la sauvegarde ne contenait pas d'octets utilisables pour elles — ils manquaient ou ont échoué au contrôle de somme lors de l'export, ou le fichier est antérieur aux sauvegardes autonomes. Exportez une nouvelle sauvegarde lorsque le stockage des pièces jointes est sain.",
       "unusableAiProviderKeys": "{count, plural, one {# fournisseur d'IA a été restauré sans clé d'API utilisable} other {# fournisseurs d'IA ont été restaurés sans clé d'API utilisable}} : la sauvegarde a été créée avant que les clés de fournisseur y soient incluses, donc la clé enregistrée appartient au serveur qui a produit le fichier, ou ce serveur n'a aucune clé de chiffrement configurée pour en stocker une. Ouvrez Paramètres → Fournisseurs d'IA et saisissez à nouveau la clé d'API.",
@@ -874,12 +872,11 @@
         "retryButton": "Réessayer",
         "demoNote": "Les destinations hors site ne peuvent pas être modifiées dans la démo.",
         "saveButton": "Enregistrer les destinations",
-        "savingButton": "Enregistrement...",
         "saved": "Destinations hors site enregistrées",
         "saveFailed": "Impossible d'enregistrer vos destinations de sauvegarde hors site",
         "s3": {
           "heading": "Stockage S3",
-          "modeLabel": "Où les copies sont envoyées",
+          "modeLabel": "Destination des copies",
           "modeOff": "Désactivé",
           "modeDeployment": "Bucket de ce serveur",
           "modeOwn": "Mon propre bucket",
@@ -992,21 +989,57 @@
       "sections": "Sections",
       "shared": "Données partagées"
     },
+    "ops": {
+      "read": "Lecture",
+      "create": "Création",
+      "edit": "Modifier",
+      "delete": "Supprimer",
+      "joint": "Joint"
+    },
     "sections": {
       "description": "Accordez un accès en lecture seule à des sections entières de l'application. Les données liées à un compte nécessitent également un accès par compte.",
+      "bills": {
+        "label": "Factures et dépôts",
+        "description": "Opérations planifiées des comptes accordés"
+      },
+      "investments": {
+        "label": "Investissements",
+        "description": "Positions et opérations d’investissement des comptes accordés"
+      },
+      "budgets": {
+        "label": "Budgets",
+        "description": "Chiffres budgétaires en lecture seule"
+      },
+      "reports": {
+        "label": "Rapports",
+        "description": "Rapports en lecture seule"
+      },
+      "ai": {
+        "label": "Assistant IA",
+        "description": "Utilise le fournisseur d’IA configuré par le titulaire"
+      },
       "aiRequiresFullAccess": "L'Assistant IA consulte l'ensemble des comptes et des sections ; il ne répond donc pour ce délégué qu'une fois que celui-ci peut lire tous vos comptes et toutes les autres sections.",
       "warranties": {
         "label": "Garanties",
         "description": "Les garanties, leurs documents et leurs réclamations. Un achat lié n'apparaît que pour un compte que le délégué peut consulter."
-      }
+      },
+      "toggleLabel": "Section {section}"
     },
     "accounts": {
       "noAccounts": "Aucun compte à accorder.",
       "grantAll": "Tout accorder",
-      "jointRequiresFullAccount": "Les comptes joints ne peuvent être partagés qu'avec des utilisateurs disposant de leur propre compte Monize"
+      "jointRequiresFullAccount": "Les comptes joints ne peuvent être partagés qu'avec des utilisateurs disposant de leur propre compte Monize",
+      "grantAllLabel": "{op} tous les comptes {type}",
+      "grantLabel": "Accès {op} à {account}"
     },
     "shared": {
-      "description": "La lecture des bénéficiaires, des catégories et des étiquettes est toujours autorisée. Ces options contrôlent la création/modification/suppression."
+      "description": "La lecture des bénéficiaires, des catégories et des étiquettes est toujours autorisée. Ces options contrôlent la création/modification/suppression.",
+      "toggleLabel": "{op} {resource}",
+      "resources": {
+        "payees": "Bénéficiaires",
+        "categories": "Catégories",
+        "tags": "Étiquettes"
+      }
     },
     "saveButton": "Enregistrer",
     "toasts": {
@@ -1160,7 +1193,6 @@
       "editMessageButton": "Modifier",
       "messagePlaceholder": "Notes, instructions, emplacements de documents importants...",
       "maxCharsNote": "Maximum 4000 caractères. Stocké chiffré au repos.",
-      "cancelButton": "Annuler",
       "saveButton": "Enregistrer le message",
       "toasts": {
         "saved": "Message enregistré",
@@ -1205,7 +1237,7 @@
       "grantStatus": "État de l'octroi : ",
       "unknown": "inconnu",
       "never": "jamais",
-      "daysAgo": "il y a {count} jour{plural}",
+      "withRelative": "{timestamp} ({relative})",
       "grantedOn": "accordé le {timestamp}",
       "notYetGranted": "pas encore accordé",
       "timerNote": "Le minuteur se réinitialise automatiquement chaque fois que vous utilisez l'application — connexion, consultation d'une page, enregistrement d'une transaction, toute action authentifiée."
@@ -1222,6 +1254,17 @@
     },
     "stepUp": {
       "reason": "Vérifiez à nouveau votre identité pour consulter ou modifier votre message d'accès d'urgence."
+    },
+    "validation": {
+      "wholeDays": "Jours entiers uniquement",
+      "minDays": "{min, plural, one {Doit être d’au moins # jour} other {Doit être d’au moins # jours}}",
+      "maxDays": "{max, plural, one {Doit être de # jour au plus} other {Doit être de # jours au plus}}",
+      "reminderBeforeGrant": "Le délai de rappel doit être inférieur au délai d’accès",
+      "messageMax": "Le message doit contenir {max} caractères au maximum",
+      "firstNameRequired": "Le prénom est obligatoire",
+      "firstNameMax": "Le prénom doit contenir {max} caractères au maximum",
+      "emailInvalid": "Saisissez une adresse e-mail valide",
+      "emailMax": "L’adresse e-mail doit contenir {max} caractères au maximum"
     },
     "toasts": {
       "loadFailed": "Échec du chargement de l'accès d'urgence",
@@ -1255,6 +1298,10 @@
       "enableButton": "Activer",
       "editButton": "Modifier",
       "deleteButton": "Supprimer"
+    },
+    "deleteDialog": {
+      "title": "Supprimer le fournisseur d’IA",
+      "message": "Supprimer {name} ? Sa clé API enregistrée est supprimée avec lui. Cette action est irréversible."
     },
     "configForm": {
       "addTitle": "Ajouter un fournisseur d'IA",

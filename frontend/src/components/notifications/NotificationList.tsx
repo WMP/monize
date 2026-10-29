@@ -1,15 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { useFormatter, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useNotificationCopy } from '@/hooks/useNotificationCopy';
+import { useRelativeTime } from '@/hooks/useRelativeTime';
 import Link from 'next/link';
 import type { NotificationFilters } from '@/lib/notification-filters';
 import { hasActiveNotificationFilters } from '@/lib/notification-filters';
 import { TOUR_ANCHORS, tourAnchor } from '@/lib/tours/anchors';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import type { NotificationFilterCategory, Notification, NotificationSeverity } from '@/types/notification';
 import { safeNotificationTarget } from '@/lib/notification-target';
 import { RemindMeButton } from './RemindMeButton';
@@ -161,15 +163,11 @@ export function NotificationList({
 }: NotificationListProps) {
   const t = useTranslations('notifications');
   /**
-   * The row's timestamp, in the reader's language.
-   *
-   * `Intl.RelativeTimeFormat` through next-intl rather than a hand-written
-   * `${n}h ago`: this is the one string on every row, and it was the one string
-   * the rename left in English while the title and body beside it were composed
-   * in the reader's locale. It also gets future dates right in every language
-   * ("in 2 days"), which the hand-written version spelled out per branch.
+   * The row's timestamp, in the reader's language, through the app's one
+   * relative-time formatter rather than a hand-written `${n}h ago`. It also
+   * gets future dates right in every language ("in 2 days").
    */
-  const format = useFormatter();
+  const formatRelativeTime = useRelativeTime();
   const router = useRouter();
   const copy = useNotificationCopy();
   const unreadCount = notifications.filter((a) => !a.isRead && !dismissingIds.has(a.id)).length;
@@ -338,8 +336,8 @@ export function NotificationList({
           desktop dropdown is content-sized and unaffected. */}
       <div className="overflow-y-auto overscroll-contain flex-1 flex flex-col">
         {isLoading && notifications.length === 0 ? (
-          <div className="flex-1 flex flex-col justify-center px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
-            {t('loading')}
+          <div className="flex-1 flex flex-col justify-center px-4">
+            <LoadingSpinner text={t('loading')} />
           </div>
         ) : notifications.length === 0 ? (
           <div
@@ -427,7 +425,7 @@ export function NotificationList({
                                 {severityLabel(notification.severity, t)}
                               </span>
                               <span className="text-[11px] text-gray-400 dark:text-gray-500">
-                                {format.relativeTime(new Date(notification.createdAt))}
+                                {formatRelativeTime(notification.createdAt)}
                               </span>
                             </div>
                             <p

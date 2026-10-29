@@ -21,6 +21,7 @@ import {
   AI_CHAT_STORAGE_KEY,
 } from '@/store/aiChatStore';
 import Link from 'next/link';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 
 // Re-exported for tests and other call sites that previously imported the key
 // from the component module.
@@ -431,19 +432,7 @@ export function ChatInterface({
                                 />
                               </svg>
                             ) : tool.isError ? (
-                              <svg
-                                className="w-3 h-3 text-red-500"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={2}
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M6 18L18 6M6 6l12 12"
-                                />
-                              </svg>
+                              <XMarkIcon className="w-3 h-3 text-red-500" aria-hidden="true" />
                             ) : (
                               <svg
                                 className="w-3 h-3 text-green-500"
@@ -543,20 +532,9 @@ export function ChatInterface({
               onClick={cancel}
               className="flex-shrink-0 p-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white transition-colors"
               title={t('chat.cancelTitle')}
+              aria-label={t('chat.cancelTitle')}
             >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={2}
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
+              <XMarkIcon className="w-5 h-5" aria-hidden="true" />
             </button>
           ) : (
             <button
@@ -566,6 +544,7 @@ export function ChatInterface({
               }
               className="flex-shrink-0 p-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white transition-colors disabled:cursor-not-allowed"
               title={t('chat.sendTitle')}
+              aria-label={t('chat.sendTitle')}
             >
               <svg
                 className="w-5 h-5"

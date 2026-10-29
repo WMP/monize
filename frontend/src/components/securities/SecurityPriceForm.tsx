@@ -115,7 +115,6 @@ export function SecurityPriceForm({ price, onSubmit, onCancel, onDirtyChange, su
               decimalPlaces={6}
               min={0}
               error={errors.openPrice?.message}
-              placeholder={t('priceForm.optionalPlaceholder')}
               value={field.value}
               onChange={field.onChange}
               name={field.name}
@@ -133,7 +132,6 @@ export function SecurityPriceForm({ price, onSubmit, onCancel, onDirtyChange, su
               decimalPlaces={6}
               min={0}
               error={errors.highPrice?.message}
-              placeholder={t('priceForm.optionalPlaceholder')}
               value={field.value}
               onChange={field.onChange}
               name={field.name}
@@ -151,7 +149,6 @@ export function SecurityPriceForm({ price, onSubmit, onCancel, onDirtyChange, su
               decimalPlaces={6}
               min={0}
               error={errors.lowPrice?.message}
-              placeholder={t('priceForm.optionalPlaceholder')}
               value={field.value}
               onChange={field.onChange}
               name={field.name}
@@ -169,7 +166,6 @@ export function SecurityPriceForm({ price, onSubmit, onCancel, onDirtyChange, su
               decimalPlaces={0}
               min={0}
               error={errors.volume?.message}
-              placeholder={t('priceForm.optionalPlaceholder')}
               value={field.value}
               onChange={field.onChange}
               name={field.name}

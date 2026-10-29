@@ -17,7 +17,8 @@
     "label": "Фільтр за типом",
     "all": "Усі",
     "email_receipt": "Чеки з електронної пошти",
-    "transaction_review": "Правила"
+    "transaction_review": "Правила",
+    "option": "{label} ({count})"
   },
   "status": {
     "pending": "Очікує",

@@ -4,6 +4,7 @@
     "subtitle": "Получайте аналитику о вашем финансовом состоянии",
     "searchPlaceholder": "Поиск отчётов по названию или описанию...",
     "allReports": "Все отчёты",
+    "categoryWithCount": "{label} ({count})",
     "removeFavourite": "Убрать из избранного",
     "addFavourite": "Добавить в избранное",
     "tableReport": "Отчёт",
@@ -137,7 +138,8 @@
   },
   "reportPage": {
     "notFound": "Отчёт не найден",
-    "notFoundDesc": "Запрошенный отчёт не существует."
+    "notFoundDesc": "Запрошенный отчёт не существует.",
+    "viewLabel": "Вид"
   },
   "error": {
     "defaultMessage": "Не удалось загрузить данные отчёта. Повторите попытку.",
@@ -514,8 +516,6 @@
     "viewMonthly": "Ежемесячно",
     "viewDaily": "Ежедневно",
     "viewBySecurity": "По ценной бумаге",
-    "displayChart": "График",
-    "displayTable": "Таблица",
     "showLabel": "Показать:",
     "seriesDividends": "Дивиденды",
     "seriesInterest": "Проценты",
@@ -1251,7 +1251,6 @@
     "incompleteTooltip": "В некоторые дни этого периода отсутствует цена, обменный курс или остаток по денежному счёту, поэтому показатели, зависящие от каждого дня, не отображаются.",
     "measuredFromClose": "С момента закрытия торгов {date}",
     "notAvailable": "Н/Д",
-    "intradayUnavailable": "Детальные внутридневные данные недоступны",
     "intradayUnavailableTitle": "Внутридневной просмотр недоступен для этого набора счетов",
     "intradayUnavailableDesc": "Один или несколько активов используют провайдера котировок (MSN Money), который не предоставляет внутридневные данные{skipped}. Переключитесь на более длинный диапазон для просмотра ежедневных снимков.",
     "intradayUnavailableSkipped": ": {symbols}",
@@ -1302,8 +1301,6 @@
     "costBasis": "Стоимость приобретения",
     "realizedGainLoss": "Реализованная прибыль/убыток",
     "securitiesSold": "Проданные ценные бумаги",
-    "viewChart": "График",
-    "viewTable": "Таблица",
     "noTransactions": "Проводки по продаже за этот период не найдены.",
     "noGainsLosses": "Нет прибылей или убытков для отображения.",
     "bySecurityTitle": "Реализованные прибыли по ценной бумаге",
@@ -1339,7 +1336,7 @@
     "sixMonthTotal": "Итого за 6 месяцев",
     "monthlyEstimate": "Ежемесячная оценка",
     "identifiedPayees": "выявленных получателей",
-    "minOccurrencesLabel": "Минимальное количество вхождений:",
+    "minOccurrencesLabel": "Минимальное количество вхождений",
     "inLast6Months": "(за последние 6 месяцев)",
     "noRecurring": "Регулярные расходы с {count}+ вхождениями за последние 6 месяцев не найдены.",
     "failedToLoad": "Не удалось загрузить данные о регулярных расходах.",
@@ -1699,8 +1696,6 @@
     "activeBills": "Активные счета",
     "overdue": "Просрочено",
     "thisMonth": "В этом месяце",
-    "autoPostsTitle": "Автоматически проводится при наступлении срока",
-    "manualPostTitle": "Требует ручной проводки",
     "autoLabel": "Авто",
     "manualLabel": "Ручной",
     "overdueLabel": "Просрочено",
@@ -1834,6 +1829,7 @@
     "removeAriaLabel": "Удалить {title} из сравнения",
     "removeTitle": "Удалить из сравнения",
     "runFailed": "Запуск не удался",
+    "never": "Никогда",
     "errors": {
       "loadScenarioFailed": "Не удалось загрузить сценарий.",
       "simulationFailed": "Симуляция не удалась."
@@ -1847,7 +1843,6 @@
     "backToReports": "Назад к отчётам",
     "deleteButton": "Удалить отчёт",
     "deleteConfirmMessage": "Вы уверены, что хотите удалить \"{name}\"? Это действие нельзя отменить.",
-    "deleting": "Удаление...",
     "toasts": {
       "loadFailed": "Не удалось загрузить отчёт",
       "updated": "Отчёт обновлён",

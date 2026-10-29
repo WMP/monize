@@ -22,7 +22,14 @@
       "expiring": "Expiring",
       "active": "Active",
       "expired": "Expired",
-      "lifetime": "Lifetime"
+      "lifetime": "Lifetime",
+      "counted": {
+        "all": "All ({count})",
+        "expiring": "Expiring ({count})",
+        "active": "Active ({count})",
+        "expired": "Expired ({count})",
+        "lifetime": "Lifetime ({count})"
+      }
     },
     "search": {
       "label": "Search warranties",
@@ -163,14 +170,21 @@
     "notFound": "This warranty was not found.",
     "retry": "Try again",
     "archivedBadge": "Archived",
+    "switcher": {
+      "trigger": "Switch warranty",
+      "placeholder": "Filter warranties...",
+      "noMatches": "No warranties match"
+    },
+    "summary": {
+      "expires": "Expires",
+      "purchased": "Purchased",
+      "price": "Purchase Price",
+      "openClaims": "Open Claims"
+    },
     "card": {
       "title": "Details",
-      "expires": "Expires",
-      "daysLeft": "Time left",
       "kind": "Warranty type",
       "vendor": "Vendor",
-      "purchaseDate": "Purchased",
-      "price": "Purchase price",
       "serialNumbers": "Serial numbers",
       "model": "Model number",
       "productUrl": "Product page",
@@ -228,7 +242,7 @@
     "form": {
       "claimDateLabel": "Claim date",
       "statusLabel": "Status",
-      "descriptionLabel": "What went wrong",
+      "descriptionLabel": "Description",
       "resolutionLabel": "Resolution",
       "resolvedOnLabel": "Closed on",
       "resolvedOnHint": "Only for a resolved or denied claim",

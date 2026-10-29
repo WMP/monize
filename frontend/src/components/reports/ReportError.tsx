@@ -1,6 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
+import { Button } from '@/components/ui/Button';
 import { BudgetFxIncompleteError } from '@/lib/budget-partial';
 import { BudgetFxPartialNotice } from './BudgetFxPartialNotice';
 
@@ -8,7 +9,7 @@ interface ReportErrorProps {
   error?: unknown;
   /** Optional override message; defaults to a generic load-failure note. */
   message?: string;
-  /** When provided, renders a "Try again" button that re-runs the fetch. */
+  /** When provided, renders a "Try Again" button that re-runs the fetch. */
   onRetry?: () => void;
 }
 
@@ -27,13 +28,9 @@ export function ReportError({ message, onRetry, error }: ReportErrorProps) {
         {message || t('error.defaultMessage')}
       </p>
       {onRetry && (
-        <button
-          type="button"
-          onClick={onRetry}
-          className="mt-3 inline-flex items-center rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
+        <Button type="button" size="sm" onClick={onRetry} className="mt-3">
           {t('error.retry')}
-        </button>
+        </Button>
       )}
     </div>
   );

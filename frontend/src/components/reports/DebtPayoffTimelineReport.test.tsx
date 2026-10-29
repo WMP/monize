@@ -183,7 +183,7 @@ describe('DebtPayoffTimelineReport', () => {
       expect(screen.getByText('Select Account')).toBeInTheDocument();
     });
     expect(mockGetRateChanges).not.toHaveBeenCalled();
-    expect(screen.queryByText('Try again')).not.toBeInTheDocument();
+    expect(screen.queryByText('Try Again')).not.toBeInTheDocument();
   });
 
   it('loads the loan rate history for the selected account', async () => {
@@ -833,7 +833,7 @@ describe('DebtPayoffTimelineReport', () => {
     await waitFor(() => {
       expect(screen.getByText(/Failed to load report data/i)).toBeInTheDocument();
     });
-    expect(screen.getByRole('button', { name: /Try again/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Try Again/i })).toBeInTheDocument();
   });
 
   it('handles error in loadTransactions gracefully', async () => {
@@ -850,7 +850,7 @@ describe('DebtPayoffTimelineReport', () => {
     await waitFor(() => {
       expect(screen.getByText(/Failed to load report data/i)).toBeInTheDocument();
     });
-    expect(screen.getByRole('button', { name: /Try again/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Try Again/i })).toBeInTheDocument();
   });
 
   it('handles WEEKLY payment frequency in projections', async () => {

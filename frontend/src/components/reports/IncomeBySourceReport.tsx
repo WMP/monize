@@ -50,6 +50,7 @@ import { CHART_COLOURS_INCOME } from '@/lib/chart-colours';
 import { chartColors } from '@/lib/chart-colors';
 import type { ChartDatum } from '@/types/chart';
 import { useTranslations } from 'next-intl';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 type IncomeSourceSortField = 'name' | 'value' | 'percentage';
 
@@ -416,9 +417,7 @@ export function IncomeBySourceReport() {
             <Skeleton className="h-64 w-full" />
           </div>
         ) : chartData.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            {t('incomeBySource.noData')}
-          </p>
+          <EmptyState title={t('incomeBySource.noData')} />
         ) : viewType === 'table' ? (
           /* Data Table
 

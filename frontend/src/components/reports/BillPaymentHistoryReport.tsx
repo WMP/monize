@@ -24,7 +24,7 @@ import { useDateRange } from '@/hooks/useDateRange';
 import { DateRangeSelector } from '@/components/ui/DateRangeSelector';
 import { ReportToolbarActions } from '@/components/reports/ReportToolbarActions';
 import { SortableHeader } from '@/components/ui/SortableHeader';
-import { CAPTION_CLASS, CellLabel, PHONE_HEADER_CLASS } from '@/components/ui/Table';
+import { CAPTION_CLASS, CellLabel, PHONE_HEADER_CLASS, TH_CLASS } from '@/components/ui/Table';
 import { INTERACTIVE_ROW_FOCUS_CLASS, activateOnKey } from '@/components/ui/interactive-row';
 import type {
   SortColumn as TableSortColumn,
@@ -38,6 +38,8 @@ import { PartialDataNotice } from '@/components/reports/PartialDataNotice';
 import { PartialTotal } from '@/components/ui/PartialTotal';
 import { isComplete, reportTotal, type ConvertedTotal } from '@/lib/currency-total';
 import { chartColors } from '@/lib/chart-colors';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
 
 type BillSortField = 'bill' | 'count' | 'average' | 'total' | 'lastPayment';
 
@@ -62,9 +64,6 @@ type SortColumn = TableSortColumn<BillSortField>;
  * stay right. Here it is a compile error instead.
  */
 type SortColumnsByField = TableSortColumnsByField<BillSortField, SortColumn>;
-
-// Today's header cell, unchanged.
-const HEADER_CLASS = 'px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase';
 
 // A value cell inside a wrapped row: no padding of its own below `sm` and this
 // table's own `px-4 py-3` from `sm` up. Smaller type on phones so an
@@ -311,34 +310,22 @@ export function BillPaymentHistoryReport() {
     }));
   };
 
-  if (error) {
-    return <ReportError onRetry={reload} />;
-  }
-
-  if (isLoading) {
-    return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-        <div className="space-y-4">
-          <Skeleton className="h-8 w-1/3" />
-          <Skeleton className="h-64 w-full" />
-        </div>
-      </div>
-    );
-  }
-
-  if (!billData) {
-    return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-        <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-          {t('billPaymentHistory.loadError')}
-        </p>
-      </div>
-    );
-  }
+  // Loading, error and empty states render inside the tree below, never as an
+  // early return, so the toolbar stays mounted across a reload.
+  const dataUnavailable = isLoading || !!error;
 
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
+      {dataUnavailable ? (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+        </div>
+      ) : billData && (
+      <>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
           <div className="text-sm text-gray-500 dark:text-gray-400">{t('billPaymentHistory.totalPaid')}</div>
@@ -375,6 +362,8 @@ export function BillPaymentHistoryReport() {
         excludedCount={billData.excludedCount ?? 0}
         displayCurrency={reportingCurrency}
       />
+      </>
+      )}
 
       {/* Controls */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
@@ -384,37 +373,41 @@ export function BillPaymentHistoryReport() {
             value={dateRange}
             onChange={setDateRange}
           />
-          <div className="flex gap-2 items-center">
-            <button
-              onClick={() => setViewType('overview')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                viewType === 'overview'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-              }`}
-            >
-              {t('billPaymentHistory.overview')}
-            </button>
-            <button
-              onClick={() => setViewType('byBill')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                viewType === 'byBill'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-              }`}
-            >
-              {t('billPaymentHistory.byBill')}
-            </button>
+          <div className={SEGMENTED_GROUP_CLASS} role="group" aria-label={t('reportPage.viewLabel')}>
+            {(['overview', 'byBill'] as const).map((view) => (
+              <button
+                key={view}
+                type="button"
+                aria-pressed={viewType === view}
+                className={segmentClass(viewType === view)}
+                onClick={() => setViewType(view)}
+              >
+                {view === 'overview' ? t('billPaymentHistory.overview') : t('billPaymentHistory.byBill')}
+              </button>
+            ))}
           </div>
-          <ReportToolbarActions onExportCsv={handleExportCsv} onExportPdf={handleExportPdf} />
+          <ReportToolbarActions
+            onExportCsv={handleExportCsv}
+            onExportPdf={handleExportPdf}
+            disabled={dataUnavailable || !billData}
+          />
         </div>
       </div>
 
-      {billData.billPayments.length === 0 ? (
+      {error ? (
+        <ReportError onRetry={reload} />
+      ) : isLoading ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            {t('billPaymentHistory.empty')}
-          </p>
+          <div className="space-y-4">
+            <Skeleton className="h-8 w-1/3" />
+            <Skeleton className="h-64 w-full" />
+          </div>
+        </div>
+      ) : !billData ? (
+        <ReportError message={t('billPaymentHistory.loadError')} onRetry={reload} />
+      ) : billData.billPayments.length === 0 ? (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
+          <EmptyState title={t('billPaymentHistory.empty')} />
         </div>
       ) : viewType === 'overview' ? (
         /* Monthly Overview Chart */
@@ -568,7 +561,7 @@ export function BillPaymentHistoryReport() {
                       sortDirection={sortDirection}
                       onSort={handleSort}
                       align={col.align}
-                      className={HEADER_CLASS}
+                      className={TH_CLASS}
                     >
                       {col.label}
                     </SortableHeader>

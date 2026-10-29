@@ -4,6 +4,8 @@ import { AttachmentPreviewDialog, type PreviewTarget } from './AttachmentPreview
 import { attachmentsApi } from '@/lib/attachments';
 import { downloadBlob } from '@/lib/download';
 import type { Attachment } from '@/types/attachment';
+import { buttonClassName } from '@/components/ui/Button';
+import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
 
 vi.mock('@/lib/attachments', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/attachments')>()),
@@ -238,12 +240,33 @@ describe('AttachmentPreviewDialog', () => {
     expect(revoked).toEqual(['blob:preview-1']);
   });
 
-  it('closes from the footer', async () => {
+  it('closes from the footer, with an outline button rather than a primary', async () => {
     const { onClose } = await open(saved());
-    // The header's X is also named Close; the footer button is the last one.
-    const closes = screen.getAllByRole('button', { name: 'Close' });
-    fireEvent.click(closes[closes.length - 1]);
+    const close = screen.getByRole('button', { name: 'Close' });
+    expect(close.className).toContain(buttonClassName('outline'));
+    fireEvent.click(close);
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it('draws its view switches as segmented controls, never as primary buttons', async () => {
+    await open(saved({ id: 'scan-1', filename: 'receipt-scan.jpg', originalAttachmentId: 'orig-1' }));
+    await screen.findByRole('img', { name: 'receipt-scan.jpg' });
+    for (const name of ['Version', 'Zoom']) {
+      expect(screen.getByRole('group', { name }).className).toContain(SEGMENTED_GROUP_CLASS);
+    }
+    expect(screen.getByRole('button', { name: 'Enhanced' }).className).toBe(segmentClass(true));
+    const primaries = screen
+      .getAllByRole('button')
+      .filter((button) => button.className.includes(buttonClassName('primary')));
+    expect(primaries).toHaveLength(0);
+  });
+
+  it('pads its heading as a fixed-height panel, so the title is not flush with the edge', async () => {
+    await open(saved());
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.className).toContain('h-[min(90vh,56rem)]');
+    const heading = screen.getByRole('heading', { name: 'receipt.png' });
+    expect(heading.parentElement!.className).toContain('px-4');
   });
 
   /**

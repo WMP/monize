@@ -6,7 +6,7 @@
       "category": "카테고리",
       "amount": "금액",
       "schedule": "일정",
-      "auto": "자동",
+      "auto": "자동 게시",
       "actions": "작업"
     },
     "empty": {
@@ -25,7 +25,6 @@
     "modifiedDateTitle": "이 일정의 날짜가 변경됨",
     "splitBadge": "분할 ({count})",
     "autoPostBadge": "켜짐",
-    "autoPostTitle": "만기 시 자동 게시",
     "inactiveSuffix": " — 비활성",
     "actionTitles": {
       "post": "거래 게시",
@@ -76,9 +75,7 @@
     "accountsLabel": "계정",
     "accountsPlaceholder": "모든 계정",
     "categoriesLabel": "카테고리",
-    "categoriesPlaceholder": "모든 카테고리",
-    "collapseAriaLabel": "필터 접기",
-    "expandAriaLabel": "필터 펼치기"
+    "categoriesPlaceholder": "모든 카테고리"
   },
   "postDialog": {
     "title": "거래 게시",

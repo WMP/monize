@@ -18,23 +18,24 @@ import { builtInReportsApi } from "@/lib/built-in-reports";
 import {
   MonthlyBreakdownCategoryRow,
   MonthlyBreakdownTransferRow,
-} from "@/types/built-in-reports";
-import { useNumberFormat } from "@/hooks/useNumberFormat";
-import { useDateFormat } from "@/hooks/useDateFormat";
-import { useDateRange } from "@/hooks/useDateRange";
-import { useLocalStorage } from "@/hooks/useLocalStorage";
-import { useReportData } from "@/hooks/useReportData";
-import { useIsMobile } from "@/hooks/useIsMobile";
-import { DateRangeSelector } from "@/components/ui/DateRangeSelector";
-import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
-import { SortableHeader } from "@/components/ui/SortableHeader";
-import { ReportError } from "@/components/reports/ReportError";
-import { PartialDataNotice } from "@/components/reports/PartialDataNotice";
-import { roundMoney, sumMoney } from "@/lib/format";
-import { ReportToolbarActions } from "@/components/reports/ReportToolbarActions";
-import { FundingReportControls } from "@/components/reports/FundingReportControls";
-import { MonthlyTaggedBalanceSummary } from "@/components/reports/MonthlyTaggedBalanceSummary";
-import { useFundingReportControls } from "@/hooks/useFundingReportControls";
+} from '@/types/built-in-reports';
+import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { useDateFormat } from '@/hooks/useDateFormat';
+import { useDateRange } from '@/hooks/useDateRange';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useReportData } from '@/hooks/useReportData';
+import { useIsMobile } from '@/hooks/useIsMobile';
+import { DateRangeSelector } from '@/components/ui/DateRangeSelector';
+import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
+import { SortableHeader } from '@/components/ui/SortableHeader';
+import { ReportError } from '@/components/reports/ReportError';
+import { PartialDataNotice } from '@/components/reports/PartialDataNotice';
+import { roundMoney, sumMoney, gainLossColor } from '@/lib/format';
+import { ReportToolbarActions } from '@/components/reports/ReportToolbarActions';
+import { FundingReportControls } from '@/components/reports/FundingReportControls';
+import { MonthlyTaggedBalanceSummary } from '@/components/reports/MonthlyTaggedBalanceSummary';
+import { useFundingReportControls } from '@/hooks/useFundingReportControls';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 const RANGE_STORAGE_KEY = "monize-reports-monthly-category-breakdown-range";
 const PERCENTAGES_STORAGE_KEY =
@@ -1396,9 +1397,7 @@ export function MonthlyCategoryBreakdownReport() {
             <Skeleton className="h-64 w-full" />
           </div>
         ) : !hasData ? (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            {t("monthlyCategoryBreakdown.noData")}
-          </p>
+          <EmptyState title={t('monthlyCategoryBreakdown.noData')} />
         ) : (
           <div
             ref={scrollRef}
@@ -1547,10 +1546,7 @@ export function MonthlyCategoryBreakdownReport() {
                   {months.map((m) => {
                     const bal = model!.monthlyBalance[m] || 0;
                     return (
-                      <td
-                        key={m}
-                        className={`px-2 py-1 text-right ${bal >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
-                      >
+                      <td key={m} className={`px-2 py-1 text-right ${gainLossColor(bal)}`}>
                         {bal !== 0 ? (
                           <button
                             type="button"
@@ -1565,9 +1561,7 @@ export function MonthlyCategoryBreakdownReport() {
                       </td>
                     );
                   })}
-                  <td
-                    className={`px-2 py-1 text-right ${model!.balanceSum >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
-                  >
+                  <td className={`px-2 py-1 text-right ${gainLossColor(model!.balanceSum)}`}>
                     <button
                       type="button"
                       onClick={() => drillDownRange(model!.allCategoryIds)}
@@ -1581,15 +1575,8 @@ export function MonthlyCategoryBreakdownReport() {
                       )}
                     </button>
                   </td>
-                  <td
-                    className={`px-2 py-1 text-right ${model!.balanceAvg >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
-                  >
-                    {formatGrand(
-                      model!.balanceAvg,
-                      null,
-                      formatCurrency,
-                      currency,
-                    )}
+                  <td className={`px-2 py-1 text-right ${gainLossColor(model!.balanceAvg)}`}>
+                    {formatGrand(model!.balanceAvg, null, formatCurrency, currency)}
                   </td>
                 </tr>
                 {model!.hasTransfers &&
@@ -1617,33 +1604,16 @@ export function MonthlyCategoryBreakdownReport() {
                     {months.map((m) => {
                       const ov = model!.monthlyOverall[m] || 0;
                       return (
-                        <td
-                          key={m}
-                          className={`px-2 py-1 text-right ${ov >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
-                        >
+                        <td key={m} className={`px-2 py-1 text-right ${gainLossColor(ov)}`}>
                           {formatGrand(ov, null, formatCurrency, currency)}
                         </td>
                       );
                     })}
-                    <td
-                      className={`px-2 py-1 text-right ${model!.overallSum >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
-                    >
-                      {formatGrand(
-                        model!.overallSum,
-                        null,
-                        formatCurrency,
-                        currency,
-                      )}
+                    <td className={`px-2 py-1 text-right ${gainLossColor(model!.overallSum)}`}>
+                      {formatGrand(model!.overallSum, null, formatCurrency, currency)}
                     </td>
-                    <td
-                      className={`px-2 py-1 text-right ${model!.overallAvg >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
-                    >
-                      {formatGrand(
-                        model!.overallAvg,
-                        null,
-                        formatCurrency,
-                        currency,
-                      )}
+                    <td className={`px-2 py-1 text-right ${gainLossColor(model!.overallAvg)}`}>
+                      {formatGrand(model!.overallAvg, null, formatCurrency, currency)}
                     </td>
                   </tr>
                 )}

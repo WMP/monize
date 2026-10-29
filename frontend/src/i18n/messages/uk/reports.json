@@ -4,6 +4,7 @@
     "subtitle": "Отримайте інформацію про стан свого фінансового здоров'я",
     "searchPlaceholder": "Пошук звітів за назвою або описом...",
     "allReports": "Усі звіти",
+    "categoryWithCount": "{label} ({count})",
     "removeFavourite": "Видалити з вибраного",
     "addFavourite": "Додати до вибраного",
     "tableReport": "Звіт",
@@ -137,7 +138,8 @@
   },
   "reportPage": {
     "notFound": "Звіт не знайдено",
-    "notFoundDesc": "Запитуваний звіт не існує."
+    "notFoundDesc": "Запитуваний звіт не існує.",
+    "viewLabel": "Вигляд"
   },
   "error": {
     "defaultMessage": "Не вдалося завантажити дані звіту. Будь ласка, спробуйте ще раз.",
@@ -514,8 +516,6 @@
     "viewMonthly": "Щомісяця",
     "viewDaily": "Щодня",
     "viewBySecurity": "За цінним папером",
-    "displayChart": "Діаграма",
-    "displayTable": "Таблиця",
     "showLabel": "Показати:",
     "seriesDividends": "Дивіденди",
     "seriesInterest": "Відсотки",
@@ -1251,7 +1251,6 @@
     "incompleteTooltip": "У деякі дні цього періоду бракує ціни, курсу обміну або залишку на грошовому рахунку, тому показники, які залежать від кожного дня, не відображаються.",
     "measuredFromClose": "Від закриття торгів {date}",
     "notAvailable": "Н/Д",
-    "intradayUnavailable": "Детальні внутрішньоденні ціни недоступні",
     "intradayUnavailableTitle": "Внутрішньоденний перегляд недоступний для цього набору рахунків",
     "intradayUnavailableDesc": "Одна або кілька позицій використовують провайдера котирувань (MSN Money), який не надає внутрішньоденні дані{skipped}. Перейдіть до ширшого діапазону, щоб переглянути щоденні знімки.",
     "intradayUnavailableSkipped": ": {symbols}",
@@ -1302,8 +1301,6 @@
     "costBasis": "Собівартість",
     "realizedGainLoss": "Реалізований прибуток/збиток",
     "securitiesSold": "Продані цінні папери",
-    "viewChart": "Діаграма",
-    "viewTable": "Таблиця",
     "noTransactions": "Операцій продажу за цей період не знайдено.",
     "noGainsLosses": "Немає прибутків або збитків для відображення.",
     "bySecurityTitle": "Реалізований прибуток за цінними паперами",
@@ -1339,7 +1336,7 @@
     "sixMonthTotal": "Разом за 6 місяців",
     "monthlyEstimate": "Місячна оцінка",
     "identifiedPayees": "виявлених одержувачів",
-    "minOccurrencesLabel": "Мінімальна кількість повторень:",
+    "minOccurrencesLabel": "Мінімальна кількість повторень",
     "inLast6Months": "(за останні 6 місяців)",
     "noRecurring": "Регулярних витрат з {count}+ повтореннями за останні 6 місяців не знайдено.",
     "failedToLoad": "Не вдалося завантажити дані про регулярні витрати.",
@@ -1699,8 +1696,6 @@
     "activeBills": "Активні рахунки",
     "overdue": "Прострочені",
     "thisMonth": "Цього місяця",
-    "autoPostsTitle": "Автоматично публікується у термін",
-    "manualPostTitle": "Потрібна ручна публікація",
     "autoLabel": "Авто",
     "manualLabel": "Вручну",
     "overdueLabel": "Прострочений",
@@ -1834,6 +1829,7 @@
     "removeAriaLabel": "Видалити {title} з порівняння",
     "removeTitle": "Видалити з порівняння",
     "runFailed": "Запуск не вдався",
+    "never": "Ніколи",
     "errors": {
       "loadScenarioFailed": "Не вдалося завантажити сценарій.",
       "simulationFailed": "Симуляція не вдалася."
@@ -1847,7 +1843,6 @@
     "backToReports": "Назад до звітів",
     "deleteButton": "Видалити звіт",
     "deleteConfirmMessage": "Ви впевнені, що хочете видалити «{name}»? Цю дію неможливо скасувати.",
-    "deleting": "Видалення...",
     "toasts": {
       "loadFailed": "Не вдалося завантажити звіт",
       "updated": "Звіт оновлено",

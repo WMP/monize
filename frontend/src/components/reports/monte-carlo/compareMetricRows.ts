@@ -5,7 +5,7 @@ import {
 } from '@/lib/monte-carlo';
 import type { NumberFormatters } from '@/hooks/useNumberFormat';
 
-export type RowFormat = 'currency' | 'percent' | 'number' | 'text' | 'boolean';
+export type RowFormat = 'currency' | 'percent' | 'number' | 'text' | 'boolean' | 'instant';
 
 export type ScenarioContext = {
   scenario: MonteCarloScenario;
@@ -40,8 +40,15 @@ export type RowGroup = {
  * explicit `numberFormat` preference overrides. So the caller passes the hook's
  * own functions down. Percentages arrive here as fractions (0.0725 = 7.25%)
  * while `formatPercent` takes percentage units, hence the x100 at the seam.
+ *
+ * An instant (a run's timestamp) is formatted by `useDateFormat` for the same
+ * reason, and a run that never happened reads as the caller's translated
+ * `neverLabel` rather than an English literal.
  */
-export type CompareCellFormatters = NumberFormatters;
+export type CompareCellFormatters = NumberFormatters & {
+  formatInstant: (isoInstant: string) => string;
+  neverLabel: string;
+};
 
 export function formatPercent(
   value: number | null,
@@ -57,6 +64,10 @@ export function formatCellValue(
   format: RowFormat,
   formatters: CompareCellFormatters,
 ): string {
+  if (format === 'instant') {
+    if (value === null) return formatters.neverLabel;
+    return typeof value === 'string' ? formatters.formatInstant(value) : '—';
+  }
   if (value === null) return '—';
   if (format === 'text') return String(value);
   if (format === 'boolean') return value ? 'Yes' : 'No';
@@ -169,13 +180,10 @@ export const ROW_GROUPS: RowGroup[] = [
       {
         key: 'lastRunAt',
         label: 'Last run',
-        format: 'text',
-        accessor: (ctx) => {
-          // Prefer the freshly-returned run timestamp so Re-run reflects
-          // immediately; fall back to the persisted scenario value.
-          const stamp = ctx.result?.ranAt ?? ctx.scenario.lastRunAt;
-          return stamp ? new Date(stamp).toLocaleString() : 'Never';
-        },
+        format: 'instant',
+        // Prefer the freshly-returned run timestamp so Re-run reflects
+        // immediately; fall back to the persisted scenario value.
+        accessor: (ctx) => ctx.result?.ranAt ?? ctx.scenario.lastRunAt ?? null,
       },
     ],
   },

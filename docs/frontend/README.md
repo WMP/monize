@@ -6,6 +6,7 @@
 |---|---|
 | `api-and-cache.md` | adding an API call, a cached read, a write that moves money, or a component holding asynchronous data |
 | `ui-conventions.md` | writing a card, dialog, picker, switcher, row, link or any other control a user interacts with |
+| `screens-and-dialogs.md` | adding a page, a dialog or a toolbar: which reference screen to copy and how its controls are arranged |
 | `forms-and-formatting.md` | adding an input, formatting a number, date or phone a person reads, or exporting CSV |
 | `tables-and-registers.md` | touching a table, a register, row density, a pager or a list toolbar |
 | `financial-figures.md` | rendering, deriving or totalling a money figure; scheduled occurrences, loans, portfolio ranges, charts |

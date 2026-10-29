@@ -114,8 +114,8 @@
       "matchAll": "Toutes celles-ci",
       "matchAny": "N'importe laquelle de celles-ci",
       "matchLabel": "Correspondance",
-      "not": "Non",
-      "notLabel": "Inverser ce groupe : il correspond quand ses conditions ne sont pas remplies",
+      "not": "Inverser le groupe",
+      "notHelp": "Un groupe inversé correspond lorsque ses conditions ne correspondent pas.",
       "title": "Groupe",
       "addCondition": "+ Ajouter une condition",
       "addGroup": "+ Ajouter un groupe",
@@ -201,7 +201,7 @@
       "tags": "Tags",
       "category": "Catégorie",
       "payee": "Bénéficiaire",
-      "instruction": "Ce qui doit être vérifié",
+      "instruction": "Instructions de vérification",
       "instructionPlaceholder": "Par exemple : ventiler cet achat selon le reçu",
       "instructionHelp": "La règle ne fait que demander une vérification. Une personne approuve toute modification avant qu'elle soit effectuée.",
       "onlyIfEmpty": "Seulement si vide",
@@ -220,7 +220,7 @@
       "createIfMissing": "Créer le bénéficiaire s'il n'existe pas",
       "createIfMissingHelp": "Si l'option est activée et qu'aucun bénéficiaire ne correspond au nom (par nom, alias ou correspondance proche), un nouveau bénéficiaire est créé. Un bénéficiaire créé par une règle est conservé si vous annulez l'exécution.",
       "onlyIfEmptyDescriptionHelp": "Si l'option est activée, la règle n'écrit la description que si la transaction n'en a pas. Désactivez-la pour l'écrire à chaque fois.",
-      "mode": "Façon d'écrire",
+      "mode": "Mode de description",
       "modes": {
         "replace": "Remplacer la description",
         "append": "Ajouter après la description",
@@ -262,12 +262,12 @@
         "windowHelp": "À quelle distance de la date d'échéance la banque peut prélever le paiement. Un prélèvement effectué jusqu'à ce nombre de jours avant ou après la date d'échéance paie l'échéance correspondante ; un prélèvement hors de la fenêtre est laissé tel quel.",
         "daysBefore": "Jours avant la date d'échéance",
         "daysAfter": "Jours après la date d'échéance",
-        "excess": "Quand le prélèvement est supérieur à l'échéance",
+        "excess": "Prélèvement supérieur à l'échéance",
         "excessPolicies": {
           "extra_principal": "Payer la différence en capital supplémentaire",
           "refuse": "Laisser la transaction telle quelle"
         },
-        "shortfall": "Quand le prélèvement est inférieur à l'échéance",
+        "shortfall": "Prélèvement inférieur à l'échéance",
         "shortfallPolicies": {
           "refuse": "Laisser la transaction telle quelle",
           "interest_first": "Payer d'abord les intérêts, le reste en capital"

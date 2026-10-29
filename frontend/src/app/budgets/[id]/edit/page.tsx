@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
-import { Button } from '@/components/ui/Button';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -12,6 +11,7 @@ import { Modal } from '@/components/ui/Modal';
 import { BudgetForm } from '@/components/budgets/BudgetForm';
 import { BudgetCategoryForm } from '@/components/budgets/BudgetCategoryForm';
 import { BudgetProgressBar } from '@/components/budgets/BudgetProgressBar';
+import { BudgetBackLink } from '@/components/budgets/BudgetBackLink';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { BudgetFxIncompleteError, type PartialBudgetData } from '@/lib/budget-partial';
 import { BudgetFxPartialNotice } from '@/components/reports/BudgetFxPartialNotice';
@@ -144,19 +144,13 @@ function BudgetEditContent() {
   return (
     <PageLayout>
       <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">
+        <BudgetBackLink
+          href={`/budgets/${budgetId}`}
+          label={t('pages.edit.backToBudget', { name: budget.name })}
+        />
         <PageHeader
           title={`${t('pages.edit.subtitlePrefix')}${budget.name}`}
           subtitle={t('pages.edit.subtitle')}
-          actions={
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                onClick={() => router.push(`/budgets/${budgetId}`)}
-              >
-                {t('pages.edit.backToDashboard')}
-              </Button>
-            </div>
-          }
         />
 
         {partial && <BudgetFxPartialNotice data={partial} onRetry={loadData} />}

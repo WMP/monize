@@ -132,12 +132,6 @@
       "updatedSecurityTransfer": "已更新证券转移",
       "ranTransactionRule": "已在 {count, plural, other {# 笔交易}}上运行规则“{name}”"
     },
-    "timeAgo": {
-      "justNow": "刚刚",
-      "minutes": "{count} 分钟前",
-      "hours": "{count} 小时前",
-      "days": "{count} 天前"
-    },
     "undonePrefix": "已撤销：{description}",
     "redonePrefix": "已重做：{description}"
   },

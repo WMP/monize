@@ -12,7 +12,7 @@
   "payroll": {
     "title": "Potrącenia z wynagrodzenia",
     "subtitle": "Roczne maksima dla pozycji potrąceń w rachunku wynagrodzenia",
-    "backToTaxes": "Podatki",
+    "backToTaxes": "Wróć do podatków",
     "newButton": "+ Nowa reguła",
     "loading": "Ładowanie potrąceń z wynagrodzenia...",
     "emptyState": {

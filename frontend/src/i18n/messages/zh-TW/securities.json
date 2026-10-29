@@ -11,6 +11,7 @@
     "subtitle": "管理您的股票、ETF、共同基金及其他證券",
     "newSecurity": "+ 新增證券",
     "searchPlaceholder": "依代號或名稱搜尋...",
+    "statusFilterLabel": "狀態",
     "statusAll": "全部（{count}）",
     "statusActive": "活躍（{count}）",
     "statusInactive": "非活躍（{count}）",
@@ -65,10 +66,7 @@
       "inactive": "非活躍",
       "inactiveShort": "非"
     },
-    "providerTitle": {
-      "override": "個別證券的提供者覆寫設定",
-      "inherited": "繼承自您的預設報價提供者偏好設定"
-    },
+    "providerInherited": "{provider}（預設）",
     "columnTitles": {
       "shares": "所有科目中目前持有的股數",
       "value": "所有帳戶中持有的股數按最新價格計算，以證券本身的貨幣計價",
@@ -218,11 +216,10 @@
   "priceForm": {
     "dateLabel": "日期",
     "closePriceLabel": "收盤價",
-    "openPriceLabel": "開盤價",
-    "highPriceLabel": "最高價",
-    "lowPriceLabel": "最低價",
-    "volumeLabel": "成交量",
-    "optionalPlaceholder": "選填",
+    "openPriceLabel": "開盤價（選填）",
+    "highPriceLabel": "最高價（選填）",
+    "lowPriceLabel": "最低價（選填）",
+    "volumeLabel": "成交量（選填）",
     "submitCreate": "新增價格",
     "submitUpdate": "更新價格"
   },

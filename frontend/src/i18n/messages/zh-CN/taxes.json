@@ -12,7 +12,7 @@
   "payroll": {
     "title": "工资扣款",
     "subtitle": "工资账单扣款行的年度上限",
-    "backToTaxes": "税务",
+    "backToTaxes": "返回税务",
     "newButton": "+ 新建规则",
     "loading": "正在加载工资扣款...",
     "emptyState": {

@@ -23,8 +23,8 @@
     "empty": "[XX-No overdue or upcoming bills, deposits, or transfers within their reminder windows.-XX]",
     "postTransaction": "[XX-Post this transaction-XX]",
     "manual": "[XX-Manual-XX]",
-    "manualTitle": "[XX-Requires manual posting-XX]",
     "negativeBalanceWarning": "[XX-This transaction will cause the account balance to go below zero-XX]",
+    "negativeBalanceLegend": "[XX-Takes its account below zero-XX]",
     "moreItems": "[XX-+{count} more-XX]",
     "overdue": "[XX-Overdue-XX]",
     "today": "[XX-Today-XX]",
@@ -110,9 +110,9 @@
     "refreshPrices": "[XX-Refresh prices-XX]",
     "viewPortfolio": "[XX-View portfolio-XX]",
     "filter": {
-      "all": "[XX-All-XX]",
-      "gainers": "[XX-Gainers-XX]",
-      "losers": "[XX-Losers-XX]",
+      "all": "[XX-All ({count})-XX]",
+      "gainers": "[XX-Gainers ({count})-XX]",
+      "losers": "[XX-Losers ({count})-XX]",
       "label": "[XX-Direction-XX]"
     },
     "metric": {

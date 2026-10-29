@@ -175,7 +175,6 @@
       "viewPayeeTitle": "Details zu {name} anzeigen",
       "investmentLabel": "Investition",
       "linkedInvestmentTitle": "In Investitionen anzeigen",
-      "linkedInvestmentBadgeTitle": "Diese Transaktion ist mit einer Anlagetransaktion verknüpft",
       "filterByDate": "Nach Datum „{date}” filtern",
       "filterByAccount": "Nach „{name}” filtern",
       "filterByPayee": "Nach „{name}” filtern",
@@ -223,10 +222,10 @@
       "show": "Filter anzeigen"
     },
     "accounts": {
-      "label": "Konten anzeigen:",
-      "all": "Alle",
-      "active": "Aktiv",
-      "closed": "Geschlossen"
+      "label": "Konten anzeigen",
+      "allCount": "Alle ({count})",
+      "activeCount": "Aktiv ({count})",
+      "closedCount": "Geschlossen ({count})"
     },
     "fields": {
       "accounts": "Konten",
@@ -320,7 +319,7 @@
     },
     "modal": {
       "title": "Buchungen massenweise aktualisieren",
-      "subtitle": "{count, plural, one {# ausgewählte Buchung} other {# ausgewählte Buchungen}} aktualisieren. Aktivieren Sie die Felder, die Sie ändern möchten.",
+      "help": "Aktivieren Sie die Felder, die Sie ändern möchten.",
       "submitLabel": "{count, plural, one {# Buchung} other {# Buchungen}} aktualisieren",
       "payee": "Zahlungsempfänger",
       "category": "Kategorie",
@@ -368,8 +367,7 @@
       "fromAccount": "Von Konto",
       "toAccount": "An Konto",
       "transferAmount": "Überweisungsbetrag",
-      "transferAmountWithCurrency": "Überweisungsbetrag ({currency})",
-      "amountReceived": "Erhaltener Betrag ({currency})",
+      "amountReceivedLabel": "Erhaltener Betrag",
       "payeeOptional": "Zahlungsempfänger (optional)",
       "categoryOptional": "Kategorie (optional)"
     },
@@ -538,7 +536,7 @@
     "quantityPlaceholder": "Menge",
     "pricePlaceholder": "Preis",
     "commissionPlaceholder": "Provision",
-    "amountPlaceholder": "Betrag ({currency})",
+    "amountOnlyPlaceholder": "Betrag",
     "ratePlaceholder": "{to} pro 1 {from}",
     "ariaRate": "Wechselkurs ({to} pro 1 {from})",
     "rateHint": "Stückzahl, Preis und Provision sind in {from}; dieser Kurs rechnet die Zahlungswirkung in {to} um.",

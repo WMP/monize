@@ -21,6 +21,7 @@ interface ParserJsonDialogProps {
  */
 export function ParserJsonDialog({ parser, onClose }: ParserJsonDialogProps) {
   const t = useTranslations('emailReceipts.parsers.jsonDialog');
+  const tc = useTranslations('common');
   const json = useMemo(() => formatDefinitionJson(parser.definition), [parser.definition]);
 
   const handleCopy = async () => {
@@ -34,7 +35,19 @@ export function ParserJsonDialog({ parser, onClose }: ParserJsonDialogProps) {
   };
 
   return (
-    <Modal isOpen onClose={onClose} maxWidth="2xl" padding="md" pushHistory title={t('title', { name: parser.name })}>
+    <Modal
+      isOpen
+      onClose={onClose}
+      maxWidth="2xl"
+      padding="md"
+      pushHistory
+      title={t('title', { name: parser.name })}
+      footer={
+        <Button type="button" variant="outline" onClick={onClose}>
+          {tc('close')}
+        </Button>
+      }
+    >
       <div className="space-y-3">
         <p className="text-sm text-gray-600 dark:text-gray-400">{t('help')}</p>
         <pre

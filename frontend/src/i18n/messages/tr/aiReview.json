@@ -17,7 +17,8 @@
     "label": "Türe göre filtrele",
     "all": "Tümü",
     "email_receipt": "E-posta makbuzları",
-    "transaction_review": "Kurallar"
+    "transaction_review": "Kurallar",
+    "option": "{label} ({count})"
   },
   "status": {
     "pending": "Beklemede",

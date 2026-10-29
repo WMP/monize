@@ -34,7 +34,6 @@
     "units": "Anteile",
     "avgCostPerUnit": "Durchschn. Kosten / Anteil",
     "heldInAccounts": "Gehalten in Konten",
-    "openAccount": "{name} auf der Seite Investitionen anzeigen",
     "unitsShare": "{units} ({share})",
     "valueUnknown": "Kein Kurs",
     "approx": "~ {amount}"

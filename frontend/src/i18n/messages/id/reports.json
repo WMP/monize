@@ -4,6 +4,7 @@
     "subtitle": "Hasilkan wawasan tentang kesehatan keuangan Anda",
     "searchPlaceholder": "Cari laporan berdasarkan nama atau keterangan...",
     "allReports": "Semua Laporan",
+    "categoryWithCount": "{label} ({count})",
     "removeFavourite": "Hapus dari favorit",
     "addFavourite": "Tambah ke favorit",
     "tableReport": "Laporan",
@@ -137,7 +138,8 @@
   },
   "reportPage": {
     "notFound": "Laporan Tidak Ditemukan",
-    "notFoundDesc": "Laporan yang diminta tidak ada."
+    "notFoundDesc": "Laporan yang diminta tidak ada.",
+    "viewLabel": "Tampilan"
   },
   "error": {
     "defaultMessage": "Gagal memuat data laporan. Silakan coba lagi.",
@@ -514,8 +516,6 @@
     "viewMonthly": "Bulanan",
     "viewDaily": "Harian",
     "viewBySecurity": "Per Keamanan Dokumen",
-    "displayChart": "Grafik",
-    "displayTable": "Tabel",
     "showLabel": "Tampilkan:",
     "seriesDividends": "Dividen",
     "seriesInterest": "Bunga",
@@ -1251,7 +1251,6 @@
     "incompleteTooltip": "Beberapa hari dalam periode ini tidak memiliki harga, kurs, atau saldo kas, sehingga angka yang bergantung pada setiap hari tidak ditampilkan.",
     "measuredFromClose": "Sejak penutupan perdagangan pada {date}",
     "notAvailable": "T/A",
-    "intradayUnavailable": "Harga intraday terperinci tidak tersedia",
     "intradayUnavailableTitle": "Tampilan intraday tidak tersedia untuk campuran akun ini",
     "intradayUnavailableDesc": "Satu atau lebih kepemilikan menggunakan penyedia kuotasi (MSN Money) yang tidak mengekspos data intraday{skipped}. Beralih ke rentang yang lebih panjang untuk melihat snapshot harian.",
     "intradayUnavailableSkipped": ": {symbols}",
@@ -1302,8 +1301,6 @@
     "costBasis": "Dasar Biaya",
     "realizedGainLoss": "Keuntungan/Kerugian yang Direalisasi",
     "securitiesSold": "Keamanan Dokumen Dijual",
-    "viewChart": "Grafik",
-    "viewTable": "Tabel",
     "noTransactions": "Tidak ada transaksi jual ditemukan untuk periode ini.",
     "noGainsLosses": "Tidak ada keuntungan atau kerugian untuk ditampilkan.",
     "bySecurityTitle": "Keuntungan yang Direalisasi per Keamanan Dokumen",
@@ -1339,7 +1336,7 @@
     "sixMonthTotal": "Total 6 Bulan",
     "monthlyEstimate": "Perkiraan Bulanan",
     "identifiedPayees": "penerima teridentifikasi",
-    "minOccurrencesLabel": "Kejadian minimum:",
+    "minOccurrencesLabel": "Kejadian minimum",
     "inLast6Months": "(dalam 6 bulan terakhir)",
     "noRecurring": "Tidak ada pengeluaran berulang ditemukan dengan {count}+ kejadian dalam 6 bulan terakhir.",
     "failedToLoad": "Gagal memuat data pengeluaran berulang.",
@@ -1699,8 +1696,6 @@
     "activeBills": "Tagihan Aktif",
     "overdue": "Terlambat",
     "thisMonth": "Bulan Ini",
-    "autoPostsTitle": "Diposting otomatis saat jatuh tempo",
-    "manualPostTitle": "Memerlukan posting manual",
     "autoLabel": "Otomatis",
     "manualLabel": "Manual",
     "overdueLabel": "Terlambat",
@@ -1834,6 +1829,7 @@
     "removeAriaLabel": "Hapus {title} dari perbandingan",
     "removeTitle": "Hapus dari perbandingan",
     "runFailed": "Jalankan gagal",
+    "never": "Belum pernah",
     "errors": {
       "loadScenarioFailed": "Gagal memuat skenario.",
       "simulationFailed": "Simulasi gagal."
@@ -1847,7 +1843,6 @@
     "backToReports": "Kembali ke Laporan",
     "deleteButton": "Hapus Laporan",
     "deleteConfirmMessage": "Apakah Anda yakin ingin menghapus \"{name}\"? Tindakan ini tidak dapat dibatalkan.",
-    "deleting": "Menghapus...",
     "toasts": {
       "loadFailed": "Gagal memuat laporan",
       "updated": "Laporan diperbarui",

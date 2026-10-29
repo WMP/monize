@@ -203,6 +203,120 @@ describe("InvestmentReportDataService", () => {
     expect(v.totalReturn1Week).toBeCloseTo(1.6949, 3);
   });
 
+  describe("daily change needs adjacent, current closes", () => {
+    const changeFor = async (closes: Record<string, string>) => {
+      securitiesRepository.find.mockResolvedValue([
+        {
+          id: "sec1",
+          symbol: "AAA",
+          name: "Alpha",
+          securityType: "STOCK",
+          currencyCode: "USD",
+        },
+      ]);
+      holdingsRepository.find.mockResolvedValue([holding({ quantity: 10 })]);
+      txRepository.find.mockResolvedValue([
+        makeTx({
+          transactionDate: "2024-01-10",
+          quantity: 10,
+          price: 100,
+          totalAmount: 1000,
+        }),
+      ]);
+      manager.query.mockResolvedValue(
+        Object.entries(closes).map(([price_date, close_price]) =>
+          priceRow({ price_date, close_price }),
+        ),
+      );
+      const { rows } = await service.computeHoldings(
+        "u1",
+        ["acc1"],
+        "2024-06-10",
+        "USD",
+      );
+      return rows[0].values;
+    };
+
+    it("is null when the two closes are weeks apart", async () => {
+      const v = await changeFor({ "2024-05-01": "100", "2024-06-10": "120" });
+      expect(v.change).toBeNull();
+      expect(v.changePercent).toBeNull();
+      expect(v.todaysTotalChange).toBeNull();
+    });
+
+    it("is null when the newer close is stale against the as-of date", async () => {
+      const v = await changeFor({ "2024-05-30": "100", "2024-05-31": "120" });
+      expect(v.change).toBeNull();
+      expect(v.todaysTotalChange).toBeNull();
+    });
+
+    it("keeps the figures for adjacent, current closes", async () => {
+      const v = await changeFor({ "2024-06-07": "119", "2024-06-10": "120" });
+      expect(v.change).toBe(1);
+      expect(v.changePercent).toBe(0.8403);
+      expect(v.todaysTotalChange).toBe(10);
+    });
+  });
+
+  describe("period starts at month ends", () => {
+    const returnFor = async (
+      asOf: string,
+      closes: Record<string, string>,
+      key: "totalReturn3Month" | "totalReturn1Year",
+    ) => {
+      securitiesRepository.find.mockResolvedValue([
+        {
+          id: "sec1",
+          symbol: "AAA",
+          name: "Alpha",
+          securityType: "STOCK",
+          currencyCode: "USD",
+        },
+      ]);
+      holdingsRepository.find.mockResolvedValue([holding({ quantity: 10 })]);
+      txRepository.find.mockResolvedValue([
+        makeTx({
+          transactionDate: "2020-01-10",
+          quantity: 10,
+          price: 100,
+          totalAmount: 1000,
+        }),
+      ]);
+      manager.query.mockResolvedValue(
+        Object.entries(closes).map(([price_date, close_price]) =>
+          priceRow({ price_date, close_price }),
+        ),
+      );
+      const { rows } = await service.computeHoldings(
+        "u1",
+        ["acc1"],
+        asOf,
+        "USD",
+      );
+      return rows[0].values[key];
+    };
+
+    it("clamps 3 months before May 31 to Feb 28, not Mar 3", async () => {
+      expect(
+        await returnFor(
+          "2026-05-31",
+          { "2026-02-28": "100", "2026-03-03": "200", "2026-05-31": "220" },
+          "totalReturn3Month",
+        ),
+      ).toBe(120);
+    });
+
+    it("clamps 1 year before Feb 29 to Feb 28, not Mar 1", async () => {
+      expect(
+        await returnFor(
+          "2024-02-29",
+          { "2023-02-28": "100", "2023-03-01": "200", "2024-02-29": "110" },
+          "totalReturn1Year",
+        ),
+      ).toBe(10);
+    });
+  });
+
   it("drops fully-sold positions (not in the holdings table)", async () => {
     securitiesRepository.find.mockResolvedValue([
       {
@@ -775,7 +889,7 @@ describe("InvestmentReportDataService", () => {
 
     it("values a transfer in at the price on its date", async () => {
       // 5 shares enter at 100 (500), 10 and 5 are worth 110 each at the end:
-      // (1650 - 1000 - 500) / (1000 + 500) = 10%.
+      // Modified Dietz, start of day: 150 / (1000 + 500 * 6/7) = 10.5%.
       expect(
         await returnWeek(
           [
@@ -795,7 +909,95 @@ describe("InvestmentReportDataService", () => {
           },
           15,
         ),
+      ).toBeCloseTo(10.5, 4);
+    });
+
+    it("weights a mid-window purchase by the days it was held", async () => {
+      // 10 held at 100, 90 bought on 06-05 at 100, 100 worth 110 on 06-10:
+      // invested 6 of the window's 7 days (06-05..06-10, its own day counted):
+      // 1000 / (1000 + 9000 * 6/7) = 1000 / 8714.2857 = 11.4754%. The old
+      // start-of-window denominator (10000) read 10%.
+      expect(
+        await returnWeek(
+          [
+            held10,
+            {
+              action: InvestmentAction.BUY,
+              transactionDate: "2024-06-05",
+              quantity: 90,
+              price: 100,
+              totalAmount: 9000,
+            },
+          ],
+          { "2024-06-01": "100", "2024-06-10": "110" },
+          100,
+        ),
+      ).toBeCloseTo(11.4754, 4);
+    });
+
+    it("weights a sale out of the denominator", async () => {
+      // 10 held at 100, 9 sold on 06-04 for 900, 1 worth 110 on 06-10:
+      // the sale on the window's first day weighs 1, so the 1 share still held
+      // carries the whole base: (110 + 900 - 1000) / (1000 - 900) = 10%, the
+      // price move.
+      expect(
+        await returnWeek(
+          [
+            held10,
+            {
+              action: InvestmentAction.SELL,
+              transactionDate: "2024-06-04",
+              quantity: 9,
+              price: 100,
+              totalAmount: 900,
+            },
+          ],
+          { "2024-06-01": "100", "2024-06-10": "110" },
+          1,
+        ),
       ).toBeCloseTo(10, 4);
+    });
+
+    it("reports no return when the weighted denominator is not positive", async () => {
+      // 9 sold on 06-04 for 1,200: 1000 - 1200 * 7/7 = -200.
+      expect(
+        await returnWeek(
+          [
+            held10,
+            {
+              action: InvestmentAction.SELL,
+              transactionDate: "2024-06-04",
+              quantity: 9,
+              price: 133.33,
+              totalAmount: 1200,
+            },
+          ],
+          { "2024-06-01": "100", "2024-06-10": "110" },
+          1,
+        ),
+      ).toBeNull();
+    });
+
+    it("weights a flow on the as-of date by its own day", async () => {
+      // 90 bought on 06-10 at 100 and closing at 110: the 900 earned that day
+      // is over 9000 invested for 1 of 7 days, not over nothing, so the
+      // column does not read 100%: 1000 / (1000 + 9000 / 7) = 43.75%.
+      expect(
+        await returnWeek(
+          [
+            held10,
+            {
+              action: InvestmentAction.BUY,
+              transactionDate: "2024-06-10",
+              quantity: 90,
+              price: 100,
+              totalAmount: 9000,
+            },
+          ],
+          { "2024-06-01": "100", "2024-06-10": "110" },
+          100,
+        ),
+      ).toBeCloseTo(43.75, 4);
     });
 
     it("equals the plain return when a dividend is reinvested", async () => {

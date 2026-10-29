@@ -15,23 +15,24 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
-} from "recharts";
-import { builtInReportsApi } from "@/lib/built-in-reports";
-import { PayeeSpendingItem } from "@/types/built-in-reports";
-import { useNumberFormat } from "@/hooks/useNumberFormat";
-import { useDateRange } from "@/hooks/useDateRange";
-import { useReportData } from "@/hooks/useReportData";
-import { useSortableTable, compareValues } from "@/hooks/useSortableTable";
-import { DateRangeSelector } from "@/components/ui/DateRangeSelector";
-import { ChartViewToggle } from "@/components/ui/ChartViewToggle";
-import { chartColors, chartSeriesColor } from "@/lib/chart-colors";
-import { ReportToolbarActions } from "@/components/reports/ReportToolbarActions";
-import { SortableHeader } from "@/components/ui/SortableHeader";
-import { ChartTooltipPanel } from "@/components/reports/ChartTooltip";
-import { ReportError } from "@/components/reports/ReportError";
-import { PartialTotal } from "@/components/ui/PartialTotal";
-import { reportTotal } from "@/lib/currency-total";
-import type { ChartDatum } from "@/types/chart";
+} from 'recharts';
+import { builtInReportsApi } from '@/lib/built-in-reports';
+import { PayeeSpendingItem } from '@/types/built-in-reports';
+import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { useDateRange } from '@/hooks/useDateRange';
+import { useReportData } from '@/hooks/useReportData';
+import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
+import { DateRangeSelector } from '@/components/ui/DateRangeSelector';
+import { ChartViewToggle } from '@/components/ui/ChartViewToggle';
+import { chartColors, chartSeriesColor } from '@/lib/chart-colors';
+import { ReportToolbarActions } from '@/components/reports/ReportToolbarActions';
+import { SortableHeader } from '@/components/ui/SortableHeader';
+import { ChartTooltipPanel } from '@/components/reports/ChartTooltip';
+import { ReportError } from '@/components/reports/ReportError';
+import { PartialTotal } from '@/components/ui/PartialTotal';
+import { reportTotal } from '@/lib/currency-total';
+import type { ChartDatum } from '@/types/chart';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 type SpendingPayeeSortField = "name" | "value" | "percentage";
 
@@ -241,10 +242,8 @@ export function SpendingByPayeeReport() {
             <Skeleton className="h-96 w-full" />
           </div>
         ) : chartData.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            {t("spendingByPayee.noData")}
-          </p>
-        ) : viewType === "table" ? (
+          <EmptyState title={t('spendingByPayee.noData')} />
+        ) : viewType === 'table' ? (
           <>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">

@@ -114,8 +114,8 @@
       "matchAll": "Todas estas",
       "matchAny": "Qualquer uma destas",
       "matchLabel": "Correspondência",
-      "not": "Não",
-      "notLabel": "Negar este grupo: ele corresponde quando suas condições não são atendidas",
+      "not": "Negar grupo",
+      "notHelp": "Um grupo negado corresponde quando suas condições não correspondem.",
       "title": "Grupo",
       "addCondition": "+ Adicionar condição",
       "addGroup": "+ Adicionar grupo",
@@ -201,7 +201,7 @@
       "tags": "Tags",
       "category": "Categoria",
       "payee": "Favorecido",
-      "instruction": "O que deve ser verificado",
+      "instruction": "Instruções de revisão",
       "instructionPlaceholder": "Por exemplo: dividir esta compra conforme o recibo",
       "instructionHelp": "A regra apenas pede uma revisão. Uma pessoa aprova qualquer alteração antes que ela seja feita.",
       "onlyIfEmpty": "Somente se vazio",
@@ -220,7 +220,7 @@
       "createIfMissing": "Criar o favorecido se ele não existir",
       "createIfMissingHelp": "Se ativado e nenhum favorecido corresponder ao nome (por nome, alias ou correspondência aproximada), um novo favorecido é criado. Um favorecido criado por uma regra é mantido se você desfizer a execução.",
       "onlyIfEmptyDescriptionHelp": "Se ativado, a regra escreve a descrição somente se a transação não tiver nenhuma. Desative para escrevê-la sempre.",
-      "mode": "Como escrever",
+      "mode": "Modo de descrição",
       "modes": {
         "replace": "Substituir a descrição",
         "append": "Acrescentar depois da descrição",
@@ -262,12 +262,12 @@
         "windowHelp": "A que distância da data de vencimento o banco pode cobrar o pagamento. Um débito até esse número de dias antes ou depois do vencimento de uma parcela paga essa parcela; um que esteja fora da margem permanece inalterado.",
         "daysBefore": "Dias antes do vencimento",
         "daysAfter": "Dias depois do vencimento",
-        "excess": "Quando o débito é maior que a parcela",
+        "excess": "Débito acima da parcela",
         "excessPolicies": {
           "extra_principal": "Pagar a diferença como amortização extra",
           "refuse": "Deixar a transação inalterada"
         },
-        "shortfall": "Quando o débito é menor que a parcela",
+        "shortfall": "Débito abaixo da parcela",
         "shortfallPolicies": {
           "refuse": "Deixar a transação inalterada",
           "interest_first": "Pagar primeiro os juros, o resto como principal"

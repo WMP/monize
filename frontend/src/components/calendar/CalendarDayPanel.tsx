@@ -311,7 +311,18 @@ export function CalendarDayPanel({
   if (!asDialog) return body;
 
   return (
-    <Modal isOpen onClose={onClose} maxWidth="lg" padding="md" title={formatDate(date)}>
+    <Modal
+      isOpen
+      onClose={onClose}
+      maxWidth="lg"
+      padding="md"
+      title={formatDate(date)}
+      footer={
+        <Button type="button" variant="outline" onClick={onClose}>
+          {common('close')}
+        </Button>
+      }
+    >
       {body}
     </Modal>
   );

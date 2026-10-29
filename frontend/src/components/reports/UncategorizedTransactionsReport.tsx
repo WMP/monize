@@ -16,7 +16,7 @@ import { useDateRange } from '@/hooks/useDateRange';
 import { DateRangeSelector } from '@/components/ui/DateRangeSelector';
 import { ReportToolbarActions } from '@/components/reports/ReportToolbarActions';
 import { SortableHeader } from '@/components/ui/SortableHeader';
-import { CAPTION_CLASS, CellLabel, PHONE_HEADER_CLASS } from '@/components/ui/Table';
+import { CAPTION_CLASS, CellLabel, PHONE_HEADER_CLASS, TH_CLASS } from '@/components/ui/Table';
 import { INTERACTIVE_ROW_FOCUS_CLASS, activateOnKey } from '@/components/ui/interactive-row';
 import type {
   SortColumn as TableSortColumn,
@@ -29,6 +29,8 @@ import { PartialTotal } from '@/components/ui/PartialTotal';
 import { reportTotal } from '@/lib/currency-total';
 import { LinkifiedText } from '@/components/ui/LinkifiedText';
 import { quoteSearchValue } from '@/lib/search-query';
+import { CheckCircleIcon } from '@heroicons/react/24/outline';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 type SortField = 'date' | 'amount' | 'payee' | 'account';
 
@@ -54,9 +56,6 @@ type SortColumn = TableSortColumn<SortField>;
  * Here it is a compile error instead.
  */
 type SortColumnsByField = TableSortColumnsByField<SortField, SortColumn>;
-
-// Today's header cell, unchanged.
-const HEADER_CLASS = 'px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase';
 
 // The amount cell inside a wrapped row: no padding of its own below `sm` and
 // this table's own `px-4 py-3` from `sm` up. Smaller type on phones so a
@@ -277,20 +276,9 @@ export function UncategorizedTransactionsReport() {
     }));
   };
 
-  if (error) {
-    return <ReportError onRetry={reload} />;
-  }
-
-  if (isLoading) {
-    return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-        <div className="space-y-4">
-          <Skeleton className="h-8 w-1/3" />
-          <Skeleton className="h-64 w-full" />
-        </div>
-      </div>
-    );
-  }
+  // Loading and error render inside the tree below, never as an early return,
+  // so the toolbar stays mounted across a reload.
+  const dataUnavailable = isLoading || !!error;
 
   const summary = reportData?.summary || {
     totalCount: 0,
@@ -312,6 +300,14 @@ export function UncategorizedTransactionsReport() {
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
+      {dataUnavailable ? (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+        </div>
+      ) : (
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
           <div className="text-sm text-gray-500 dark:text-gray-400">{t('uncategorizedTransactions.totalUncategorized')}</div>
@@ -351,6 +347,7 @@ export function UncategorizedTransactionsReport() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Controls */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
@@ -396,16 +393,18 @@ export function UncategorizedTransactionsReport() {
       </div>
 
       {/* Transactions Table */}
-      {summary.totalCount === 0 ? (
+      {error ? (
+        <ReportError onRetry={reload} />
+      ) : isLoading ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-          <div className="text-center py-8">
-            <svg className="h-12 w-12 mx-auto text-green-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p className="text-gray-500 dark:text-gray-400">
-              {t('uncategorizedTransactions.allCategorized')}
-            </p>
+          <div className="space-y-4">
+            <Skeleton className="h-8 w-1/3" />
+            <Skeleton className="h-64 w-full" />
           </div>
+        </div>
+      ) : summary.totalCount === 0 ? (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
+          <EmptyState icon={<CheckCircleIcon />} title={t('uncategorizedTransactions.allCategorized')} />
         </div>
       ) : (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 overflow-hidden">
@@ -566,7 +565,7 @@ export function UncategorizedTransactionsReport() {
                       sortDirection={sortDirection}
                       onSort={handleSort}
                       align={col.align}
-                      className={HEADER_CLASS}
+                      className={TH_CLASS}
                     >
                       {col.label}
                     </SortableHeader>

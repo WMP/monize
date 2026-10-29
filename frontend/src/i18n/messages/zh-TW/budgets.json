@@ -83,7 +83,6 @@
     "baseIncomePlaceholder": "預期每月收入",
     "active": "啟用",
     "saveChanges": "儲存變更",
-    "saving": "儲存中...",
     "typeOptions": {
       "MONTHLY": "每月",
       "ANNUAL": "年度",
@@ -109,7 +108,8 @@
     "title": "消費熱圖 - {monthLabel}",
     "ariaLabel": "消費熱圖",
     "less": "較少",
-    "more": "較多"
+    "more": "較多",
+    "readout": "{date}：{amount}"
   },
   "periodDetail": {
     "summaryCards": {
@@ -134,7 +134,8 @@
     "rolloverBadge": "+{amount} 結轉",
     "underBudgetLabel": "低於預算 {amount}",
     "overBudgetLabel": "超出預算 {amount}",
-    "carriedForward": "結轉 {amount}"
+    "carriedForward": "結轉 {amount}",
+    "dateRange": "{start} 至 {end}"
   },
   "periodSelector": {
     "label": "期間：",
@@ -471,11 +472,18 @@
         "description": "透過分析您的消費記錄建立第一個預算。精靈將根據您的交易記錄建議合理的金額。",
         "cta": "建立您的第一個預算"
       },
+      "loading": "正在載入預算...",
+      "columns": {
+        "name": "名稱",
+        "strategy": "策略",
+        "type": "類型",
+        "categories": "類別",
+        "started": "開始日期",
+        "status": "狀態"
+      },
       "card": {
         "active": "啟用中",
-        "inactive": "停用",
-        "categories": "{count} 個類別",
-        "started": "開始於 {date}"
+        "inactive": "停用"
       }
     },
     "create": {
@@ -484,6 +492,9 @@
     },
     "detail": {
       "backToBudgets": "返回預算",
+      "switchBudget": "切換到其他預算",
+      "switchPlaceholder": "篩選預算...",
+      "switchNoMatches": "沒有符合的預算",
       "notFound": "找不到預算",
       "delete": {
         "title": "刪除預算",
@@ -501,7 +512,7 @@
     "edit": {
       "subtitlePrefix": "編輯：",
       "subtitle": "更新預算設定和類別分配",
-      "backToDashboard": "返回儀表板",
+      "backToBudget": "返回 {name}",
       "budgetSettings": "預算設定",
       "categoryAllocations": "類別分配",
       "income": "收入",

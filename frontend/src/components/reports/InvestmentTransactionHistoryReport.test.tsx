@@ -479,12 +479,12 @@ describe('InvestmentTransactionHistoryReport', () => {
       await act(async () => {
         render(<InvestmentTransactionHistoryReport />);
       });
-      await waitFor(() => expect(screen.getByText('Try again')).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText('Try Again')).toBeInTheDocument());
       mockGetTransactionSummary.mockResolvedValue(
         summaryFixture({ transactionCount: 7, securitiesTraded: 3 }),
       );
       await act(async () => {
-        fireEvent.click(screen.getByText('Try again'));
+        fireEvent.click(screen.getByText('Try Again'));
       });
       await waitFor(() => expect(screen.getByText('Total Transactions')).toBeInTheDocument());
       expect(screen.getByText('Total Transactions').parentElement?.textContent).toContain('7');

@@ -16,12 +16,13 @@
     "chartUnavailable": "Diagramm vorübergehend nicht verfügbar"
   },
   "viewTabs": {
-    "list": "Liste",
-    "calendar": "Kalender",
+    "filterLabel": "Zeitplantyp",
     "filterAll": "Alle ({count})",
     "filterBills": "Rechnungen ({count})",
     "filterDeposits": "Einzahlungen ({count})",
-    "todayButton": "Heute"
+    "todayButton": "Heute",
+    "previousMonth": "Vorheriger Monat",
+    "nextMonth": "Nächster Monat"
   },
   "form": {
     "titleNew": "Neue terminierte Buchung",

@@ -1,5 +1,6 @@
 import { createElement, type ReactNode, type ThHTMLAttributes, type TdHTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
+import { SortIcon } from './SortIcon';
 
 /**
  * Shared table chrome.
@@ -122,5 +123,56 @@ export function Td({ align = 'left', className, children, ...rest }: TdProps) {
     'td',
     { className: cn(TD_CLASS, ALIGN_CLASS[align], className), ...rest },
     children,
+  );
+}
+
+type SortableThProps<Field extends string> = Omit<ThHTMLAttributes<HTMLTableCellElement>, 'onClick'> & {
+  field: Field;
+  sortField: Field;
+  sortDirection: 'asc' | 'desc';
+  onSort: (field: Field) => void;
+  align?: 'left' | 'right' | 'center';
+  /** Drawn after the sort button, outside it: an `InfoTooltip` on the column. */
+  adornment?: ReactNode;
+  children?: ReactNode;
+};
+
+/**
+ * A list's sortable header cell: a `<th aria-sort>` in `TH_CLASS` holding a
+ * `<button>`, so the sort is reached and activated from the keyboard and its
+ * direction is announced. A `<th onClick>` is neither. Report tables keep
+ * `SortableHeader`, which makes the `<th>` itself focusable.
+ */
+export function SortableTh<Field extends string>({
+  field,
+  sortField,
+  sortDirection,
+  onSort,
+  align = 'left',
+  adornment,
+  className,
+  children,
+  ...rest
+}: SortableThProps<Field>) {
+  const active = field === sortField;
+  return createElement(
+    'th',
+    {
+      className: cn(TH_CLASS, ALIGN_CLASS[align], className),
+      'aria-sort': active ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none',
+      ...rest,
+    },
+    createElement(
+      'button',
+      {
+        type: 'button',
+        onClick: () => onSort(field),
+        className:
+          'inline-flex items-center uppercase tracking-wider rounded hover:text-gray-700 dark:hover:text-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
+      },
+      children,
+      createElement(SortIcon, { field, sortField, sortDirection }),
+    ),
+    adornment,
   );
 }

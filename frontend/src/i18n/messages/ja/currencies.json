@@ -4,6 +4,8 @@
     "subtitle": "勘定科目と有価証券で使用される通貨を管理する",
     "refreshRates": "レートを更新",
     "refreshing": "更新中...",
+    "ratesAge": "({time})",
+    "statusFilterLabel": "ステータス",
     "newCurrency": "+ 新規通貨",
     "searchPlaceholder": "コードまたは名前で検索...",
     "statusAll": "すべて ({count})",
@@ -70,9 +72,9 @@
       "activate": "有効化",
       "deleteCurrency": "通貨を削除"
     },
-    "usageTooltip": "{accounts} 勘定科目、{securities} 有価証券",
-    "usageAccounts": "{count, plural, one {# 勘定} other {# 勘定}}",
-    "usageSecurities": "{count, plural, one {# 証券} other {# 証券}}",
+    "usageAccounts": "{count, plural, other {# 口座}}",
+    "usageSecurities": "{count, plural, other {# 銘柄}}",
+    "rateHelp": "各通貨の1単位が{currency}でいくらになるか。",
     "empty": {
       "title": "通貨がありません",
       "subtitle": "通貨を追加して始めましょう。"

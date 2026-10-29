@@ -119,6 +119,19 @@ describe('ApiAccessSection', () => {
     expect(screen.getByText(/Use this URL when configuring MCP clients/)).toBeInTheDocument();
   });
 
+  it('reads when a token was last used through the locale-aware relative time', async () => {
+    const threeDaysAgo = new Date(Date.now() - 3 * 86_400_000).toISOString();
+    (authApi.getTokens as any).mockResolvedValue([
+      { ...mockToken, lastUsedAt: threeDaysAgo },
+      { ...mockToken, id: 'tok-2', name: 'Unused', lastUsedAt: null },
+    ]);
+    render(<ApiAccessSection />);
+
+    // Intl.RelativeTimeFormat's wording, not a catalog "{count} days ago".
+    expect(await screen.findByText(/Last used\s+3 days ago/)).toBeInTheDocument();
+    expect(screen.getByText(/Last used\s+Never/)).toBeInTheDocument();
+  });
+
   it('renders the Create Token button', async () => {
     render(<ApiAccessSection />);
 

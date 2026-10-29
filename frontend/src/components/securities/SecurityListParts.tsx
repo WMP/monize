@@ -280,14 +280,16 @@ export function SecurityProviderBadge({
   const effective = security.quoteProvider ?? defaultQuoteProvider;
   const isOverride = !!security.quoteProvider;
   const baseClass = PROVIDER_BADGE_CLASS[effective] ?? PROVIDER_BADGE_CLASS.yahoo;
+  const provider = t(`form.providers.${effective}`);
+  // Whether the provider is this security's own or the preference's default is
+  // written on the badge, not left to a hover-only title a phone never shows.
   return (
     <span
       className={`inline-flex items-center rounded text-xs font-medium px-2 py-0.5 ${baseClass} ${
         isOverride ? '' : 'italic opacity-70'
       }`}
-      title={isOverride ? t('list.providerTitle.override') : t('list.providerTitle.inherited')}
     >
-      {t(`form.providers.${effective}`)}
+      {isOverride ? provider : t('list.providerInherited', { provider })}
     </span>
   );
 }
@@ -314,7 +316,6 @@ export function SecurityPriceSourceBadge({ security }: { security: Security }) {
   return (
     <span
       className={`inline-flex items-center rounded text-xs font-medium px-2 py-0.5 ${priceSourceBadgeClass(security.lastPriceSource)}`}
-      title={security.lastPriceSource}
     >
       {label}
     </span>

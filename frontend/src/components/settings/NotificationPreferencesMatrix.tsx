@@ -194,7 +194,7 @@ export function NotificationPreferencesMatrix({
       {...tourAnchor(TOUR_ANCHORS.notificationChannelMatrix)}
       className="border-t border-gray-200 pt-4 pb-4 dark:border-gray-700"
     >
-      <h3 className="mb-1 text-sm font-medium text-gray-900 dark:text-gray-100">
+      <h3 className="mb-1 text-sm font-semibold text-gray-900 dark:text-gray-100">
         {t('heading')}
       </h3>
       <p className="mb-3 text-sm text-gray-500 dark:text-gray-400">

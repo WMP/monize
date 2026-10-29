@@ -107,8 +107,8 @@ export function TradeCurrencyMarkersFields({ form, currencies, baseCurrency, onC
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" variant="outline" size="sm" onClick={add} disabled={atMax}>
-          <PlusIcon className="mr-1 h-4 w-4" aria-hidden />
+        <Button type="button" variant="outline" size="sm" onClick={add} disabled={atMax} className="gap-1.5">
+          <PlusIcon className="h-4 w-4" aria-hidden />
           {t('markerAdd')}
         </Button>
         {atMax && (

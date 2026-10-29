@@ -166,7 +166,7 @@ describe('LoanOverpaymentSimulatorReport', () => {
     await renderReport();
     await act(async () => {});
 
-    expect(screen.getByText('Try again')).toBeInTheDocument();
+    expect(screen.getByText('Try Again')).toBeInTheDocument();
   });
 
   it('shows the retryable error state when the scenarios request fails, instead of silently rendering none', async () => {
@@ -175,7 +175,7 @@ describe('LoanOverpaymentSimulatorReport', () => {
     await renderReport();
     await act(async () => {});
 
-    expect(screen.getByText('Try again')).toBeInTheDocument();
+    expect(screen.getByText('Try Again')).toBeInTheDocument();
     expect(screen.queryByTestId('loan-detail-view')).not.toBeInTheDocument();
   });
 

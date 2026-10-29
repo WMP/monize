@@ -132,12 +132,6 @@
       "updatedSecurityTransfer": "Transferencia de valores actualizada",
       "ranTransactionRule": "Se ejecutó la regla «{name}» en {count, plural, one {# transacción} other {# transacciones}}"
     },
-    "timeAgo": {
-      "justNow": "justo ahora",
-      "minutes": "hace {count} min",
-      "hours": "hace {count} h",
-      "days": "hace {count} d"
-    },
     "undonePrefix": "Deshecho: {description}",
     "redonePrefix": "Rehecho: {description}"
   },

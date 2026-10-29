@@ -114,8 +114,8 @@
       "matchAll": "满足以下全部",
       "matchAny": "满足以下任意一项",
       "matchLabel": "匹配方式",
-      "not": "非",
-      "notLabel": "对此组取反：当其条件不成立时匹配",
+      "not": "对组取反",
+      "notHelp": "取反的组在其条件不成立时匹配。",
       "title": "条件组",
       "addCondition": "+ 添加条件",
       "addGroup": "+ 添加条件组",
@@ -201,7 +201,7 @@
       "tags": "标签",
       "category": "分类",
       "payee": "收款方",
-      "instruction": "需要检查什么",
+      "instruction": "审核说明",
       "instructionPlaceholder": "例如：按收据拆分这笔消费",
       "instructionHelp": "规则只会请求审核。任何更改在执行前都需要由人工批准。",
       "onlyIfEmpty": "仅在为空时",
@@ -220,7 +220,7 @@
       "createIfMissing": "收款方不存在时创建",
       "createIfMissingHelp": "开启后，如果没有收款方与该名称匹配（按名称、别名或相近匹配），则创建新的收款方。规则创建的收款方在撤销运行后仍会保留。",
       "onlyIfEmptyDescriptionHelp": "开启后，仅当交易没有说明时，规则才会写入说明。关闭后每次都会写入。",
-      "mode": "写入方式",
+      "mode": "说明写入方式",
       "modes": {
         "replace": "替换说明",
         "append": "添加到说明之后",
@@ -262,12 +262,12 @@
         "windowHelp": "银行可能在到期日前后多久扣款。在某一期到期日前后这么多天内的扣款将偿还该期；窗口之外的扣款保持不变。",
         "daysBefore": "到期日前的天数",
         "daysAfter": "到期日后的天数",
-        "excess": "当扣款金额超过该期还款额时",
+        "excess": "扣款高于该期还款额",
         "excessPolicies": {
           "extra_principal": "将差额作为额外本金偿还",
           "refuse": "保持该交易不变"
         },
-        "shortfall": "当扣款金额低于该期还款额时",
+        "shortfall": "扣款低于该期还款额",
         "shortfallPolicies": {
           "refuse": "保持该交易不变",
           "interest_first": "先偿还利息，其余作为本金"

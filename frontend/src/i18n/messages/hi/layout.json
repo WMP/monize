@@ -132,12 +132,6 @@
       "updatedSecurityTransfer": "प्रतिभूति स्थानांतरण अपडेट हुआ",
       "ranTransactionRule": "नियम “{name}” को {count, plural, one {# लेनदेन} other {# लेनदेन}} पर चलाया गया"
     },
-    "timeAgo": {
-      "justNow": "अभी-अभी",
-      "minutes": "{count} मिनट पहले",
-      "hours": "{count} घंटे पहले",
-      "days": "{count} दिन पहले"
-    },
     "undonePrefix": "पूर्ववत: {description}",
     "redonePrefix": "फिर से किया: {description}"
   },

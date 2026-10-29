@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { ChevronRightIcon } from '@heroicons/react/20/solid';
+import { ChevronRightIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { Th } from '@/components/ui/Table';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import {
   Security,
   SecurityPrice,
@@ -472,25 +474,27 @@ export function SecurityPriceHistory({
                               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                                 <thead className="bg-gray-50 dark:bg-gray-900">
                                   <tr>
-                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{t('priceHistory.columns.date')}</th>
-                                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{t('priceHistory.columns.close')}</th>
+                                    <Th className="px-3 py-2">{t('priceHistory.columns.date')}</Th>
+                                    <Th align="right" className="px-3 py-2">{t('priceHistory.columns.close')}</Th>
                                     {/* The total-return close. Shown so it is visible whether the
                                         provider supplies it at all -- MSN does not, and a column of
                                         dashes here is the only way to notice before a return
                                         calculation quietly uses price instead. */}
-                                    <th
-                                      className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hidden lg:table-cell"
-                                      title={t('priceHistory.columns.adjustedCloseTitle')}
-                                    >
+                                    <Th align="right" className="px-3 py-2 hidden lg:table-cell whitespace-nowrap">
                                       {t('priceHistory.columns.adjustedClose')}
-                                    </th>
-                                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hidden sm:table-cell">{t('priceHistory.columns.open')}</th>
-                                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hidden sm:table-cell">{t('priceHistory.columns.high')}</th>
-                                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hidden sm:table-cell">{t('priceHistory.columns.low')}</th>
-                                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hidden md:table-cell">{t('priceHistory.columns.volume')}</th>
-                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{t('priceHistory.columns.source')}</th>
+                                      <InfoTooltip
+                                        text={t('priceHistory.columns.adjustedCloseTitle')}
+                                        align="right"
+                                        usePortal
+                                      />
+                                    </Th>
+                                    <Th align="right" className="px-3 py-2 hidden sm:table-cell">{t('priceHistory.columns.open')}</Th>
+                                    <Th align="right" className="px-3 py-2 hidden sm:table-cell">{t('priceHistory.columns.high')}</Th>
+                                    <Th align="right" className="px-3 py-2 hidden sm:table-cell">{t('priceHistory.columns.low')}</Th>
+                                    <Th align="right" className="px-3 py-2 hidden md:table-cell">{t('priceHistory.columns.volume')}</Th>
+                                    <Th className="px-3 py-2">{t('priceHistory.columns.source')}</Th>
                                     {/* Actions - hidden on mobile, where long-press opens the sheet */}
-                                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hidden sm:table-cell">{t('priceHistory.columns.actions')}</th>
+                                    <Th align="right" className="px-3 py-2 hidden sm:table-cell">{t('priceHistory.columns.actions')}</Th>
                                   </tr>
                                 </thead>
                               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">

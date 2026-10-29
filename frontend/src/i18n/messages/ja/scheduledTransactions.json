@@ -6,7 +6,7 @@
       "category": "カテゴリ",
       "amount": "金額",
       "schedule": "スケジュール",
-      "auto": "自動",
+      "auto": "自動投稿",
       "actions": "操作"
     },
     "empty": {
@@ -25,7 +25,6 @@
     "modifiedDateTitle": "この回の予定日を変更済み",
     "splitBadge": "分割 ({count})",
     "autoPostBadge": "オン",
-    "autoPostTitle": "期日に自動投稿",
     "inactiveSuffix": " — 非アクティブ",
     "actionTitles": {
       "post": "取引を投稿",
@@ -76,9 +75,7 @@
     "accountsLabel": "口座",
     "accountsPlaceholder": "すべての口座",
     "categoriesLabel": "カテゴリ",
-    "categoriesPlaceholder": "すべてのカテゴリ",
-    "collapseAriaLabel": "フィルターを折りたたむ",
-    "expandAriaLabel": "フィルターを展開する"
+    "categoriesPlaceholder": "すべてのカテゴリ"
   },
   "postDialog": {
     "title": "取引を投稿",

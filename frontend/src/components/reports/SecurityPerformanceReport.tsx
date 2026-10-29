@@ -35,7 +35,7 @@ import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { ReportToolbarActions } from '@/components/reports/ReportToolbarActions';
 import { SortableHeader } from '@/components/ui/SortableHeader';
-import { CAPTION_CLASS, CellLabel, PHONE_HEADER_CLASS } from '@/components/ui/Table';
+import { CAPTION_CLASS, CellLabel, PHONE_HEADER_CLASS, TH_CLASS } from '@/components/ui/Table';
 import type {
   SortColumn as TableSortColumn,
   SortColumnsByField as TableSortColumnsByField,
@@ -50,6 +50,8 @@ import { DateRangeSelector } from '@/components/ui/DateRangeSelector';
 import { useDateRange } from '@/hooks/useDateRange';
 import { CHART_RANGES } from '@/lib/security-detail';
 import { MarketIndex } from '@/types/investment';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
 
 const MAX_PAGES = 50;
 
@@ -75,12 +77,6 @@ type DividendSortField = 'date' | 'account' | 'type' | 'amount';
  */
 type TradeSortColumn = TableSortColumn<TradeSortField, 'right'>;
 type DividendSortColumn = TableSortColumn<DividendSortField, 'right'>;
-
-// Today's header cell, unchanged (no `tracking-wider`, matching what these two
-// tables render). Kept local -- `PHONE_HEADER_CLASS`/`CAPTION_CLASS`/`CellLabel`
-// are shared, but a table's own header and money cells stay per-report because
-// their track budgets differ.
-const HEADER_CLASS = 'px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase';
 
 // A money (or share-count) cell inside a wrapped row: no padding of its own
 // below `sm` (the row supplies it and the grid does the spacing), this table's
@@ -657,36 +653,38 @@ export function SecurityPerformanceReport() {
               />
             </div>
           </div>
-          <div className="flex flex-wrap gap-2 items-center">
-            {isSingle && (
-              <>
-                <button
-                  onClick={() => setViewType('chart')}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                    viewType === 'chart' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                  }`}
-                >
-                  {t('securityPerformance.viewPriceChart')}
-                </button>
-                <button
-                  onClick={() => setViewType('transactions')}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                    viewType === 'transactions' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                  }`}
-                >
-                  {t('securityPerformance.viewTransactions')}
-                </button>
-                <button
-                  onClick={() => setViewType('dividends')}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                    viewType === 'dividends' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                  }`}
-                >
-                  {t('securityPerformance.viewDividends')}
-                </button>
-              </>
-            )}
-          </div>
+          {isSingle && (
+            <div
+              className={`${SEGMENTED_GROUP_CLASS} flex-wrap`}
+              role="group"
+              aria-label={t('reportPage.viewLabel')}
+            >
+              <button
+                type="button"
+                onClick={() => setViewType('chart')}
+                aria-pressed={viewType === 'chart'}
+                className={segmentClass(viewType === 'chart')}
+              >
+                {t('securityPerformance.viewPriceChart')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewType('transactions')}
+                aria-pressed={viewType === 'transactions'}
+                className={segmentClass(viewType === 'transactions')}
+              >
+                {t('securityPerformance.viewTransactions')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewType('dividends')}
+                aria-pressed={viewType === 'dividends'}
+                className={segmentClass(viewType === 'dividends')}
+              >
+                {t('securityPerformance.viewDividends')}
+              </button>
+            </div>
+          )}
           {/* The export is disabled rather than absent until a security is
               picked: a button that appears on selection moves the row under
               the reader's thumb on a phone. */}
@@ -814,16 +812,16 @@ export function SecurityPerformanceReport() {
                 <div className={`text-sm ${gainLossColor(stats.totalReturn)}`}>
                   {t('securityPerformance.totalReturn')}
                 </div>
-                <div className={`text-xl font-bold ${stats.totalReturn >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
+                <div className={`text-xl font-bold ${gainLossColor(stats.totalReturn)}`}>
                   {stats.totalReturn >= 0 ? '+' : ''}{formatCurrencyFull(stats.totalReturn, displayCurrency)}
                 </div>
-                <div className={`text-xs mt-1 ${stats.totalReturn >= 0 ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
+                <div className={`text-xs mt-1 ${gainLossColor(stats.totalReturn)}`}>
                   {formatSignedPercent(stats.totalReturnPercent)}
                 </div>
               </div>
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
                 <div className="text-sm text-gray-500 dark:text-gray-400">{t('securityPerformance.annualizedReturn')}</div>
-                <div className={`text-xl font-bold ${stats.annualizedReturn !== null ? (stats.annualizedReturn >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300') : 'text-gray-400'}`}>
+                <div className={`text-xl font-bold ${stats.annualizedReturn !== null ? gainLossColor(stats.annualizedReturn) : 'text-gray-400'}`}>
                   {stats.annualizedReturn !== null
                     ? formatSignedPercent(stats.annualizedReturn)
                     : '-'}
@@ -955,7 +953,7 @@ export function SecurityPerformanceReport() {
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <p className="text-gray-500 dark:text-gray-400 text-center py-8">{t('securityPerformance.noPriceHistory')}</p>
+                <EmptyState title={t('securityPerformance.noPriceHistory')} />
               )}
             </div>
           ) : viewType === 'transactions' ? (
@@ -1013,7 +1011,7 @@ export function SecurityPerformanceReport() {
                             sortDirection={tradeSort.sortDirection}
                             onSort={tradeSort.handleSort}
                             align={col.align}
-                            className={HEADER_CLASS}
+                            className={TH_CLASS}
                           >
                             {col.label}
                           </SortableHeader>
@@ -1120,7 +1118,7 @@ export function SecurityPerformanceReport() {
                             sortDirection={dividendSort.sortDirection}
                             onSort={dividendSort.handleSort}
                             align={col.align}
-                            className={HEADER_CLASS}
+                            className={TH_CLASS}
                           >
                             {col.label}
                           </SortableHeader>

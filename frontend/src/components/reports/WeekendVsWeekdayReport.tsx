@@ -30,6 +30,8 @@ import { PartialDataNotice } from '@/components/reports/PartialDataNotice';
 import { PartialTotal } from '@/components/ui/PartialTotal';
 import { UnknownAmount } from '@/components/ui/UnknownAmount';
 import { isComplete, reportTotal, type ConvertedTotal } from '@/lib/currency-total';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
 
 // Weekend purple vs weekday blue, drawn from the categorical theme palette.
 const WEEKEND_COLOR = CHART_SERIES[4];
@@ -67,6 +69,14 @@ function WeekendVsWeekdayTooltip({ active, payload, label, formatCurrency }: Wee
   return null;
 }
 
+type WeekendViewType = 'comparison' | 'byDay' | 'categories';
+
+const VIEW_OPTIONS = [
+  { value: 'comparison', labelKey: 'weekendVsWeekday.viewOverview' },
+  { value: 'byDay', labelKey: 'weekendVsWeekday.viewByDay' },
+  { value: 'categories', labelKey: 'weekendVsWeekday.viewByCategory' },
+] as const satisfies ReadonlyArray<{ value: WeekendViewType; labelKey: string }>;
+
 export function WeekendVsWeekdayReport() {
   const { withPdfBasis } = useReportExportMetadata('cash');
   const t = useTranslations('reports');
@@ -75,7 +85,7 @@ export function WeekendVsWeekdayReport() {
   const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatPercent, defaultCurrency } = useNumberFormat();
   const chartRef = useRef<HTMLDivElement>(null);
   const { dateRange, setDateRange, resolvedRange } = useDateRange({ defaultRange: '3m', alignment: 'day' });
-  const [viewType, setViewType] = useState<'comparison' | 'byDay' | 'categories'>('comparison');
+  const [viewType, setViewType] = useState<WeekendViewType>('comparison');
 
   const { start: rangeStart, end: rangeEnd } = resolvedRange;
 
@@ -186,20 +196,9 @@ export function WeekendVsWeekdayReport() {
     }));
   };
 
-  if (error) {
-    return <ReportError onRetry={reload} />;
-  }
-
-  if (isLoading) {
-    return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-        <div className="space-y-4">
-          <Skeleton className="h-8 w-1/3" />
-          <Skeleton className="h-96 w-full" />
-        </div>
-      </div>
-    );
-  }
+  // Loading and error render inside the tree below, never as an early return,
+  // so the toolbar stays mounted across a reload.
+  const dataUnavailable = isLoading || !!error;
 
   // Known parts of zero with rows left out is not an empty period.
   const hasData = totalSpending > 0 || weekendCount + weekdayCount > 0;
@@ -207,6 +206,15 @@ export function WeekendVsWeekdayReport() {
   return (
     <div ref={chartRef} className="space-y-6">
       {/* Summary Cards */}
+      {dataUnavailable ? (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+        </div>
+      ) : (
+      <>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
           <div className="text-sm text-purple-600 dark:text-purple-400">{t('weekendVsWeekday.weekendSpending')}</div>
@@ -248,6 +256,8 @@ export function WeekendVsWeekdayReport() {
         excludedCount={reportData?.excludedCount ?? 0}
         displayCurrency={reportingCurrency}
       />
+      </>
+      )}
 
       {/* Controls */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
@@ -257,52 +267,39 @@ export function WeekendVsWeekdayReport() {
             value={dateRange}
             onChange={setDateRange}
           />
-          {/* `items-stretch`, not `items-center`: squeezed onto a phone these
-              labels wrap onto a different number of lines each, and the
-              one-word button (Overview) stood shorter than the two beside it.
-              They wrap onto their own lines here, all the height of the
-              tallest on the line. */}
-          <div className="flex flex-wrap gap-2 items-stretch">
-            <button
-              onClick={() => setViewType('comparison')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                viewType === 'comparison'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-              }`}
-            >
-              {t('weekendVsWeekday.viewOverview')}
-            </button>
-            <button
-              onClick={() => setViewType('byDay')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                viewType === 'byDay'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-              }`}
-            >
-              {t('weekendVsWeekday.viewByDay')}
-            </button>
-            <button
-              onClick={() => setViewType('categories')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                viewType === 'categories'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-              }`}
-            >
-              {t('weekendVsWeekday.viewByCategory')}
-            </button>
+          <div
+            className={`${SEGMENTED_GROUP_CLASS} flex-wrap`}
+            role="group"
+            aria-label={t('reportPage.viewLabel')}
+          >
+            {VIEW_OPTIONS.map(({ value, labelKey }) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={viewType === value}
+                className={segmentClass(viewType === value)}
+                onClick={() => setViewType(value)}
+              >
+                {t(labelKey)}
+              </button>
+            ))}
           </div>
-          <ReportToolbarActions onExportPdf={handleExportPdf} />
+          <ReportToolbarActions onExportPdf={handleExportPdf} disabled={dataUnavailable} />
         </div>
       </div>
 
-      {!hasData ? (
+      {error ? (
+        <ReportError onRetry={reload} />
+      ) : isLoading ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            {t('weekendVsWeekday.noData')}
-          </p>
+          <div className="space-y-4">
+            <Skeleton className="h-8 w-1/3" />
+            <Skeleton className="h-96 w-full" />
+          </div>
+        </div>
+      ) : !hasData ? (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
+          <EmptyState title={t('weekendVsWeekday.noData')} />
         </div>
       ) : viewType === 'comparison' ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">

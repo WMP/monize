@@ -21,7 +21,6 @@
     "passwordConfirmNote": "이메일 주소를 변경할 때는 비밀번호 확인이 필요합니다.",
     "pendingEmailNotice": "{email}(으)로 확인 링크를 보냈습니다. 링크를 열면 이메일 주소가 변경됩니다.",
     "saveButton": "프로필 저장",
-    "savingButton": "저장 중...",
     "toasts": {
       "success": "프로필이 성공적으로 업데이트되었습니다",
       "confirmationSent": "{email}에서 새 이메일 주소를 확인하는 링크를 확인하세요",
@@ -46,7 +45,6 @@
     "confirmPasswordLabel": "새 비밀번호 확인",
     "confirmPasswordPlaceholder": "새 비밀번호를 확인하세요",
     "changePasswordButton": "비밀번호 변경",
-    "changingPasswordButton": "변경 중...",
     "toasts": {
       "passwordChanged": "비밀번호가 성공적으로 변경되었습니다",
       "passwordChangeFailed": "비밀번호 변경에 실패했습니다"
@@ -106,6 +104,8 @@
       "noDevices": "신뢰할 수 있는 기기가 없습니다. 2FA 로그인 시 \"이 브라우저에서 다시 묻지 않음\"을 선택하면 해당 기기가 여기에 표시됩니다.",
       "currentBadge": "현재",
       "revokeButton": "취소",
+      "ipAddress": "IP: {ip}",
+      "dates": "추가됨 {added} · 마지막 사용 {lastUsed} · 만료 {expires}",
       "revokeAllModal": {
         "title": "신뢰할 수 있는 기기 모두 취소",
         "description": "모든 신뢰할 수 있는 기기가 제거됩니다. 다음 로그인 시 모든 기기에서 2FA 코드를 입력해야 합니다."
@@ -226,7 +226,7 @@
       "hideRegisterYearLabel": "거래 목록 날짜에서 연도 숨기기",
       "chartCollapsedLabel": "거래 페이지의 차트를 접은 상태로 시작",
       "widgetsCollapsedLabel": "계정, 수취인, 카테고리 정보를 접은 상태로 시작",
-      "accountOpenTargetLabel": "계정을 열 때",
+      "accountOpenTargetLabel": "계정 기본 보기",
       "accountOpenTargetOptions": {
         "register": "거래 내역 표시",
         "dashboard": "대시보드 표시"
@@ -308,6 +308,10 @@
       "sendTestButton": "테스트 알림 보내기",
       "sendingTestButton": "보내는 중...",
       "removeButton": "삭제",
+      "removeDialog": {
+        "title": "기기 제거",
+        "message": "{device}을(를) 제거하시겠습니까? 해당 기기에서 푸시를 다시 켜기 전까지 푸시 알림을 받지 않습니다."
+      },
       "thisDevice": "이 기기",
       "held": "이 기기에서 로그아웃되었습니다. 여기에서 다시 로그인하면 푸시 알림이 재개됩니다.",
       "unifiedpushBadge": "UnifiedPush",
@@ -486,7 +490,7 @@
   "supportBackup": {
     "title": "지원용 백업 만들기",
     "howItWorks": "백업의 비식별화 사본을 만듭니다. 이름은 마스킹되고(처음과 마지막 두 글자만 남음), 메모/설명/계좌번호는 제거되며, 모든 금액은 하나의 숨겨진 계수로 곱해집니다. 공개 값(환율, 가격, 이자율)은 그대로 유지됩니다. 파일은 항상 아래 비밀번호로 암호화되며 일반 백업처럼 복원됩니다. 이는 우발적 노출로부터 보호할 뿐, 이미 당신을 아는 사람으로부터 보호하지는 않습니다 — 버그 재현을 위해 날짜, 빈도, 구조는 보존됩니다.",
-    "sectionsLabel": "포함할 항목",
+    "sectionsLabel": "포함할 섹션",
     "sections": {
       "investments": "투자(증권, 보유, 가격)",
       "scheduled": "예약 거래",
@@ -652,11 +656,7 @@
       "reason": "토큰은 로그인하지 않고도 계정에 접근할 수 있으므로, 토큰을 만들기 전에 본인임을 확인하세요."
     },
     "relative": {
-      "never": "없음",
-      "today": "오늘",
-      "yesterday": "어제",
-      "daysAgo": "{count}일 전",
-      "monthsAgo": "{count}개월 전"
+      "never": "없음"
     }
   },
   "autoBackup": {
@@ -700,7 +700,6 @@
       "failed": "실패"
     },
     "saveButton": "정책 저장",
-    "savingButton": "저장 중...",
     "runNowButton": "지금 모든 계정 백업",
     "runningButton": "백업 중...",
     "toasts": {
@@ -821,7 +820,6 @@
     },
     "restoreResult": {
       "title": "복원 완료",
-      "description": "데이터가 성공적으로 복원되었습니다. 복원된 내용의 요약입니다:",
       "totalRecords": "전체 레코드",
       "skippedAttachments": "{count, plural, other {첨부 파일 #개가 복원되지 않았습니다}}: 백업에 사용 가능한 바이트가 없었습니다. 내보낼 때 누락되었거나 체크섬에 실패했거나, 파일이 자체 포함 백업 이전에 만들어진 것입니다. 첨부 파일 저장소가 정상화된 뒤 새 백업을 내보내세요.",
       "unusableAiProviderKeys": "{count, plural, other {AI 제공자 #개가 사용할 수 있는 API 키 없이 복원되었습니다}}: 이 백업은 제공자 키가 함께 담기기 전에 만들어졌으므로 저장된 키는 파일을 만든 서버의 것이거나, 이 서버에 키를 저장할 암호화 키가 설정되어 있지 않습니다. 설정 → AI 제공자를 열고 API 키를 다시 입력하세요.",
@@ -874,12 +872,11 @@
         "retryButton": "다시 시도",
         "demoNote": "데모에서는 오프사이트 대상을 변경할 수 없습니다.",
         "saveButton": "대상 저장",
-        "savingButton": "저장 중...",
         "saved": "오프사이트 대상이 저장되었습니다",
         "saveFailed": "오프사이트 백업 대상을 저장하지 못했습니다",
         "s3": {
           "heading": "S3 저장소",
-          "modeLabel": "사본을 보낼 위치",
+          "modeLabel": "사본 대상",
           "modeOff": "꺼짐",
           "modeDeployment": "이 서버의 버킷",
           "modeOwn": "내 버킷",
@@ -992,21 +989,57 @@
       "sections": "섹션",
       "shared": "공유 데이터"
     },
+    "ops": {
+      "read": "읽기",
+      "create": "생성",
+      "edit": "편집",
+      "delete": "삭제",
+      "joint": "공동"
+    },
     "sections": {
       "description": "전체 앱 섹션에 대한 읽기 전용 접근 권한을 부여합니다. 계정 범위 데이터는 여전히 계정별 접근 권한도 필요합니다.",
+      "bills": {
+        "label": "청구서 및 입금",
+        "description": "부여된 계정의 예약 거래"
+      },
+      "investments": {
+        "label": "투자",
+        "description": "부여된 계정의 보유 자산 및 투자 거래"
+      },
+      "budgets": {
+        "label": "예산",
+        "description": "읽기 전용 예산 수치"
+      },
+      "reports": {
+        "label": "보고서",
+        "description": "읽기 전용 보고서"
+      },
+      "ai": {
+        "label": "AI 어시스턴트",
+        "description": "소유자가 구성한 AI 공급자를 사용합니다"
+      },
       "aiRequiresFullAccess": "AI 어시스턴트는 모든 계정과 섹션을 읽으므로, 이 위임자가 모든 계정과 다른 모든 섹션을 읽을 수 있을 때만 응답합니다.",
       "warranties": {
         "label": "보증",
         "description": "보증과 해당 문서 및 보증 청구입니다. 연결된 구매는 대리인이 읽을 수 있는 계좌에 있는 경우에만 표시됩니다."
-      }
+      },
+      "toggleLabel": "{section} 섹션"
     },
     "accounts": {
       "noAccounts": "부여할 계정이 없습니다.",
       "grantAll": "모두 부여",
-      "jointRequiresFullAccount": "공동 계좌는 자신의 Monize 계정이 있는 사용자와만 공유할 수 있습니다"
+      "jointRequiresFullAccount": "공동 계좌는 자신의 Monize 계정이 있는 사용자와만 공유할 수 있습니다",
+      "grantAllLabel": "모든 {type} 계정에 {op}",
+      "grantLabel": "{account}에 대한 {op} 권한"
     },
     "shared": {
-      "description": "수취인, 카테고리 및 태그의 읽기는 항상 허용됩니다. 생성/편집/삭제를 제어합니다."
+      "description": "수취인, 카테고리 및 태그의 읽기는 항상 허용됩니다. 생성/편집/삭제를 제어합니다.",
+      "toggleLabel": "{op} {resource}",
+      "resources": {
+        "payees": "수취인",
+        "categories": "카테고리",
+        "tags": "태그"
+      }
     },
     "saveButton": "저장",
     "toasts": {
@@ -1160,7 +1193,6 @@
       "editMessageButton": "편집",
       "messagePlaceholder": "메모, 지침, 중요 문서 위치...",
       "maxCharsNote": "최대 4000자. 저장 시 암호화됩니다.",
-      "cancelButton": "취소",
       "saveButton": "메시지 저장",
       "toasts": {
         "saved": "메시지가 저장되었습니다",
@@ -1205,7 +1237,7 @@
       "grantStatus": "부여 상태: ",
       "unknown": "알 수 없음",
       "never": "없음",
-      "daysAgo": "{count}일 전",
+      "withRelative": "{timestamp} ({relative})",
       "grantedOn": "{timestamp}에 부여됨",
       "notYetGranted": "아직 부여되지 않음",
       "timerNote": "앱 사용 시 타이머가 자동으로 재설정됩니다 -- 로그인, 페이지 보기, 거래 기록 등 인증된 모든 작업."
@@ -1222,6 +1254,17 @@
     },
     "stepUp": {
       "reason": "긴급 접근 메시지를 보거나 편집하려면 신원을 재확인하세요."
+    },
+    "validation": {
+      "wholeDays": "정수 일수만 입력하세요",
+      "minDays": "{min, plural, other {최소 #일이어야 합니다}}",
+      "maxDays": "{max, plural, other {#일 이하여야 합니다}}",
+      "reminderBeforeGrant": "알림 일수는 부여 일수보다 작아야 합니다",
+      "messageMax": "메시지는 {max}자 이하여야 합니다",
+      "firstNameRequired": "이름은 필수입니다",
+      "firstNameMax": "이름은 {max}자 이하여야 합니다",
+      "emailInvalid": "올바른 이메일 주소를 입력하세요",
+      "emailMax": "이메일은 {max}자 이하여야 합니다"
     },
     "toasts": {
       "loadFailed": "긴급 접근 로드에 실패했습니다",
@@ -1255,6 +1298,10 @@
       "enableButton": "활성화",
       "editButton": "편집",
       "deleteButton": "삭제"
+    },
+    "deleteDialog": {
+      "title": "AI 공급자 삭제",
+      "message": "{name}을(를) 삭제하시겠습니까? 저장된 API 키도 함께 삭제됩니다. 이 작업은 되돌릴 수 없습니다."
     },
     "configForm": {
       "addTitle": "AI 제공자 추가",

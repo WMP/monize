@@ -420,15 +420,15 @@ export function InvestmentRegisterPanel({
         {...brokerageForm.modalProps}
         maxWidth={brokerageFormNeedsConversion ? '3xl' : 'xl'}
         className="p-6"
-      >
-        {/* The same heading the Investments page's copy of this modal carries,
-            from the same keys: one register drawn on two pages should not
-            announce itself differently on each. */}
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          {brokerageForm.editingItem
+        // The same title the Investments page's copy of this modal carries,
+        // from the same keys: one register drawn on two pages should not
+        // announce itself differently on each.
+        title={
+          brokerageForm.editingItem
             ? tInv('page.editTransaction')
-            : tInv('page.newInvestmentTransaction')}
-        </h2>
+            : tInv('page.newInvestmentTransaction')
+        }
+      >
         <InvestmentTransactionForm
           accounts={accountsForForm}
           allAccounts={allAccounts}
@@ -453,13 +453,9 @@ export function InvestmentRegisterPanel({
             onClose={cashForm.close}
             {...cashForm.modalProps}
             maxWidth="6xl"
-            className="p-6"
+            className="p-6 !max-w-[69rem]"
+            title={cashForm.editingItem ? tInv('page.editTransaction') : tInv('page.newTransaction')}
           >
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
-              {cashForm.editingItem
-                ? tInv('page.editTransaction')
-                : tInv('page.newTransaction')}
-            </h2>
             <TransactionForm
               transaction={cashForm.editingItem}
               defaultAccountId={cashAccount.id}

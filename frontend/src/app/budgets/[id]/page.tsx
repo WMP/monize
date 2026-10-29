@@ -12,6 +12,8 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { BudgetDashboard } from '@/components/budgets/BudgetDashboard';
 import { BudgetPeriodDetail } from '@/components/budgets/BudgetPeriodDetail';
 import { BudgetPeriodSelector } from '@/components/budgets/BudgetPeriodSelector';
+import { BudgetBackLink } from '@/components/budgets/BudgetBackLink';
+import { BudgetSwitcher } from '@/components/budgets/BudgetSwitcher';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useOnUndoRedo } from '@/hooks/useOnUndoRedo';
 import { useOnAiAction } from '@/hooks/useOnAiAction';
@@ -24,6 +26,7 @@ import { BudgetFxIncompleteError, type PartialBudgetData } from '@/lib/budget-pa
 import { BudgetFxPartialNotice } from '@/components/reports/BudgetFxPartialNotice';
 import { STRATEGY_LABELS } from '@/components/budgets/utils/budget-labels';
 import type {
+  Budget,
   BudgetSummary,
   BudgetVelocity,
   BudgetPeriod,
@@ -90,6 +93,7 @@ function BudgetDetailContent() {
   const [error, setError] = useState<string | null>(null);
   const [partial, setPartial] = useState<PartialBudgetData | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
 
   // A different budget shows the spinner again; set during render rather than
   // in the effect that loads it.
@@ -144,6 +148,23 @@ function BudgetDetailContent() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // The switcher's list. It simply does not render without one; the page is
+  // fine either way, so a failure here is not the page's error.
+  useEffect(() => {
+    let cancelled = false;
+    budgetsApi
+      .getAll()
+      .then((list) => {
+        if (!cancelled) setBudgets(list);
+      })
+      .catch(() => {
+        if (!cancelled) setBudgets([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useOnUndoRedo(loadData);
   // Refresh on AI chat-bubble writes (actual spending can change).
@@ -255,9 +276,17 @@ function BudgetDetailContent() {
   return (
     <PageLayout>
       <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">
+        <BudgetBackLink href="/budgets" label={t('pages.detail.backToBudgets')} />
         <ReportingBasisControl />
         <PageHeader
           title={summary.budget.name}
+          titleAdornment={
+            <BudgetSwitcher
+              currentId={budgetId}
+              budgets={budgets}
+              onSelect={(id) => router.push(`/budgets/${id}`)}
+            />
+          }
           subtitle={`${STRATEGY_LABELS[summary.budget.strategy] ?? summary.budget.strategy} budget - ${currencyCode}`}
           actions={
             <div className="flex items-center gap-3">
@@ -277,9 +306,6 @@ function BudgetDetailContent() {
                 onClick={() => setShowDeleteConfirm(true)}
               >
                 {tc('delete')}
-              </Button>
-              <Button variant="outline" onClick={() => router.push('/budgets')}>
-                {t('pages.detail.backToBudgets')}
               </Button>
             </div>
           }

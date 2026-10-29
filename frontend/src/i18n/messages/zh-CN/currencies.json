@@ -4,6 +4,8 @@
     "subtitle": "管理您账户和证券中使用的货币",
     "refreshRates": "刷新汇率",
     "refreshing": "刷新中...",
+    "ratesAge": "({time})",
+    "statusFilterLabel": "状态",
     "newCurrency": "+ 新增货币",
     "searchPlaceholder": "按代码或名称搜索...",
     "statusAll": "全部 ({count})",
@@ -70,9 +72,9 @@
       "activate": "启用",
       "deleteCurrency": "删除货币"
     },
-    "usageTooltip": "{accounts} 个账户，{securities} 种证券",
-    "usageAccounts": "{count, plural, one {# 个账户} other {# 个账户}}",
-    "usageSecurities": "{count, plural, one {# 种证券} other {# 种证券}}",
+    "usageAccounts": "{count, plural, other {# 个账户}}",
+    "usageSecurities": "{count, plural, other {# 只证券}}",
+    "rateHelp": "每种货币一个单位折合多少 {currency}。",
     "empty": {
       "title": "无货币",
       "subtitle": "从添加一种货币开始。"

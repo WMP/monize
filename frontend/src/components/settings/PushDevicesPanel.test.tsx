@@ -1,6 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, fireEvent, act } from '@/test/render';
+import { render, screen, waitFor, fireEvent, act, within } from '@/test/render';
 import { PushDevicesPanel } from './PushDevicesPanel';
+
+/** Removing asks first: confirm in the dialog the row's Remove opened. */
+function confirmRemove() {
+  fireEvent.click(
+    within(screen.getByRole('dialog')).getByRole('button', { name: 'Remove' }),
+  );
+}
 import toast from 'react-hot-toast';
 import { PushPermissionError, type PushDevice } from '@/lib/push';
 import { useAuthStore } from '@/store/authStore';
@@ -453,6 +460,24 @@ describe('PushDevicesPanel', () => {
     expect(remove.className).toMatch(/\bbg-red-600\b/);
   });
 
+  it('asks before removing a device, and removes nothing on Cancel', async () => {
+    mockListDevices.mockResolvedValue([
+      device({ id: 'd-2', endpointFingerprint: OTHER_DEVICE, deviceName: 'Safari on iOS' }),
+    ]);
+    mockCurrentFingerprint.mockResolvedValue(THIS_DEVICE);
+
+    render(<PushDevicesPanel />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove' }));
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('Remove Device')).toBeInTheDocument();
+    expect(within(dialog).getByText(/Remove Safari on iOS\?/)).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    expect(mockRemoveDevice).not.toHaveBeenCalled();
+    expect(mockDisable).not.toHaveBeenCalled();
+  });
+
   it('says so when an endpoint has never been delivered to', async () => {
     mockListDevices.mockResolvedValue([device({ lastSuccessAt: null })]);
     mockCurrentFingerprint.mockResolvedValue(THIS_DEVICE);
@@ -531,6 +556,7 @@ describe('PushDevicesPanel', () => {
       await screen.findByText('Safari on iOS');
 
       fireEvent.click(screen.getByRole('button', { name: /remove/i }));
+      confirmRemove();
       await waitFor(() => expect(mockRemoveDevice).toHaveBeenCalledWith('d-2'));
     });
 
@@ -763,6 +789,7 @@ describe('PushDevicesPanel', () => {
     ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /remove/i }));
+    confirmRemove();
     await waitFor(() => expect(mockRemoveDevice).toHaveBeenCalledWith('d-2'));
   });
 
@@ -1003,6 +1030,7 @@ describe('PushDevicesPanel', () => {
     render(<PushDevicesPanel />);
     await screen.findByText('Chrome on Linux');
     fireEvent.click(screen.getByRole('button', { name: /remove/i }));
+    confirmRemove();
 
     await waitFor(() => expect(mockDisable).toHaveBeenCalledWith('d-1'));
     // The panel reports the failure rather than pretending the device is gone.
@@ -1030,10 +1058,12 @@ describe('PushDevicesPanel', () => {
     });
 
     fireEvent.click(removeThis);
+    confirmRemove();
     await waitFor(() => expect(mockDisable).toHaveBeenCalledWith('d-1'));
     expect(mockRemoveDevice).not.toHaveBeenCalled();
 
     fireEvent.click(removeOther);
+    confirmRemove();
     await waitFor(() => expect(mockRemoveDevice).toHaveBeenCalledWith('d-2'));
   });
 

@@ -79,6 +79,8 @@ describe('MergePayeeDialog', () => {
       />
     );
 
+    // Titled through Modal, so the dialog is named by its title.
+    expect(screen.getByRole('dialog', { name: 'Merge Payee' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Merge Payee' })).toBeInTheDocument();
     expect(screen.getByText('STARBUCKS #12345')).toBeInTheDocument();
     expect(screen.getByText('5 transactions will be migrated')).toBeInTheDocument();

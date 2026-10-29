@@ -175,7 +175,6 @@
       "viewPayeeTitle": "查看 {name} 的详情",
       "investmentLabel": "投资",
       "linkedInvestmentTitle": "在投资中查看",
-      "linkedInvestmentBadgeTitle": "此交易已关联到一笔投资交易",
       "filterByDate": "按日期筛选\"{date}\"",
       "filterByAccount": "按\"{name}\"筛选",
       "filterByPayee": "按\"{name}\"筛选",
@@ -223,10 +222,10 @@
       "show": "显示筛选"
     },
     "accounts": {
-      "label": "显示账户：",
-      "all": "全部",
-      "active": "活跃",
-      "closed": "已关闭"
+      "label": "显示账户",
+      "allCount": "全部 ({count})",
+      "activeCount": "活跃 ({count})",
+      "closedCount": "已关闭 ({count})"
     },
     "fields": {
       "accounts": "账户",
@@ -320,7 +319,7 @@
     },
     "modal": {
       "title": "批量更新交易",
-      "subtitle": "更新 {count, plural, one {# 笔选中的交易} other {# 笔选中的交易}}。切换要更改的字段。",
+      "help": "切换要更改的字段。",
       "submitLabel": "更新 {count, plural, one {# 笔交易} other {# 笔交易}}",
       "payee": "收款人",
       "category": "分类",
@@ -368,8 +367,7 @@
       "fromAccount": "来源账户",
       "toAccount": "目标账户",
       "transferAmount": "转账金额",
-      "transferAmountWithCurrency": "转账金额（{currency}）",
-      "amountReceived": "收到金额（{currency}）",
+      "amountReceivedLabel": "收到金额",
       "payeeOptional": "收款人（可选）",
       "categoryOptional": "类别（可选）"
     },
@@ -538,7 +536,7 @@
     "quantityPlaceholder": "数量",
     "pricePlaceholder": "价格",
     "commissionPlaceholder": "佣金",
-    "amountPlaceholder": "金额（{currency}）",
+    "amountOnlyPlaceholder": "金额",
     "ratePlaceholder": "每 1 {from} 兑 {to}",
     "ariaRate": "汇率（每 1 {from} 兑 {to}）",
     "rateHint": "数量、价格和佣金均以 {from} 计；此汇率将现金影响换算为 {to}。",

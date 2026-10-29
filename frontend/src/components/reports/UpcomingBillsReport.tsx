@@ -24,6 +24,8 @@ import {
   occurrenceKind,
 } from '@/lib/scheduled-kind';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { useDateFormat } from '@/hooks/useDateFormat';
+import { useChartDateFormat } from '@/hooks/useChartDateFormat';
 import { ReportToolbarActions } from '@/components/reports/ReportToolbarActions';
 import { exportToCsv } from '@/lib/csv-export';
 import { useReportData } from '@/hooks/useReportData';
@@ -32,6 +34,8 @@ import { UnknownAmount } from '@/components/ui/UnknownAmount';
 import { sumEffectiveOccurrences } from '@/lib/scheduled-effective-amount';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { isComplete, type ConvertedTotal } from '@/lib/currency-total';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
 
 /** How far ahead the report projects, matching the three months it always has. */
 const HORIZON_MONTHS = 3;
@@ -81,6 +85,8 @@ export function UpcomingBillsReport() {
   const t = useTranslations('reports');
   const router = useRouter();
   const { formatCurrencyCompact: formatCurrency } = useNumberFormat();
+  const { formatDate } = useDateFormat();
+  const formatChartDate = useChartDateFormat();
   // Every occurrence is priced in its own currency, so a single total needs a
   // conversion rather than an addition (issue #1247).
   const { convertToDefault, defaultCurrency } = useExchangeRates();
@@ -285,7 +291,7 @@ export function UpcomingBillsReport() {
     ];
     await exportToPdf({
       title: t('upcomingBills.pdfTitle'),
-      subtitle: t('upcomingBills.pdfSubtitle', { month: format(currentMonth, 'MMMM yyyy'), count: scheduledTransactions.length }),
+      subtitle: t('upcomingBills.pdfSubtitle', { month: formatChartDate(currentMonth, 'MMMM yyyy'), count: scheduledTransactions.length }),
       summaryCards: pdfCards,
       tableData: { headers, rows },
       filename: 'upcoming-bills',
@@ -381,7 +387,7 @@ export function UpcomingBillsReport() {
               </svg>
             </button>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 min-w-[160px] text-center">
-              {format(currentMonth, 'MMMM yyyy')}
+              {formatChartDate(currentMonth, 'MMMM yyyy')}
             </h3>
             <button
               onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
@@ -399,24 +405,20 @@ export function UpcomingBillsReport() {
             </button>
           </div>
           <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
-            <div className="flex gap-2">
+            <div className={SEGMENTED_GROUP_CLASS} role="group" aria-label={t('reportPage.viewLabel')}>
               <button
+                type="button"
                 onClick={() => setViewType('calendar')}
-                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                  viewType === 'calendar'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                }`}
+                aria-pressed={viewType === 'calendar'}
+                className={segmentClass(viewType === 'calendar')}
               >
                 {t('upcomingBills.calendarView')}
               </button>
               <button
+                type="button"
                 onClick={() => setViewType('list')}
-                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                  viewType === 'list'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                }`}
+                aria-pressed={viewType === 'list'}
+                className={segmentClass(viewType === 'list')}
               >
                 {t('upcomingBills.listView')}
               </button>
@@ -432,9 +434,7 @@ export function UpcomingBillsReport() {
 
       {scheduledTransactions.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            {t('upcomingBills.noBills')}
-          </p>
+          <EmptyState title={t('upcomingBills.noBills')} />
         </div>
       ) : viewType === 'calendar' ? (
         /* Calendar View */
@@ -528,11 +528,11 @@ export function UpcomingBillsReport() {
                       </span>
                     )}
                     {bill.scheduledTransaction.autoPost ? (
-                      <span className="px-1.5 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400 text-xs rounded" title={t('upcomingBills.autoPostsTitle')}>
+                      <span className="px-1.5 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400 text-xs rounded">
                         {t('upcomingBills.autoLabel')}
                       </span>
                     ) : (
-                      <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400 text-xs rounded font-medium" title={t('upcomingBills.manualPostTitle')}>
+                      <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400 text-xs rounded font-medium">
                         {t('upcomingBills.manualLabel')}
                       </span>
                     )}
@@ -558,7 +558,7 @@ export function UpcomingBillsReport() {
                     )}
                   </div>
                   <div className="text-sm text-gray-500 dark:text-gray-400">
-                    {format(bill.dueDate, 'MMM d, yyyy')}
+                    {formatDate(bill.dueDate)}
                   </div>
                 </div>
               </div>

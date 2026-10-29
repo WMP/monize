@@ -132,12 +132,6 @@
       "updatedSecurityTransfer": "Обновлён перевод ценной бумаги",
       "ranTransactionRule": "{count, plural, one {Правило «{name}» запущено для # проводки} few {Правило «{name}» запущено для # проводок} many {Правило «{name}» запущено для # проводок} other {Правило «{name}» запущено для # проводок}}"
     },
-    "timeAgo": {
-      "justNow": "только что",
-      "minutes": "{count} мин. назад",
-      "hours": "{count} ч. назад",
-      "days": "{count} дн. назад"
-    },
     "undonePrefix": "Отменено: {description}",
     "redonePrefix": "Повторено: {description}"
   },

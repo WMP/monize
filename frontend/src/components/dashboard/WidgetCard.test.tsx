@@ -104,6 +104,8 @@ describe('WidgetCard', () => {
       fireEvent.click(screen.getByLabelText('Configure My Widget'));
     });
     expect(screen.getByText('config body')).toBeInTheDocument();
+    // Titled through Modal, so the settings dialog is named by the widget.
+    expect(screen.getByRole('dialog', { name: 'My Widget' })).toBeInTheDocument();
 
     await act(async () => {
       fireEvent.click(screen.getByText('Done'));

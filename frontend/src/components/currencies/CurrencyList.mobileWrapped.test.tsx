@@ -125,7 +125,7 @@ describe('the currencies list on a phone', () => {
     expect(text).toContain('USD');
     expect(text).toContain('US Dollar');
     expect(text).toContain('$');
-    expect(text).toContain('2 accts, 3 secs');
+    expect(text).toContain('2 accounts, 3 securities');
     expect(text).toContain('0.732100');
     expect(text).toContain('Active');
 
@@ -173,7 +173,7 @@ describe('the currencies list on a phone', () => {
     }
     expect(within(row).getByText('0.732100').textContent).toBe('0.732100');
     expect(within(row).getByText('4').textContent).toBe('4');
-    expect(within(row).getByText('1 acct').textContent).toBe('1 acct');
+    expect(within(row).getByText('1 account').textContent).toBe('1 account');
 
     // The code, the "Default" marker and the status pill carry no caption: the
     // code is the row's identity and the other two are self-describing pills.
@@ -262,12 +262,12 @@ describe('the currencies list on a phone', () => {
     // The two headers are separate JSX, so this is what ties them together: a
     // sixth sortable column in the tier header fails here until the phone's
     // slim header carries it too. The tier header's sortable cells are the ones
-    // carrying `cursor-pointer`; Usage, Status and Actions have no control.
+    // carrying `aria-sort`; Usage, Status and Actions have no control.
     setPhoneViewport(false);
     useDensityStore.setState({ densities: { currencies: 'normal' } });
     const { container: tier, unmount } = renderList([makeCurrency({ code: 'USD' })]);
     const tierLabels = Array.from(
-      tier.querySelectorAll('thead th[class*="cursor-pointer"]'),
+      tier.querySelectorAll('thead th[aria-sort]'),
     ).map(labelOf);
     expect(tier.querySelectorAll('thead th').length).toBeGreaterThan(tierLabels.length);
     unmount();
@@ -301,7 +301,7 @@ describe('the currencies list on a phone', () => {
     ]);
   });
 
-  it('lets the name and the usage text truncate rather than widen the table', () => {
+  it('lets the name truncate and the usage text wrap rather than widen the table', () => {
     setPhoneViewport(true);
     useDensityStore.setState({ densities: { currencies: 'normal' } });
 
@@ -321,7 +321,11 @@ describe('the currencies list on a phone', () => {
     for (const grid of grids) {
       expect(grid.className).toContain('minmax(0,1fr)');
     }
-    expect(row.querySelectorAll('.truncate').length).toBe(2);
+    expect(row.querySelectorAll('.truncate').length).toBe(1);
+    // The usage is spelled out in words, so it wraps instead of being cut.
+    expect(within(row).getByText('128 accounts, 256 securities').parentElement!.className).toContain(
+      'break-words',
+    );
   });
 
   it('lets the pills yield a line rather than the name its width', () => {

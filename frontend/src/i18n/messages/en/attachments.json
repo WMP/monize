@@ -77,6 +77,8 @@
     "unsupported": "This file type cannot be previewed. You can still download it.",
     "fit": "Fit to screen",
     "actualSize": "Actual size",
+    "versionLabel": "Version",
+    "zoomLabel": "Zoom",
     "pageCount": "{count, plural, one {# page} other {# pages}}",
     "page": "Page {page} of {total}",
     "open": "Preview {name}"

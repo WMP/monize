@@ -307,6 +307,14 @@ export function useTransactionFilters({ accounts, categories, payees, tags, week
     });
   }, [accounts, filterAccountStatus]);
 
+  // How many accounts each status segment holds, over every account the
+  // register can show (brokerage halves excluded, as above).
+  const accountStatusCounts = useMemo(() => {
+    const eligible = accounts.filter((account) => !isInvestmentBrokerageAccount(account));
+    const closed = eligible.filter((account) => account.isClosed).length;
+    return { all: eligible.length, active: eligible.length - closed, closed };
+  }, [accounts]);
+
   // Memoize filter option arrays
   const categoryFilterOptions = useMemo(
     () => buildCategoryFilterOptions(categories, categoryFilterLabels),
@@ -872,6 +880,7 @@ export function useTransactionFilters({ accounts, categories, payees, tags, week
 
     // Derived filter data
     filteredAccounts,
+    accountStatusCounts,
     selectedAccounts,
     selectedCategories,
     selectedPayees,

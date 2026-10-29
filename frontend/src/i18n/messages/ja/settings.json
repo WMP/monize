@@ -21,7 +21,6 @@
     "passwordConfirmNote": "メールアドレスを変更する場合はパスワードの確認が必要です。",
     "pendingEmailNotice": "確認リンクを {email} に送信しました。リンクを開くとメールアドレスが変更されます。",
     "saveButton": "プロフィールを保存",
-    "savingButton": "保存中...",
     "toasts": {
       "success": "プロフィールを更新しました",
       "confirmationSent": "新しいメールアドレスを確認するためのリンクを {email} でご確認ください",
@@ -46,7 +45,6 @@
     "confirmPasswordLabel": "新しいパスワードを確認",
     "confirmPasswordPlaceholder": "新しいパスワードを確認してください",
     "changePasswordButton": "パスワードを変更",
-    "changingPasswordButton": "変更中...",
     "toasts": {
       "passwordChanged": "パスワードを変更しました",
       "passwordChangeFailed": "パスワードの変更に失敗しました"
@@ -106,6 +104,8 @@
       "noDevices": "信頼済みデバイスはありません。2FAログイン時に「このブラウザでは再度確認しない」をチェックすると、デバイスがここに表示されます。",
       "currentBadge": "現在",
       "revokeButton": "取り消し",
+      "ipAddress": "IP: {ip}",
+      "dates": "追加 {added} · 最後に使用 {lastUsed} · 有効期限 {expires}",
       "revokeAllModal": {
         "title": "信頼済みデバイスをすべて取り消し",
         "description": "すべての信頼済みデバイスが削除されます。次回どのデバイスからログインしても2FAコードの入力が必要になります。"
@@ -226,7 +226,7 @@
       "hideRegisterYearLabel": "登録簿の日付で年を非表示にする",
       "chartCollapsedLabel": "取引ページのグラフを折りたたんだ状態で開始する",
       "widgetsCollapsedLabel": "口座・支払先・カテゴリの情報を折りたたんだ状態で開始する",
-      "accountOpenTargetLabel": "口座を開くとき",
+      "accountOpenTargetLabel": "口座の既定の表示",
       "accountOpenTargetOptions": {
         "register": "取引を表示する",
         "dashboard": "ダッシュボードを表示する"
@@ -308,6 +308,10 @@
       "sendTestButton": "テスト通知を送信",
       "sendingTestButton": "送信中...",
       "removeButton": "削除",
+      "removeDialog": {
+        "title": "デバイスを削除",
+        "message": "{device} を削除しますか？そのデバイスでプッシュを再び有効にするまで、プッシュ通知は届かなくなります。"
+      },
       "thisDevice": "この端末",
       "held": "この端末ではサインアウトしています。ここで再度サインインすると、プッシュ通知が再開されます。",
       "unifiedpushBadge": "UnifiedPush",
@@ -486,7 +490,7 @@
   "supportBackup": {
     "title": "サポート用バックアップを作成",
     "howItWorks": "バックアップの匿名化コピーを作成します。名称はマスクされ(先頭と末尾の2文字のみ残ります)、メモ/説明/口座番号は削除され、各金額は単一の非公開係数で乗算されます。公開値(為替レート、価格、金利)はそのままです。ファイルは常に下のパスワードで暗号化され、通常のバックアップと同じ手順で復元できます。これは偶発的な露出への保護であり、あなたを既に知る相手への保護ではありません — バグを再現できるよう、日付・頻度・構造は保持されます。",
-    "sectionsLabel": "含める内容",
+    "sectionsLabel": "含めるセクション",
     "sections": {
       "investments": "投資(証券、保有、価格)",
       "scheduled": "定期取引",
@@ -652,11 +656,7 @@
       "reason": "トークンを使うとサインインせずにアカウントにアクセスできるため、作成する前に本人確認を行ってください。"
     },
     "relative": {
-      "never": "なし",
-      "today": "今日",
-      "yesterday": "昨日",
-      "daysAgo": "{count}日前",
-      "monthsAgo": "{count}ヶ月前"
+      "never": "なし"
     }
   },
   "autoBackup": {
@@ -700,7 +700,6 @@
       "failed": "失敗"
     },
     "saveButton": "ポリシーを保存",
-    "savingButton": "保存中...",
     "runNowButton": "今すぐ全アカウントをバックアップ",
     "runningButton": "バックアップ中...",
     "toasts": {
@@ -821,7 +820,6 @@
     },
     "restoreResult": {
       "title": "復元完了",
-      "description": "データが正常に復元されました。復元された内容のサマリー:",
       "totalRecords": "総レコード数",
       "skippedAttachments": "{count, plural, other {# 件の添付ファイルが復元されませんでした}}: バックアップに使用可能なバイト列が含まれていませんでした。エクスポート時に欠落していたかチェックサムに失敗したか、あるいはファイルが自己完結型バックアップより前のものです。添付ファイルのストレージが正常になってから新しいバックアップを取得してください。",
       "unusableAiProviderKeys": "{count, plural, other {# 件の AI プロバイダーが使用可能な API キーなしで復元されました}}: このバックアップはプロバイダーのキーが含まれるようになる前に作成されたため、保存されているキーはファイルを作成したサーバーのものです。あるいは、このサーバーにはキーを保存するための暗号化キーが設定されていません。設定 → AIプロバイダー を開き、API キーを入力し直してください。",
@@ -874,7 +872,6 @@
         "retryButton": "再試行",
         "demoNote": "デモではオフサイトの送信先を変更できません。",
         "saveButton": "送信先を保存",
-        "savingButton": "保存中...",
         "saved": "オフサイトの送信先を保存しました",
         "saveFailed": "オフサイトのバックアップ送信先を保存できませんでした",
         "s3": {
@@ -992,21 +989,57 @@
       "sections": "セクション",
       "shared": "共有データ"
     },
+    "ops": {
+      "read": "閲覧",
+      "create": "作成",
+      "edit": "編集",
+      "delete": "削除",
+      "joint": "共同"
+    },
     "sections": {
       "description": "アプリセクション全体への読み取り専用アクセスを付与します。口座スコープのデータには口座ごとのアクセスも必要です。",
+      "bills": {
+        "label": "請求書・入金",
+        "description": "付与した口座の予定取引"
+      },
+      "investments": {
+        "label": "投資",
+        "description": "付与した口座の保有資産と投資取引"
+      },
+      "budgets": {
+        "label": "予算",
+        "description": "予算の数値（閲覧のみ）"
+      },
+      "reports": {
+        "label": "レポート",
+        "description": "レポート（閲覧のみ）"
+      },
+      "ai": {
+        "label": "AI アシスタント",
+        "description": "所有者が設定した AI プロバイダーを使用します"
+      },
       "aiRequiresFullAccess": "AI アシスタントはすべての口座とセクションを横断して読み取るため、このデリゲートがすべての口座と他のすべてのセクションを閲覧できる場合にのみ回答します。",
       "warranties": {
         "label": "保証",
         "description": "保証とその書類、保証請求。リンクされた購入は、このデリゲートが閲覧できる口座のものだけが表示されます。"
-      }
+      },
+      "toggleLabel": "{section} セクション"
     },
     "accounts": {
       "noAccounts": "付与する口座がありません。",
       "grantAll": "すべて付与",
-      "jointRequiresFullAccount": "共同口座は、自分のMonizeアカウントを持つユーザーとのみ共有できます"
+      "jointRequiresFullAccount": "共同口座は、自分のMonizeアカウントを持つユーザーとのみ共有できます",
+      "grantAllLabel": "すべての{type}口座に{op}",
+      "grantLabel": "{account} への{op}アクセス"
     },
     "shared": {
-      "description": "支払先、カテゴリ、タグの読み取りは常に許可されています。これは作成/編集/削除を制御します。"
+      "description": "支払先、カテゴリ、タグの読み取りは常に許可されています。これは作成/編集/削除を制御します。",
+      "toggleLabel": "{op} {resource}",
+      "resources": {
+        "payees": "支払先",
+        "categories": "カテゴリ",
+        "tags": "タグ"
+      }
     },
     "saveButton": "保存",
     "toasts": {
@@ -1160,7 +1193,6 @@
       "editMessageButton": "編集",
       "messagePlaceholder": "メモ、指示、重要な書類の場所...",
       "maxCharsNote": "最大4000文字。暗号化して保存されます。",
-      "cancelButton": "キャンセル",
       "saveButton": "メッセージを保存",
       "toasts": {
         "saved": "メッセージを保存しました",
@@ -1205,7 +1237,7 @@
       "grantStatus": "付与状態: ",
       "unknown": "不明",
       "never": "なし",
-      "daysAgo": "{count}日{plural}前",
+      "withRelative": "{timestamp}（{relative}）",
       "grantedOn": "{timestamp}に付与されました",
       "notYetGranted": "まだ付与されていません",
       "timerNote": "タイマーはアプリを使用するたびに自動的にリセットされます — サインイン、ページの閲覧、取引の記録など、認証されたすべての操作が対象です。"
@@ -1222,6 +1254,17 @@
     },
     "stepUp": {
       "reason": "緊急アクセスメッセージを閲覧または編集するには身元を再確認してください。"
+    },
+    "validation": {
+      "wholeDays": "日数は整数で入力してください",
+      "minDays": "{min, plural, other {# 日以上にしてください}}",
+      "maxDays": "{max, plural, other {# 日以下にしてください}}",
+      "reminderBeforeGrant": "リマインダーの日数は付与までの日数より少なくしてください",
+      "messageMax": "メッセージは {max} 文字以内にしてください",
+      "firstNameRequired": "名は必須です",
+      "firstNameMax": "名は {max} 文字以内にしてください",
+      "emailInvalid": "有効なメールアドレスを入力してください",
+      "emailMax": "メールアドレスは {max} 文字以内にしてください"
     },
     "toasts": {
       "loadFailed": "緊急アクセスの読み込みに失敗しました",
@@ -1255,6 +1298,10 @@
       "enableButton": "有効化",
       "editButton": "編集",
       "deleteButton": "削除"
+    },
+    "deleteDialog": {
+      "title": "AIプロバイダーを削除",
+      "message": "{name} を削除しますか？保存されている API キーも一緒に削除されます。この操作は元に戻せません。"
     },
     "configForm": {
       "addTitle": "AIプロバイダーを追加",

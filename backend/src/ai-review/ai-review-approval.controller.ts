@@ -10,6 +10,7 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { AuthGuard } from "@nestjs/passport";
 import { Throttle } from "@nestjs/throttler";
+import { DemoRestricted } from "../common/decorators/demo-restricted.decorator";
 import { OwnerOnly } from "../delegation/decorators/delegate-access.decorator";
 import { AiReviewApprovalService } from "./ai-review-approval.service";
 import { ApproveAiReviewBatchDto } from "./dto/approve-ai-review-batch.dto";
@@ -31,6 +32,7 @@ export class AiReviewApprovalController {
   @Post("approve-batch")
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { ttl: 60000, limit: 10 } })
+  @DemoRestricted()
   @ApiOperation({
     summary:
       "Approve up to 100 proposals, one after the other, through the same confirm a single approval uses",

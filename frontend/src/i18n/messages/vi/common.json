@@ -128,6 +128,7 @@
     "search": "Tìm kiếm...",
     "selectAll": "Chọn tất cả",
     "clear": "Xóa",
+    "clearSearch": "Xóa tìm kiếm",
     "noOptions": "Không tìm thấy tùy chọn",
     "selectedCount": "Đã chọn {count}"
   },

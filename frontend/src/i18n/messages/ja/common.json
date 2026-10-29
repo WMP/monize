@@ -128,6 +128,7 @@
     "search": "検索...",
     "selectAll": "すべて選択",
     "clear": "クリア",
+    "clearSearch": "検索をクリア",
     "noOptions": "オプションが見つかりません",
     "selectedCount": "{count} 選択中"
   },

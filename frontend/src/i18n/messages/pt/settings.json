@@ -21,7 +21,6 @@
     "passwordConfirmNote": "A confirmação da palavra-passe é necessária ao alterar o seu endereço de e-mail.",
     "pendingEmailNotice": "Foi enviado um link de confirmação para {email}. O seu endereço de e-mail será alterado quando o abrir.",
     "saveButton": "Guardar Perfil",
-    "savingButton": "A guardar...",
     "toasts": {
       "success": "Perfil atualizado com sucesso",
       "confirmationSent": "Consulte {email} para encontrar um link que confirma o seu novo endereço de e-mail",
@@ -46,7 +45,6 @@
     "confirmPasswordLabel": "Confirmar nova palavra-passe",
     "confirmPasswordPlaceholder": "Confirme a nova palavra-passe",
     "changePasswordButton": "Alterar Palavra-passe",
-    "changingPasswordButton": "A alterar...",
     "toasts": {
       "passwordChanged": "Palavra-passe alterada com sucesso",
       "passwordChangeFailed": "Falha ao alterar a palavra-passe"
@@ -106,6 +104,8 @@
       "noDevices": "Sem dispositivos de confiança. Quando marcar \"Não perguntar novamente neste browser\" durante o início de sessão com 2FA, o dispositivo aparecerá aqui.",
       "currentBadge": "Atual",
       "revokeButton": "Revogar",
+      "ipAddress": "IP: {ip}",
+      "dates": "Adicionado a {added} · Último uso {lastUsed} · Expira a {expires}",
       "revokeAllModal": {
         "title": "Revogar Todos os Dispositivos de Confiança",
         "description": "Isto removerá todos os dispositivos de confiança. Terá de introduzir o seu código 2FA no próximo início de sessão a partir de qualquer dispositivo."
@@ -226,7 +226,7 @@
       "hideRegisterYearLabel": "Ocultar o ano nas datas do registo",
       "chartCollapsedLabel": "Começar com o gráfico da página Transações recolhido",
       "widgetsCollapsedLabel": "Começar com as informações de conta, beneficiário e categoria recolhidas",
-      "accountOpenTargetLabel": "Quando abro uma conta",
+      "accountOpenTargetLabel": "Vista predefinida da conta",
       "accountOpenTargetOptions": {
         "register": "Mostrar as suas transações",
         "dashboard": "Mostrar o seu painel"
@@ -308,6 +308,10 @@
       "sendTestButton": "Enviar notificação de teste",
       "sendingTestButton": "A enviar...",
       "removeButton": "Remover",
+      "removeDialog": {
+        "title": "Remover dispositivo",
+        "message": "Remover {device}? Deixa de receber notificações push até o push ser novamente ativado nele."
+      },
       "thisDevice": "Este dispositivo",
       "held": "Sessão terminada neste dispositivo. As notificações push são retomadas quando voltar a iniciar sessão aqui.",
       "unifiedpushBadge": "UnifiedPush",
@@ -486,7 +490,7 @@
   "supportBackup": {
     "title": "Criar cópia de suporte",
     "howItWorks": "Produz uma cópia desidentificada da sua cópia de segurança: os nomes são mascarados (mantêm-se os dois primeiros e os dois últimos caracteres), notas/descrições/números de conta são removidos e cada montante é multiplicado por um único fator oculto, enquanto os valores públicos (taxas de câmbio, preços, taxas de juro) ficam intactos. O ficheiro é sempre cifrado com a palavra-passe abaixo e restaura-se como uma cópia normal. Protege contra exposição casual, não contra alguém que já o conhece — datas, frequências e estrutura são preservadas para que os erros continuem reproduzíveis.",
-    "sectionsLabel": "O que incluir",
+    "sectionsLabel": "Secções a incluir",
     "sections": {
       "investments": "Investimentos (títulos, posições, preços)",
       "scheduled": "Transações agendadas",
@@ -652,11 +656,7 @@
       "reason": "Um token pode aceder à sua conta sem iniciar sessão, por isso confirme que é você antes de criar um."
     },
     "relative": {
-      "never": "Nunca",
-      "today": "Hoje",
-      "yesterday": "Ontem",
-      "daysAgo": "Há {count} dias",
-      "monthsAgo": "Há {count} meses"
+      "never": "Nunca"
     }
   },
   "autoBackup": {
@@ -700,7 +700,6 @@
       "failed": "Falhou"
     },
     "saveButton": "Guardar política",
-    "savingButton": "A guardar...",
     "runNowButton": "Copiar todas as contas agora",
     "runningButton": "A copiar...",
     "toasts": {
@@ -821,7 +820,6 @@
     },
     "restoreResult": {
       "title": "Restauro Concluído",
-      "description": "Os seus dados foram restaurados com sucesso. Aqui está um resumo do que foi restaurado:",
       "totalRecords": "Total de registos",
       "skippedAttachments": "{count, plural, one {# anexo não foi restaurado} other {# anexos não foram restaurados}}: o backup não continha bytes utilizáveis para eles — faltavam ou falharam a soma de verificação na exportação, ou o ficheiro é anterior aos backups autossuficientes. Exporte um backup novo quando o armazenamento de anexos estiver saudável.",
       "unusableAiProviderKeys": "{count, plural, one {# fornecedor de IA foi restaurado sem uma chave de API utilizável} other {# fornecedores de IA foram restaurados sem chaves de API utilizáveis}}: a cópia de segurança foi criada antes de as chaves dos fornecedores seguirem nela, por isso a chave guardada pertence ao servidor que gerou o ficheiro, ou este servidor não tem qualquer chave de cifra configurada para a guardar. Abra Definições → Fornecedores de IA e introduza novamente a chave de API.",
@@ -874,12 +872,11 @@
         "retryButton": "Tentar novamente",
         "demoNote": "Os destinos externos não podem ser alterados na demonstração.",
         "saveButton": "Guardar destinos",
-        "savingButton": "A guardar...",
         "saved": "Destinos externos guardados",
         "saveFailed": "Não foi possível guardar os seus destinos externos de cópia de segurança",
         "s3": {
           "heading": "Armazenamento S3",
-          "modeLabel": "Para onde são enviadas as cópias",
+          "modeLabel": "Destino das cópias",
           "modeOff": "Desligado",
           "modeDeployment": "Bucket deste servidor",
           "modeOwn": "O meu próprio bucket",
@@ -992,21 +989,57 @@
       "sections": "Secções",
       "shared": "Dados partilhados"
     },
+    "ops": {
+      "read": "Ler",
+      "create": "Criar",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "joint": "Conjunta"
+    },
     "sections": {
       "description": "Conceda acesso só de leitura a secções inteiras da aplicação. Os dados no âmbito de conta ainda necessitam de acesso por conta.",
+      "bills": {
+        "label": "Faturas e depósitos",
+        "description": "Transações agendadas das contas concedidas"
+      },
+      "investments": {
+        "label": "Investimentos",
+        "description": "Posições e transações de investimento das contas concedidas"
+      },
+      "budgets": {
+        "label": "Orçamentos",
+        "description": "Valores de orçamento só de leitura"
+      },
+      "reports": {
+        "label": "Relatórios",
+        "description": "Relatórios só de leitura"
+      },
+      "ai": {
+        "label": "Assistente de IA",
+        "description": "Usa o fornecedor de IA configurado pelo titular"
+      },
       "aiRequiresFullAccess": "O Assistente de IA lê todas as contas e secções, pelo que só responde a este delegado quando este puder ler todas as suas contas e todas as outras secções.",
       "warranties": {
         "label": "Garantias",
         "description": "Garantias, os respetivos documentos e reclamações. Uma compra associada só é mostrada se estiver numa conta que o delegado possa ler."
-      }
+      },
+      "toggleLabel": "Secção {section}"
     },
     "accounts": {
       "noAccounts": "Sem contas para conceder.",
       "grantAll": "Conceder todas",
-      "jointRequiresFullAccount": "As contas conjuntas só podem ser partilhadas com utilizadores que tenham a sua própria conta Monize"
+      "jointRequiresFullAccount": "As contas conjuntas só podem ser partilhadas com utilizadores que tenham a sua própria conta Monize",
+      "grantAllLabel": "{op} todas as contas {type}",
+      "grantLabel": "Acesso de {op} a {account}"
     },
     "shared": {
-      "description": "A LEITURA de beneficiários, categorias e etiquetas é sempre permitida. Estes controlam criar/editar/eliminar."
+      "description": "A LEITURA de beneficiários, categorias e etiquetas é sempre permitida. Estes controlam criar/editar/eliminar.",
+      "toggleLabel": "{op} {resource}",
+      "resources": {
+        "payees": "Beneficiários",
+        "categories": "Categorias",
+        "tags": "Etiquetas"
+      }
     },
     "saveButton": "Guardar",
     "toasts": {
@@ -1160,7 +1193,6 @@
       "editMessageButton": "Editar",
       "messagePlaceholder": "Notas, instruções, localização de documentos importantes...",
       "maxCharsNote": "Máximo de 4000 caracteres. Armazenado encriptado em repouso.",
-      "cancelButton": "Cancelar",
       "saveButton": "Guardar mensagem",
       "toasts": {
         "saved": "Mensagem guardada",
@@ -1205,7 +1237,7 @@
       "grantStatus": "Estado de concessão: ",
       "unknown": "desconhecido",
       "never": "nunca",
-      "daysAgo": "há {count} dia{plural}",
+      "withRelative": "{timestamp} ({relative})",
       "grantedOn": "concedido em {timestamp}",
       "notYetGranted": "ainda não concedido",
       "timerNote": "O temporizador reinicia automaticamente sempre que utilizar a aplicação -- iniciar sessão, ver uma página, registar uma transação, qualquer ação autenticada."
@@ -1222,6 +1254,17 @@
     },
     "stepUp": {
       "reason": "Verifique novamente a sua identidade para ver ou editar a sua mensagem de acesso de emergência."
+    },
+    "validation": {
+      "wholeDays": "Apenas dias completos",
+      "minDays": "{min, plural, one {Tem de ser pelo menos # dia} other {Tem de ser pelo menos # dias}}",
+      "maxDays": "{max, plural, one {Tem de ser # dia ou menos} other {Tem de ser # dias ou menos}}",
+      "reminderBeforeGrant": "Os dias do lembrete têm de ser menos do que os dias de concessão",
+      "messageMax": "A mensagem tem de ter {max} caracteres ou menos",
+      "firstNameRequired": "O nome próprio é obrigatório",
+      "firstNameMax": "O nome próprio tem de ter {max} caracteres ou menos",
+      "emailInvalid": "Introduza um endereço de email válido",
+      "emailMax": "O email tem de ter {max} caracteres ou menos"
     },
     "toasts": {
       "loadFailed": "Falha ao carregar o acesso de emergência",
@@ -1255,6 +1298,10 @@
       "enableButton": "Ativar",
       "editButton": "Editar",
       "deleteButton": "Eliminar"
+    },
+    "deleteDialog": {
+      "title": "Eliminar fornecedor de IA",
+      "message": "Eliminar {name}? A chave de API guardada é removida com ele. Esta ação não pode ser anulada."
     },
     "configForm": {
       "addTitle": "Adicionar Fornecedor de IA",

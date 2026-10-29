@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { Button } from '@/components/ui/Button';
+import { buttonClassName } from '@/components/ui/Button';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { CompareScenariosView } from '@/components/reports/monte-carlo/CompareScenariosView';
 
@@ -29,8 +29,8 @@ function ComparePageContent() {
           title={t('monteCarloComparePage.title')}
           subtitle={t('monteCarloComparePage.subtitle')}
           actions={
-            <Link href="/reports/monte-carlo-simulation">
-              <Button variant="outline">{t('monteCarloComparePage.backToMonteCarlo')}</Button>
+            <Link href="/reports/monte-carlo-simulation" className={buttonClassName('outline')}>
+              {t('monteCarloComparePage.backToMonteCarlo')}
             </Link>
           }
         />

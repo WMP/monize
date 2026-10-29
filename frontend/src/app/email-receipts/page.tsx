@@ -21,7 +21,11 @@ function EmailReceiptsContent() {
   return (
     <PageLayout>
       <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">
-        <PageHeader title={t('title')} subtitle={t('subtitle')} />
+        <PageHeader
+          title={t('title')}
+          subtitle={t('subtitle')}
+          helpUrl="https://github.com/kenlasko/monize/wiki/Email-Receipts"
+        />
         {/* The hub reads `?tab=` and `?domain=`, which needs a Suspense boundary above it. */}
         <Suspense fallback={null}>
           <EmailReceiptsHub />

@@ -10,7 +10,7 @@
     "firstInstallmentHelp": "This mortgage has no fixed payment: each installment is worked out from the balance, the rate and the amortisation period. This is the one due {date}, including any extra principal."
   },
   "mortgageFields": {
-    "amortizationPeriod": "Amortisation Period (required)",
+    "amortizationPeriod": "Amortisation Period",
     "previewTitle": "Amortisation Preview"
   },
   "loanDetail": {

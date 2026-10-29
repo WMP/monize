@@ -122,8 +122,9 @@ the formatted figure, never a `{currency}{amount}` pair. The same guard fails a
 `.toFixed(` anywhere in components, app or hooks: machine-read sites are
 classified with their reason, and the readouts not yet migrated sit in a
 shrink-only baseline with an exact count per file. A relative time is
-`useRelativeTime()`, never the English-only `formatRelativeTime`
-(`ui-conventions.test.ts`).
+`useRelativeTime()`, the one relative-time formatter; the English-only
+`formatRelativeTime` was removed from `lib/format.ts` and
+`ui-conventions.test.ts` keeps it out.
 A component test must not build its expectation with the same helper the
 component uses -- `SecurityList.test.tsx` did, so it proved the component agreed
 with a hardcoded formatter while the screen disagreed with the user. Set a real

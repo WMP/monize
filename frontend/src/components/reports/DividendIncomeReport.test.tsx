@@ -1674,7 +1674,7 @@ describe('DividendIncomeReport', () => {
     });
     // A visible, retryable error replaces the empty state on a failed fetch.
     expect(screen.getByText(/Failed to load report data/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Try again/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Try Again/ })).toBeInTheDocument();
   });
 
   it('converts amounts to default currency in the all-accounts view', async () => {
@@ -2323,7 +2323,7 @@ describe('DividendIncomeReport', () => {
     });
 
     // Switch back to Chart
-    fireEvent.click(screen.getByRole('button', { name: 'Chart' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Bar Chart' }));
     await waitFor(() => {
       expect(screen.getByTestId('bar-chart')).toBeInTheDocument();
     });
@@ -2416,8 +2416,8 @@ describe('DividendIncomeReport', () => {
     const { container } = render(<DividendIncomeReport />);
     await waitFor(() => expect(screen.getByTestId('bar-chart')).toBeInTheDocument());
     // Switch to monthly table view by clicking the "Table" button in the
-    // monthly/daily display group (text "Table" is unique among controls).
-    const tableBtn = screen.getByText('Table');
+    // monthly/daily display group (the only control named "Table").
+    const tableBtn = screen.getByRole('button', { name: 'Table' });
     await act(async () => { fireEvent.click(tableBtn); });
     await waitFor(() => expect(container.querySelector('table')).toBeInTheDocument());
     // Click each column header in sequence, re-querying between each click

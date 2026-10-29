@@ -231,7 +231,7 @@ describe('RealizedGainsReport', () => {
     mockGetInvestmentAccounts.mockResolvedValue([]);
     render(<RealizedGainsReport />);
     await waitFor(() => {
-      expect(screen.getByTitle('Chart')).toBeInTheDocument();
+      expect(screen.getByTitle('Bar Chart')).toBeInTheDocument();
     });
     expect(screen.getByTitle('Table')).toBeInTheDocument();
   });
@@ -329,7 +329,7 @@ describe('RealizedGainsReport', () => {
     });
     expect(screen.getByText('Realized Gains Detail')).toBeInTheDocument();
     await act(async () => {
-      fireEvent.click(screen.getByTitle('Chart'));
+      fireEvent.click(screen.getByTitle('Bar Chart'));
     });
     expect(screen.getByText('Realized Gains by Security')).toBeInTheDocument();
   });
@@ -530,7 +530,7 @@ describe('RealizedGainsReport', () => {
     await waitFor(() => {
       expect(screen.getByText(/Failed to load report data/)).toBeInTheDocument();
     });
-    expect(screen.getByRole('button', { name: /Try again/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Try Again/ })).toBeInTheDocument();
   });
 
   it('handles API error for accounts gracefully', async () => {

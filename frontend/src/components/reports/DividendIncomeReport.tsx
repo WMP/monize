@@ -41,10 +41,13 @@ import {
 } from '@/components/ui/Table';
 import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { exportToCsv } from '@/lib/csv-export';
-import { roundMoney } from '@/lib/format';
+import { roundMoney, balanceColor } from '@/lib/format';
 import { chartColors, CHART_SERIES } from '@/lib/chart-colors';
 import { useTranslations } from 'next-intl';
 import { useMainAccountName } from '@/hooks/useMainAccountName';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
+import { ChartViewToggle } from '@/components/ui/ChartViewToggle';
 
 type SeriesKey = 'dividends' | 'interest' | 'capitalGains';
 type MonthlyIncomeSortField = 'month' | 'startValue' | 'endValue' | 'dividends' | 'interest' | 'capitalGains' | 'total';
@@ -1168,34 +1171,32 @@ export function DividendIncomeReport() {
           {/* The three view buttons wrap onto their own line on a phone: this
               group used to hold the refresh and the export too, unwrapped, and
               the export was pushed past the right edge of the card. */}
-          <div className="flex w-full flex-wrap gap-2 items-center sm:ml-auto sm:w-auto sm:shrink-0">
+          <div
+            className={`${SEGMENTED_GROUP_CLASS} flex-wrap sm:ml-auto sm:shrink-0`}
+            role="group"
+            aria-label={t('reportPage.viewLabel')}
+          >
             <button
+              type="button"
               onClick={() => setViewType('monthly')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                viewType === 'monthly'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-              }`}
+              aria-pressed={viewType === 'monthly'}
+              className={segmentClass(viewType === 'monthly')}
             >
               {t('dividendIncome.viewMonthly')}
             </button>
             <button
+              type="button"
               onClick={() => setViewType('daily')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                viewType === 'daily'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-              }`}
+              aria-pressed={viewType === 'daily'}
+              className={segmentClass(viewType === 'daily')}
             >
               {t('dividendIncome.viewDaily')}
             </button>
             <button
+              type="button"
               onClick={() => setViewType('bySecurity')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                viewType === 'bySecurity'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-              }`}
+              aria-pressed={viewType === 'bySecurity'}
+              className={segmentClass(viewType === 'bySecurity')}
             >
               {t('dividendIncome.viewBySecurity')}
             </button>
@@ -1209,31 +1210,12 @@ export function DividendIncomeReport() {
         <div className="mt-3 flex flex-wrap gap-4 items-center">
           {(viewType === 'monthly' || viewType === 'daily') && (
             <>
-              <div
-                className="inline-flex rounded-md border border-gray-200 dark:border-gray-600 overflow-hidden text-sm"
-                role="group"
-                aria-label={t('dividendIncome.monthlyDisplayModeLabel')}
-              >
-                <button
-                  onClick={() => setMonthlyDisplay('chart')}
-                  className={`px-3 py-1 font-medium transition-colors ${
-                    monthlyDisplay === 'chart'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                  }`}
-                >
-                  {t('dividendIncome.displayChart')}
-                </button>
-                <button
-                  onClick={() => setMonthlyDisplay('table')}
-                  className={`px-3 py-1 font-medium transition-colors ${
-                    monthlyDisplay === 'table'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                  }`}
-                >
-                  {t('dividendIncome.displayTable')}
-                </button>
+              <div role="group" aria-label={t('dividendIncome.monthlyDisplayModeLabel')}>
+                <ChartViewToggle
+                  value={monthlyDisplay === 'chart' ? 'bar' : 'table'}
+                  onChange={(v) => setMonthlyDisplay(v === 'table' ? 'table' : 'chart')}
+                  options={['bar', 'table']}
+                />
               </div>
               <div className="flex flex-wrap gap-2 items-center">
                 <span className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
@@ -1301,9 +1283,7 @@ export function DividendIncomeReport() {
 
       {filteredTransactions.length === 0 && filteredCapitalGains.length === 0 && filteredDailyCapitalGains.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            {t('dividendIncome.empty')}
-          </p>
+          <EmptyState title={t('dividendIncome.empty')} />
         </div>
       ) : viewType === 'monthly' && monthlyDisplay === 'chart' ? (
         /* Monthly Chart */
@@ -1499,11 +1479,7 @@ export function DividendIncomeReport() {
                         </td>
                       )}
                       <td
-                        className={`px-4 py-3 text-right text-sm font-medium ${
-                          rowTotal !== null && rowTotal < 0
-                            ? 'text-red-600 dark:text-red-400'
-                            : 'text-gray-900 dark:text-gray-100'
-                        }`}
+                        className={`px-4 py-3 text-right text-sm font-medium ${rowTotal === null ? 'text-gray-900 dark:text-gray-100' : balanceColor(rowTotal)}`}
                       >
                         {fmtValue(rowTotal)}
                       </td>
@@ -1521,9 +1497,7 @@ export function DividendIncomeReport() {
             {t('dividendIncome.dailyChartTitle')}
           </h3>
           {displayedDailyData.length === 0 ? (
-            <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-              {t('dividendIncome.noDailyData')}
-            </p>
+            <EmptyState title={t('dividendIncome.noDailyData')} />
           ) : (
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%" minWidth={0}>
@@ -1585,9 +1559,7 @@ export function DividendIncomeReport() {
             </h3>
           </div>
           {displayedDailyData.length === 0 ? (
-            <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-              {t('dividendIncome.noDailyData')}
-            </p>
+            <EmptyState title={t('dividendIncome.noDailyData')} />
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -1710,11 +1682,7 @@ export function DividendIncomeReport() {
                           </td>
                         )}
                         <td
-                          className={`px-4 py-3 text-right text-sm font-medium ${
-                            rowTotal !== null && rowTotal < 0
-                              ? 'text-red-600 dark:text-red-400'
-                              : 'text-gray-900 dark:text-gray-100'
-                          }`}
+                          className={`px-4 py-3 text-right text-sm font-medium ${rowTotal === null ? 'text-gray-900 dark:text-gray-100' : balanceColor(rowTotal)}`}
                         >
                           {fmtValue(rowTotal)}
                         </td>
@@ -1831,11 +1799,7 @@ export function DividendIncomeReport() {
                     </td>
                     <td
                       role="cell"
-                      className={`col-start-1 col-span-2 row-start-3 font-medium ${
-                        security.total !== null && security.total < 0
-                          ? 'text-red-600 dark:text-red-400'
-                          : 'text-gray-900 dark:text-gray-100'
-                      } ${FIGURE_CELL}`}
+                      className={`col-start-1 col-span-2 row-start-3 font-medium ${security.total === null ? 'text-gray-900 dark:text-gray-100' : balanceColor(security.total)} ${FIGURE_CELL}`}
                     >
                       <CellLabel className={CAPTION_CLASS}>{securityColumns.total.label}</CellLabel>
                       {fmtValue(security.total)}
