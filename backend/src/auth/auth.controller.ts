@@ -31,6 +31,7 @@ import { Response, Request as ExpressRequest } from "express";
 import { AuthService } from "./auth.service";
 import { TokenService } from "./token.service";
 import { OidcService } from "./oidc/oidc.service";
+import { oidcPasswordLoginAllowed } from "./oidc/oidc-password-login";
 import {
   isFreshAuthentication,
   isOidcReauthPurpose,
@@ -751,6 +752,8 @@ export class AuthController {
     return {
       local: this.localAuthEnabled,
       oidc: this.oidcService.enabled,
+      oidcPasswordLogin:
+        oidcPasswordLoginAllowed(this.configService) && this.localAuthEnabled,
       registration: this.demoModeService.isDemo
         ? false
         : this.registrationEnabled,

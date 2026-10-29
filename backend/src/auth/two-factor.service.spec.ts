@@ -513,6 +513,25 @@ describe("TwoFactorService", () => {
       );
     });
 
+    it("lets an SSO account with a password enroll when OIDC_ALLOW_PASSWORD_LOGIN is true", async () => {
+      configService.get.mockImplementation(
+        (key: string, defaultValue?: string) => {
+          if (key === "JWT_SECRET") return TEST_JWT_SECRET;
+          if (key === "OIDC_ALLOW_PASSWORD_LOGIN") return "true";
+          return defaultValue ?? undefined;
+        },
+      );
+      usersRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        authProvider: "oidc",
+      });
+      jest.spyOn(bcrypt, "compare").mockResolvedValueOnce(true as never);
+
+      const result = await service.setup2FA("user-1", "correct-password");
+
+      expect(result.secret).toBe("TESTSECRET");
+    });
+
     it("refuses to replace an active authenticator, before the password is checked", async () => {
       usersRepository.findOne.mockResolvedValue({
         ...mockUser,

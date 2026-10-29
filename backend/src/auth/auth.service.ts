@@ -37,14 +37,7 @@ import { TokenService } from "./token.service";
 import { TwoFactorService } from "./two-factor.service";
 import { AuthEmailService } from "./auth-email.service";
 import { DelegationService } from "../delegation/delegation.service";
-import {
-  BackupEncryptionService,
-  CLEARED_BACKUP_KEY,
-} from "../backup/backup-encryption.service";
-import {
-  loginPasswordRef,
-  sameLoginPasswordRef,
-} from "../backup/backup-key-wrap";
+import { BackupEncryptionService } from "../backup/backup-encryption.service";
 import { withSystemContext } from "../common/db/with-context";
 import { withScopedDb } from "../common/db/scoped-db";
 import { recordFailedLogin } from "./login-lockout";
@@ -58,39 +51,16 @@ import { I18nService } from "nestjs-i18n";
 import { emailTranslator } from "../i18n/email-translator";
 import { resolveUserEmailLocale } from "../i18n/resolve-user-email-locale";
 import { isTwoFactorActive } from "./two-factor-state";
+import { oidcPasswordLoginAllowed } from "./oidc/oidc-password-login";
 
 /**
- * Make `user` an SSO account. The local password goes with the link: the OIDC
- * login drops the TOTP secret, so a hash kept beside it would be a
- * single-factor credential every password-confirmed path still accepted
- * (kenlasko/monize#1858). Re-authentication is the OIDC step-up from here on.
- *
- * A backup key wrapped under that password stays when the wrap was made for
- * the current hash: with its ref cleared it is the account's dedicated backup
- * key, opened by the password the person last signed in with. A wrap made
- * under an older password is dropped, as `resolveBackupKey` would drop it,
- * rather than kept live under a password nobody may remember.
+ * Make `user` an SSO account. The local password, its reset state and any
+ * backup key wrapped under it stay: whether the password may sign in is
+ * OIDC_ALLOW_PASSWORD_LOGIN's decision (`loginWithinContext`), not the link's.
  */
 function adoptOidcIdentity(user: User, subject: string | null): void {
-  if (user.backupKeyPasswordRef) {
-    const current =
-      !!user.passwordHash &&
-      sameLoginPasswordRef(
-        user.backupKeyPasswordRef,
-        loginPasswordRef(user.passwordHash),
-      );
-    if (current) {
-      user.backupKeyPasswordRef = null;
-    } else {
-      Object.assign(user, CLEARED_BACKUP_KEY);
-    }
-  }
   user.oidcSubject = subject;
   user.authProvider = "oidc";
-  user.passwordHash = null;
-  user.mustChangePassword = false;
-  user.resetToken = null;
-  user.resetTokenExpiry = null;
 }
 
 @Injectable()
@@ -99,6 +69,7 @@ export class AuthService {
   private jwtSecret: string;
   /** Derived key for CSRF HMAC -- cryptographically isolated from the JWT signing key */
   private csrfKey: string;
+  private readonly oidcPasswordLogin: boolean;
 
   constructor(
     private jwtService: JwtService,
@@ -115,6 +86,7 @@ export class AuthService {
   ) {
     this.jwtSecret = this.configService.get<string>("JWT_SECRET")!;
     this.csrfKey = derivePurposeKey(this.jwtSecret, "csrf-token");
+    this.oidcPasswordLogin = oidcPasswordLoginAllowed(this.configService);
   }
 
   /**
@@ -126,7 +98,8 @@ export class AuthService {
   /**
    * Merge an OIDC identity into an existing account with no confirmation step
    * (an OIDC-only account, or OIDC_REQUIRE_VERIFIED_EMAIL=false). When the
-   * account had a local password, every credential issued on it ends with it,
+   * account had a local password, every credential issued on it ends with the
+   * change of method,
    * as on the confirmed link (`confirmOidcLinkWithinContext`; INV-AUTH-005).
    */
   private async mergeOidcIdentity(user: User, subject: string): Promise<void> {
@@ -500,10 +473,12 @@ export class AuthService {
       );
     }
 
-    // An SSO account signs in through its provider. A link clears the hash
-    // (`adoptOidcIdentity`); one still present is not a login credential
-    // either (the OIDC login drops the TOTP secret).
-    if (user.authProvider === "oidc") {
+    // An SSO account signs in through its provider. A link keeps the hash, but
+    // the OIDC login drops the TOTP secret, so the hash alone is a single
+    // factor. With OIDC_ALLOW_PASSWORD_LOGIN the OIDC login keeps the TOTP, so
+    // the password plus the normal lockout and 2FA challenge below is the
+    // fallback sign-in.
+    if (user.authProvider === "oidc" && !this.oidcPasswordLogin) {
       this.logger.warn(
         `Login failed: password sign-in refused for SSO user ${user.id}`,
       );
@@ -841,7 +816,7 @@ export class AuthService {
       let needsUpdate = false;
 
       // Ensure authProvider reflects OIDC usage
-      if (user.authProvider !== "oidc" || user.passwordHash) {
+      if (user.authProvider !== "oidc") {
         adoptOidcIdentity(user, user.oidcSubject);
         needsUpdate = true;
       }
@@ -866,11 +841,12 @@ export class AuthService {
       }
     }
 
-    // Strip any 2FA config from SSO users -- 2FA is managed by the identity provider
+    // Strip any 2FA config from SSO users -- 2FA is managed by the identity
+    // provider. Skipped with OIDC_ALLOW_PASSWORD_LOGIN: the kept password then
+    // needs the app TOTP as its second factor.
     if (
-      user.twoFactorSecret ||
-      user.pendingTwoFactorSecret ||
-      user.backupCodes
+      !this.oidcPasswordLogin &&
+      (user.twoFactorSecret || user.pendingTwoFactorSecret || user.backupCodes)
     ) {
       user.twoFactorSecret = null;
       user.pendingTwoFactorSecret = null;
@@ -1018,8 +994,8 @@ export class AuthService {
     }
 
     // Complete the link. The account now signs in through the identity
-    // provider, so the local password and every credential issued on its
-    // strength end with it: PATs and trusted devices in the same transaction,
+    // provider, so every credential issued on the local password ends with the
+    // change of method: PATs and trusted devices in the same transaction,
     // sessions and OAuth grants after it (`credential-revocation.ts`).
     adoptOidcIdentity(user, user.pendingOidcSubject);
     user.oidcLinkPending = false;
