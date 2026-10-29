@@ -1925,6 +1925,32 @@ describe("an empty state is the shared EmptyState", () => {
     expect(offenders).toEqual([]);
   });
 
+  /**
+   * The reports grew their own variant: a bare grey paragraph with
+   * `text-center py-8`, in some thirty report components. Scoped to the
+   * report directories, where every one of them was converted; the same class
+   * pair elsewhere in the tree is tracked by the other UI consistency issues.
+   */
+  const REPORT_DIRS = ["/src/components/reports/", "/src/app/reports/"];
+  const REPORT_FINGERPRINT = /\btext-center py-8\b/;
+
+  it("has no hand-rolled empty-state paragraph in a report", () => {
+    const offenders = productionSources()
+      .filter(([path]) => REPORT_DIRS.some((dir) => path.startsWith(dir)))
+      .filter(([, content]) => REPORT_FINGERPRINT.test(withoutComments(content)))
+      .map(([path]) => path);
+    expect(offenders, "Render EmptyState from @/components/ui/EmptyState.").toEqual([]);
+  });
+
+  it("still scans the reports, so the rule cannot pass by accident", () => {
+    expect(
+      productionSources().filter(([path]) => path.startsWith(REPORT_DIRS[0])).length,
+    ).toBeGreaterThan(0);
+    expect(
+      REPORT_FINGERPRINT.test('<p className="text-gray-500 text-center py-8">'),
+    ).toBe(true);
+  });
+
   it("still finds the shared component, so the rule cannot pass by accident", () => {
     const component = sources[EMPTY_STATE];
     expect(component, `${EMPTY_STATE} not found -- update this test`).toBeTruthy();
@@ -2145,7 +2171,6 @@ describe("a keyboard focus ring is focus-visible, never focus", () => {
     "/src/components/reports/FilterBuilder.tsx",
     "/src/components/reports/MonteCarloReport.tsx",
     "/src/components/reports/MonteCarloSaveAsDialog.tsx",
-    "/src/components/reports/ReportError.tsx",
     "/src/components/scheduled-transactions/PostTransactionDialog.tsx",
     "/src/components/scheduled-transactions/ScheduledTransactionForm.tsx",
     "/src/components/securities/SecurityForm.tsx",
@@ -2455,8 +2480,6 @@ describe("a dialog is titled through Modal, not by a hand-rolled heading", () =>
     "/src/app/payees/[id]/page.tsx",
     "/src/app/payees/page.tsx",
     "/src/app/reconcile/page.tsx",
-    "/src/app/reports/custom/[id]/edit/page.tsx",
-    "/src/app/reports/investment/[id]/edit/page.tsx",
     "/src/app/securities/[id]/page.tsx",
     "/src/app/securities/page.tsx",
     "/src/app/settings/emergency-access/page.tsx",
@@ -3214,11 +3237,6 @@ describe("a segmented control wears the chrome in segmented-control.ts", () => {
       file: "/src/components/bills/CashFlowForecastChart.tsx",
       reason:
         "predates the shared chrome: a range switcher built before segmented-control.ts existed.",
-    },
-    {
-      file: "/src/components/reports/BudgetVsActualReport.tsx",
-      reason:
-        "predates the shared chrome: two switchers built before segmented-control.ts existed.",
     },
   ];
 

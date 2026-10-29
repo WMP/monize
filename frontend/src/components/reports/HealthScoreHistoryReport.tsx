@@ -23,6 +23,8 @@ import { useChartMonthFormat } from '@/hooks/useChartMonthFormat';
 import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { chartColors, CHART_SERIES } from '@/lib/chart-colors';
 import { useTranslations } from 'next-intl';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { gainLossColor } from '@/lib/format';
 
 /**
  * The `month` member names the COLUMN (and the key its stored sort preference
@@ -248,7 +250,7 @@ export function HealthScoreHistoryReport() {
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4 text-center">
           <p className="text-xs text-gray-500 dark:text-gray-400">{t('healthScoreHistory.trajectory')}</p>
-          <p className={`text-2xl font-bold ${improving ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+          <p className={`text-2xl font-bold ${gainLossColor(improving ? 1 : -1)}`}>
             {improving ? t('healthScoreHistory.trajectoryUp') : data.length >= 2 ? t('healthScoreHistory.trajectoryDown') : '--'}
           </p>
         </div>
@@ -257,9 +259,7 @@ export function HealthScoreHistoryReport() {
       {/* Chart */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
         {data.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            {t('healthScoreHistory.noHistory')}
-          </p>
+          <EmptyState title={t('healthScoreHistory.noHistory')} />
         ) : (
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%" minWidth={0}>
@@ -377,9 +377,8 @@ export function HealthScoreHistoryReport() {
                       <td className={`py-2 pr-4 text-center ${grade.color}`}>{grade.label}</td>
                       <td className={`py-2 text-right font-medium ${
                         change === null ? 'text-gray-400' :
-                        change > 0 ? 'text-green-600 dark:text-green-400' :
-                        change < 0 ? 'text-red-600 dark:text-red-400' :
-                        'text-gray-500'
+                        change === 0 ? 'text-gray-500' :
+                        gainLossColor(change)
                       }`}>
                         {change === null ? '--' : change > 0 ? `+${change}` : String(change)}
                       </td>

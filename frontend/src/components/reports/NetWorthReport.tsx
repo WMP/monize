@@ -46,6 +46,7 @@ import {
 } from '@/lib/net-worth-completeness';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { createLogger } from '@/lib/logger';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 const logger = createLogger('NetWorthReport');
 
@@ -517,9 +518,7 @@ export function NetWorthReport() {
             <Skeleton className="h-96 w-full" />
           </div>
         ) : chartData.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            {t('netWorth.noData')}
-          </p>
+          <EmptyState title={t('netWorth.noData')} />
         ) : chartType === 'table' ? (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">

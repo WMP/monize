@@ -43,6 +43,7 @@ import {
 import { createLogger } from '@/lib/logger';
 import { useTranslations } from 'next-intl';
 import { resolvePdfColor } from '@/components/reports/resolve-pdf-color';
+import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
 
 const logger = createLogger('GeographicAllocationReport');
 
@@ -559,34 +560,32 @@ export function GeographicAllocationReport() {
           </div>
           {/* Five controls: they wrap on a phone rather than carrying the
               export off the right of the card. */}
-          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <div
+            className={`${SEGMENTED_GROUP_CLASS} flex-wrap`}
+            role="group"
+            aria-label={t('reportPage.viewLabel')}
+          >
             <button
+              type="button"
               onClick={() => setViewType('region')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                viewType === 'region'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-              }`}
+              aria-pressed={viewType === 'region'}
+              className={segmentClass(viewType === 'region')}
             >
               {t('geographicAllocation.viewByRegion')}
             </button>
             <button
+              type="button"
               onClick={() => setViewType('exchange')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                viewType === 'exchange'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-              }`}
+              aria-pressed={viewType === 'exchange'}
+              className={segmentClass(viewType === 'exchange')}
             >
               {t('geographicAllocation.viewByExchange')}
             </button>
             <button
+              type="button"
               onClick={() => setViewType('country')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                viewType === 'country'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-              }`}
+              aria-pressed={viewType === 'country'}
+              className={segmentClass(viewType === 'country')}
             >
               {t('geographicAllocation.viewByCountry')}
             </button>
@@ -651,7 +650,7 @@ export function GeographicAllocationReport() {
           </div>
         )
       ) : viewType === 'region' ? (
-        <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6">
+        <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
             {t('geographicAllocation.regionalAllocation')}
           </h3>
@@ -679,7 +678,7 @@ export function GeographicAllocationReport() {
           </div>
         </div>
       ) : viewType === 'exchange' ? (
-        <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6">
+        <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
             {t('geographicAllocation.exchangeAllocation')}
           </h3>
@@ -712,7 +711,7 @@ export function GeographicAllocationReport() {
           </div>
         </div>
       ) : (
-        <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6">
+        <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
             {t('geographicAllocation.countryAllocation')}
           </h3>

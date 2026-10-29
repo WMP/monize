@@ -5,6 +5,7 @@ import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/Button';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { Modal } from '@/components/ui/Modal';
 import { useTranslations } from 'next-intl';
 
@@ -69,15 +70,13 @@ export function MonteCarloSaveAsDialog({
       pushHistory
     >
       <form onSubmit={handleSubmit(submit)}>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+        <h2 className="flex items-center text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
           {t('monteCarlo.saveAsDialogTitle')}
-        </h3>
-        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-          {t('monteCarlo.saveAsDialogDesc')}
-        </p>
+          <InfoTooltip text={t('monteCarlo.saveAsDialogDesc')} usePortal />
+        </h2>
         <label
           htmlFor="mc-save-as-name"
-          className="block mt-4 text-sm font-medium text-gray-700 dark:text-gray-300"
+          className="block text-sm font-medium text-gray-700 dark:text-gray-300"
         >
           {t('monteCarlo.saveAsNameLabel')}
         </label>

@@ -77,6 +77,8 @@ const fmts = {
   formatCurrency: dollar,
   formatNumber: (n: number, d = 2) => n.toFixed(d),
   formatPercent: (n: number, d = 2) => `${n.toFixed(d)}%`,
+  formatInstant: (iso: string) => `I(${iso})`,
+  neverLabel: 'Never',
 };
 
 describe('CompareMetricTable', () => {

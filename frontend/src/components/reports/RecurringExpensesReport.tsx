@@ -26,7 +26,7 @@ import { resolvePdfColor } from '@/components/reports/resolve-pdf-color';
 import { exportToCsv } from '@/lib/csv-export';
 import { ReportToolbarActions } from '@/components/reports/ReportToolbarActions';
 import { SortableHeader } from '@/components/ui/SortableHeader';
-import { CAPTION_CLASS, CellLabel, PHONE_HEADER_CLASS } from '@/components/ui/Table';
+import { CAPTION_CLASS, CellLabel, PHONE_HEADER_CLASS, TH_CLASS } from '@/components/ui/Table';
 import { INTERACTIVE_ROW_FOCUS_CLASS, activateOnKey } from '@/components/ui/interactive-row';
 import type {
   SortColumn as TableSortColumn,
@@ -38,6 +38,7 @@ import { ReportError } from '@/components/reports/ReportError';
 import { PartialDataNotice } from '@/components/reports/PartialDataNotice';
 import { PartialTotal } from '@/components/ui/PartialTotal';
 import { isComplete, reportTotal, type ConvertedTotal } from '@/lib/currency-total';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 type RecurringSortField = 'payee' | 'category' | 'frequency' | 'count' | 'average' | 'total' | 'lastPaid';
 
@@ -90,9 +91,6 @@ type ExportSurface = 'csv' | 'pdf';
  * stay right. Here it is a compile error instead.
  */
 type SortColumnsByField = TableSortColumnsByField<RecurringSortField, SortColumn>;
-
-// Today's header cell, unchanged.
-const HEADER_CLASS = 'px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase';
 
 // A value cell inside a wrapped row: no padding of its own below `sm` and this
 // table's own `px-4 py-3` from `sm` up. Smaller type on phones so a
@@ -454,13 +452,7 @@ export function RecurringExpensesReport() {
   }
 
   if (!recurringData) {
-    return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-        <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-          {t('recurringExpenses.failedToLoad')}
-        </p>
-      </div>
-    );
+    return <ReportError message={t('recurringExpenses.failedToLoad')} onRetry={reload} />;
   }
 
   return (
@@ -532,9 +524,7 @@ export function RecurringExpensesReport() {
 
       {recurringData.data.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            {t('recurringExpenses.noRecurring', { count: minOccurrences })}
-          </p>
+          <EmptyState title={t('recurringExpenses.noRecurring', { count: minOccurrences })} />
         </div>
       ) : (
         <>
@@ -712,7 +702,7 @@ export function RecurringExpensesReport() {
                         sortDirection={sortDirection}
                         onSort={handleSort}
                         align={col.align}
-                        className={HEADER_CLASS}
+                        className={TH_CLASS}
                       >
                         {col.label}
                       </SortableHeader>

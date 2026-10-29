@@ -31,6 +31,7 @@ import { useTranslations } from 'next-intl';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PartialTotal } from '@/components/ui/PartialTotal';
 import type { ConvertedTotal } from '@/lib/currency-total';
+import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
 
 const logger = createLogger('InvestmentReportViewer');
 
@@ -342,26 +343,24 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
               <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 {t('investmentReportViewer.currencyLabel')}
               </span>
-              <div className="inline-flex rounded-md border border-gray-300 dark:border-gray-600 overflow-hidden">
+              <div
+                className={SEGMENTED_GROUP_CLASS}
+                role="group"
+                aria-label={t('investmentReportViewer.currencyLabel')}
+              >
                 <button
                   type="button"
                   onClick={() => setCurrencyMode('native')}
-                  className={`px-3 py-2 text-sm transition-colors ${
-                    currencyMode === 'native'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300'
-                  }`}
+                  aria-pressed={currencyMode === 'native'}
+                  className={segmentClass(currencyMode === 'native')}
                 >
                   {t('investmentReportViewer.currencyNative')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setCurrencyMode('base')}
-                  className={`px-3 py-2 text-sm border-l border-gray-300 dark:border-gray-600 transition-colors ${
-                    currencyMode === 'base'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300'
-                  }`}
+                  aria-pressed={currencyMode === 'base'}
+                  className={segmentClass(currencyMode === 'base')}
                 >
                   {result?.baseCurrency || 'Base'}
                 </button>

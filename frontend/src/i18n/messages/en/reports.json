@@ -4,6 +4,7 @@
     "subtitle": "Generate insights about your financial health",
     "searchPlaceholder": "Search reports by name or description...",
     "allReports": "All Reports",
+    "categoryWithCount": "{label} ({count})",
     "removeFavourite": "Remove from favourites",
     "addFavourite": "Add to favourites",
     "tableReport": "Report",
@@ -137,11 +138,12 @@
   },
   "reportPage": {
     "notFound": "Report Not Found",
-    "notFoundDesc": "The requested report does not exist."
+    "notFoundDesc": "The requested report does not exist.",
+    "viewLabel": "View"
   },
   "error": {
     "defaultMessage": "Failed to load report data. Please try again.",
-    "retry": "Try again"
+    "retry": "Try Again"
   },
   "accountBalances": {
     "totalAssets": "Total Assets",
@@ -426,7 +428,7 @@
     "visualization": "Visualization",
     "tableConfiguration": "Table Configuration",
     "timePeriod": "Time Period",
-    "filtersOptional": "Filters (Optional)",
+    "filtersOptional": "Filters (optional)",
     "aggregationOptions": "Aggregation Options",
     "labelReportName": "Report Name",
     "labelDescription": "Description (optional)",
@@ -514,8 +516,6 @@
     "viewMonthly": "Monthly",
     "viewDaily": "Daily",
     "viewBySecurity": "By Security",
-    "displayChart": "Chart",
-    "displayTable": "Table",
     "showLabel": "Show:",
     "seriesDividends": "Dividends",
     "seriesInterest": "Interest",
@@ -1251,7 +1251,6 @@
     "incompleteTooltip": "Some days in this window are missing a price, an exchange rate or a cash balance, so the figures that depend on every day are not shown.",
     "measuredFromClose": "Since the close of trading on {date}",
     "notAvailable": "N/A",
-    "intradayUnavailable": "Detailed intraday pricing unavailable",
     "intradayUnavailableTitle": "Intraday view unavailable for this account mix",
     "intradayUnavailableDesc": "One or more holdings use a quote provider (MSN Money) that does not expose intraday data{skipped}. Switch to a longer range to see daily snapshots.",
     "intradayUnavailableSkipped": ": {symbols}",
@@ -1302,8 +1301,6 @@
     "costBasis": "Cost Basis",
     "realizedGainLoss": "Realized Gain/Loss",
     "securitiesSold": "Securities Sold",
-    "viewChart": "Chart",
-    "viewTable": "Table",
     "noTransactions": "No sell transactions found for this period.",
     "noGainsLosses": "No gains or losses to display.",
     "bySecurityTitle": "Realized Gains by Security",
@@ -1339,7 +1336,7 @@
     "sixMonthTotal": "6-Month Total",
     "monthlyEstimate": "Monthly Estimate",
     "identifiedPayees": "identified payees",
-    "minOccurrencesLabel": "Minimum occurrences:",
+    "minOccurrencesLabel": "Minimum Occurrences",
     "inLast6Months": "(in last 6 months)",
     "noRecurring": "No recurring expenses found with {count}+ occurrences in the last 6 months.",
     "failedToLoad": "Failed to load recurring expenses data.",
@@ -1699,8 +1696,6 @@
     "activeBills": "Active Bills",
     "overdue": "Overdue",
     "thisMonth": "This Month",
-    "autoPostsTitle": "Auto-posts when due",
-    "manualPostTitle": "Requires manual posting",
     "autoLabel": "Auto",
     "manualLabel": "Manual",
     "overdueLabel": "Overdue",
@@ -1834,6 +1829,7 @@
     "removeAriaLabel": "Remove {title} from comparison",
     "removeTitle": "Remove from comparison",
     "runFailed": "Run failed",
+    "never": "Never",
     "errors": {
       "loadScenarioFailed": "Failed to load scenario.",
       "simulationFailed": "Simulation failed."
@@ -1847,7 +1843,6 @@
     "backToReports": "Back to Reports",
     "deleteButton": "Delete Report",
     "deleteConfirmMessage": "Are you sure you want to delete \"{name}\"? This action cannot be undone.",
-    "deleting": "Deleting...",
     "toasts": {
       "loadFailed": "Failed to load report",
       "updated": "Report updated",

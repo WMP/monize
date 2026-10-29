@@ -85,6 +85,8 @@ const fmts = {
   formatCurrency: dollar,
   formatNumber: (n: number, d = 2) => `N(${n},${d})`,
   formatPercent: (n: number, d = 2) => `${n.toFixed(d)}%`,
+  formatInstant: (iso: string) => `I(${iso})`,
+  neverLabel: 'Never',
 };
 
 describe('formatPercent', () => {
@@ -132,6 +134,18 @@ describe('formatCellValue', () => {
 
   it('renders em-dash for null', () => {
     expect(formatCellValue(null, 'currency', fmts)).toBe('—');
+  });
+
+  it('formats an instant through the supplied date formatter', () => {
+    // Not `new Date(stamp).toLocaleString()`: that follows the browser, not
+    // the reader's date format and timezone preferences.
+    expect(formatCellValue('2025-01-01T12:00:00Z', 'instant', fmts)).toBe(
+      'I(2025-01-01T12:00:00Z)',
+    );
+  });
+
+  it('renders a run that never happened with the translated label', () => {
+    expect(formatCellValue(null, 'instant', { ...fmts, neverLabel: 'Jamais' })).toBe('Jamais');
   });
 });
 

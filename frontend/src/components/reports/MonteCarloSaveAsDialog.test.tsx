@@ -122,7 +122,7 @@ describe('MonteCarloSaveAsDialog', () => {
     expect(save).toBeDisabled();
   });
 
-  it('does not invoke onSubmit when the name is empty', () => {
+  it('does not invoke onSubmit when the name is empty', async () => {
     const onSubmit = vi.fn();
     render(
       <MonteCarloSaveAsDialog
@@ -132,7 +132,10 @@ describe('MonteCarloSaveAsDialog', () => {
         onSubmit={onSubmit}
       />,
     );
-    fireEvent.submit(screen.getByLabelText(/^Name$/).closest('form')!);
+    // react-hook-form validates asynchronously; let it settle inside act.
+    await act(async () => {
+      fireEvent.submit(screen.getByLabelText(/^Name$/).closest('form')!);
+    });
     expect(onSubmit).not.toHaveBeenCalled();
   });
 

@@ -25,6 +25,7 @@ import type {
   PaginationInfo,
   Transaction,
 } from '@/types/transaction';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 const logger = createLogger('ForeignCurrencyFeesReport');
 
@@ -335,9 +336,7 @@ export function ForeignCurrencyFeesReport() {
   if (accountsLoaded && eligibleAccounts.length === 0) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-        <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-          {tr('foreignCurrencyFees.noEligibleAccounts')}
-        </p>
+        <EmptyState title={tr('foreignCurrencyFees.noEligibleAccounts')} />
       </div>
     );
   }

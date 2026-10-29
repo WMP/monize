@@ -247,7 +247,7 @@ describe('HealthScoreHistoryReport', () => {
     await waitFor(() => {
       expect(screen.getByText(/Failed to load report data/i)).toBeInTheDocument();
     });
-    expect(screen.getByRole('button', { name: /Try again/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Try Again/i })).toBeInTheDocument();
   });
 
   it('shows a retryable error when loading history fails', async () => {
@@ -257,7 +257,7 @@ describe('HealthScoreHistoryReport', () => {
     await waitFor(() => {
       expect(screen.getByText(/Failed to load report data/i)).toBeInTheDocument();
     });
-    expect(screen.getByRole('button', { name: /Try again/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Try Again/i })).toBeInTheDocument();
   });
 
   it('exports to PDF with summary cards and history table', async () => {

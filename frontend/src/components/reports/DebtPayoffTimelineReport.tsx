@@ -44,6 +44,8 @@ import { useChartDateFormat } from '@/hooks/useChartDateFormat';
 import { useFinancialToday } from '@/hooks/useFinancialToday';
 import { useTranslations } from 'next-intl';
 import { useDateFormat } from '@/hooks/useDateFormat';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
 
 interface PayoffScheduleItem {
   date: string;
@@ -652,9 +654,7 @@ export function DebtPayoffTimelineReport() {
   if (accounts.length === 0) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-        <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-          {t('debtPayoff.empty')}
-        </p>
+        <EmptyState title={t('debtPayoff.empty')} />
       </div>
     );
   }
@@ -683,34 +683,32 @@ export function DebtPayoffTimelineReport() {
                 ))}
             </select>
           </div>
-          <div className="flex flex-wrap gap-2 items-center">
+          <div
+            className={`${SEGMENTED_GROUP_CLASS} flex-wrap`}
+            role="group"
+            aria-label={t('reportPage.viewLabel')}
+          >
             <button
+              type="button"
               onClick={() => setViewType('balance')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                viewType === 'balance'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-              }`}
+              aria-pressed={viewType === 'balance'}
+              className={segmentClass(viewType === 'balance')}
             >
               {t('debtPayoff.balanceOverTime')}
             </button>
             <button
+              type="button"
               onClick={() => setViewType('breakdown')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                viewType === 'breakdown'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-              }`}
+              aria-pressed={viewType === 'breakdown'}
+              className={segmentClass(viewType === 'breakdown')}
             >
               {t('debtPayoff.paymentBreakdown')}
             </button>
             <button
+              type="button"
               onClick={() => setViewType('distribution')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                viewType === 'distribution'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-              }`}
+              aria-pressed={viewType === 'distribution'}
+              className={segmentClass(viewType === 'distribution')}
             >
               {t('debtPayoff.viewPrincipalVsInterest')}
             </button>
@@ -769,9 +767,7 @@ export function DebtPayoffTimelineReport() {
       {/* Chart */}
       <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
         {payoffSchedule.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            {t('debtPayoff.noPaymentHistory')}
-          </p>
+          <EmptyState title={t('debtPayoff.noPaymentHistory')} />
         ) : (
           <>
             {viewType === 'balance' && (

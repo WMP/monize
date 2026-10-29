@@ -432,7 +432,7 @@ export function SectorWeightingsReport() {
       </div>
 
       {/* Stacked Bar Chart */}
-      <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6">
+      <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
           {t('sectorWeightings.sectorAllocation')}
         </h3>

@@ -17,6 +17,7 @@ import type {
 import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { createLogger } from '@/lib/logger';
 import { useTranslations } from 'next-intl';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 const logger = createLogger('CategoryPerformanceReport');
 
@@ -480,9 +481,7 @@ export function CategoryPerformanceReport() {
       {/* Table */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4 sm:p-6">
         {sortedData.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            {t('categoryPerformance.noData')}
-          </p>
+          <EmptyState title={t('categoryPerformance.noData')} />
         ) : (
           /* Below `sm` the table becomes a block and each row wraps into a
              two-column grid of EQUAL `minmax(0,1fr)` tracks (for the reason

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, act } from '@/test/render';
 import { UpcomingBillsReport } from './UpcomingBillsReport';
+import { formatDate } from '@/lib/utils';
 
 // Capture the push mock so tests can assert on it
 const mockPush = vi.fn();
@@ -601,9 +602,10 @@ describe('UpcomingBillsReport', () => {
         expect(screen.getAllByText('$675').length).toBeGreaterThan(0);
       });
       expect(screen.getByText('$1350')).toBeInTheDocument();
-      // The moved date, not the recurrence slot it replaced.
-      expect(screen.getByText('Feb 20, 2026')).toBeInTheDocument();
-      expect(screen.queryByText('Feb 15, 2026')).not.toBeInTheDocument();
+      // The moved date, not the recurrence slot it replaced, in the reader's
+      // own date format.
+      expect(screen.getByText(formatDate('2026-02-20'))).toBeInTheDocument();
+      expect(screen.queryByText(formatDate('2026-02-15'))).not.toBeInTheDocument();
       // February's total is the overridden 675, not the template's 1350.
       const thisMonthCard = screen.getByText('This Month').parentElement!;
       expect(thisMonthCard).toHaveTextContent('$675');
@@ -784,7 +786,7 @@ describe('UpcomingBillsReport', () => {
       render(<UpcomingBillsReport />);
       // Should not throw; should render the shared error panel instead of an empty report.
       await waitFor(() => {
-        expect(screen.getByText('Try again')).toBeInTheDocument();
+        expect(screen.getByText('Try Again')).toBeInTheDocument();
       });
     });
   });

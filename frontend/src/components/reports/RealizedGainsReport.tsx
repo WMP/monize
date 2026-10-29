@@ -41,6 +41,8 @@ import {
 import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { createLogger } from '@/lib/logger';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { ChartViewToggle } from '@/components/ui/ChartViewToggle';
 
 const logger = createLogger('RealizedGainsReport');
 
@@ -494,34 +496,12 @@ export function RealizedGainsReport() {
           {/* `ml-auto` only from `sm` up: on a phone every group is a row of
               its own, and pushing this one right left it hanging under two
               left-aligned rows. */}
-          <div className="flex flex-wrap gap-2 items-center sm:ml-auto sm:shrink-0">
-            <button
-              onClick={() => setViewType('chart')}
-              title={t('realizedGains.viewChart')}
-              className={`p-2 rounded-md transition-colors ${
-                viewType === 'chart'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-              }`}
-            >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </button>
-            <button
-              onClick={() => setViewType('table')}
-              title={t('realizedGains.viewTable')}
-              className={`p-2 rounded-md transition-colors ${
-                viewType === 'table'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-              }`}
-            >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18M3 6h18M3 18h18" />
-              </svg>
-            </button>
-          </div>
+          <ChartViewToggle
+            value={viewType === 'chart' ? 'bar' : 'table'}
+            onChange={(v) => setViewType(v === 'table' ? 'table' : 'chart')}
+            options={['bar', 'table']}
+            className="sm:ml-auto sm:shrink-0"
+          />
           <ReportToolbarActions
             onRefreshComplete={reload}
             onExportCsv={handleExportCsv}
@@ -533,9 +513,7 @@ export function RealizedGainsReport() {
 
       {entries.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            {t('realizedGains.noTransactions')}
-          </p>
+          <EmptyState title={t('realizedGains.noTransactions')} />
         </div>
       ) : viewType === 'chart' ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
@@ -543,9 +521,7 @@ export function RealizedGainsReport() {
             {t('realizedGains.bySecurityTitle')}
           </h3>
           {chartData.length === 0 ? (
-            <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-              {t('realizedGains.noGainsLosses')}
-            </p>
+            <EmptyState title={t('realizedGains.noGainsLosses')} />
           ) : (
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%" minWidth={0}>
