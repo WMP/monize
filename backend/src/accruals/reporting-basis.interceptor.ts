@@ -98,6 +98,16 @@ export class ReportingBasisInterceptor implements NestInterceptor {
           .switchToHttp()
           .getResponse()
           .setHeader("X-Reporting-Currency", currency);
+      // A category-keyed map carries basis in its header, never as a fake category.
+      // Explicit partial results retain their diagnostic envelope.
+      if (
+        Reflect.getMetadata("reportingMapResponse", context.getHandler()) &&
+        body &&
+        body.fxComplete !== false
+      ) {
+        const { basis: _basis, ...entries } = body;
+        return entries;
+      }
       return result;
     });
   }

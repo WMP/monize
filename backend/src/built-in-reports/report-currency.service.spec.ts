@@ -1,3 +1,4 @@
+import { withReportingRead } from "../accruals/reporting-basis";
 import { DataSource } from "typeorm";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
@@ -67,6 +68,31 @@ describe("ReportCurrencyService", () => {
   // getDefaultCurrency
   // ---------------------------------------------------------------------------
   describe("getDefaultCurrency", () => {
+    it("reuses the reporting snapshot without reopening the preference lookup", async () => {
+      userPreferenceRepository.findOne.mockResolvedValue({
+        defaultCurrency: "EUR",
+        accrualEnabled: false,
+      });
+      await withReportingRead(
+        scopedDataSource as unknown as DataSource,
+        mockUserId,
+        async () => {
+          userPreferenceRepository.findOne.mockResolvedValue({
+            defaultCurrency: "GBP",
+            accrualEnabled: false,
+          });
+          expect(
+            await Promise.all([
+              service.getDefaultCurrency(mockUserId),
+              service.getDefaultCurrency(mockUserId),
+            ]),
+          ).toEqual(["EUR", "EUR"]);
+          expect(userPreferenceRepository.findOne).toHaveBeenCalledTimes(1);
+        },
+      );
+      expect(await service.getDefaultCurrency(mockUserId)).toBe("GBP");
+    });
+
     it("returns the user default currency when preference exists", async () => {
       userPreferenceRepository.findOne.mockResolvedValue({
         defaultCurrency: "EUR",

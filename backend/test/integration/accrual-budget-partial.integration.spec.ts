@@ -110,6 +110,32 @@ describe("partial accrual budget boundary (enforced PostgreSQL)", () => {
           }),
         );
       });
+    const readCategoryMap = () =>
+      f.as(() => {
+        const request = { user: { id: f.user }, query: { basis: "accrual" } };
+        const context = {
+          getHandler: () => BudgetsController.prototype.getCategoryBudgetStatus,
+          switchToHttp: () => ({
+            getRequest: () => request,
+            getResponse: () => ({ setHeader: jest.fn() }),
+          }),
+        } as unknown as ExecutionContext;
+        return lastValueFrom(
+          interceptor.intercept(context, {
+            handle: () =>
+              from(
+                controller.getCategoryBudgetStatus(request, {
+                  categoryIds: [f.root],
+                }),
+              ),
+          }),
+        );
+      });
+    expect(await readCategoryMap()).toMatchObject({
+      result: null,
+      fxComplete: false,
+      basis: "accrual",
+    });
     const monthly = await readMonthly();
     expect(monthly).toMatchObject({
       fxComplete: false,
@@ -173,6 +199,9 @@ describe("partial accrual budget boundary (enforced PostgreSQL)", () => {
       "INSERT INTO exchange_rates(from_currency,to_currency,rate,rate_date) VALUES('USD','EUR',0.8,CURRENT_DATE)",
     );
     expect(await read()).toMatchObject({ totalSpent: 160 });
+    const categoryMap = await readCategoryMap();
+    expect(Object.keys(categoryMap)).toEqual([f.root]);
+    expect(categoryMap[f.root]).toMatchObject({ spent: 160 });
     expect(await readMonthly()).toEqual([
       { month: clock.first.slice(0, 7), total: -160, count: 2 },
     ]);

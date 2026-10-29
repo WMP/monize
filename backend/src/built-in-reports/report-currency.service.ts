@@ -1,11 +1,10 @@
-import { reportingRates } from "../accruals/reporting-money";
+import { reportingCurrency, reportingRates } from "../accruals/reporting-money";
+import { currentReportingRead } from "../accruals/reporting-basis";
 import { Injectable } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
-import { UserPreference } from "../users/entities/user-preference.entity";
 import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { convertWithRateLookup } from "../common/currency-conversion.util";
-import { preferredCurrency } from "../common/default-currency.util";
 
 import {
   resolveFxRate,
@@ -67,12 +66,11 @@ export class ReportCurrencyService {
   ) {}
 
   async getDefaultCurrency(userId: string): Promise<string> {
-    const pref = await withScopedDb(this.dataSource, (m) =>
-      m.getRepository(UserPreference).findOne({
-        where: { userId },
-      }),
+    const read = currentReportingRead(userId);
+    if (read) return read.currency;
+    return withScopedDb(this.dataSource, (manager) =>
+      reportingCurrency(manager, userId),
     );
-    return preferredCurrency(pref);
   }
 
   async buildRateMap(

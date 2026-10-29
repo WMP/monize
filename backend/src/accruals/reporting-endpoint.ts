@@ -5,7 +5,7 @@ export const REPORTING_FIXED_BASIS = "reportingFixedBasis";
 /** Add the basis declaration without replacing an endpoint's existing response schema. */
 export function ReportingEndpoint(
   fixed?: "cash",
-  options?: { partialBudget?: boolean },
+  options?: { partialBudget?: boolean; mapResponse?: boolean },
 ): MethodDecorator {
   return (target, key, descriptor) => {
     const method = descriptor.value as unknown as object;
@@ -14,6 +14,7 @@ export function ReportingEndpoint(
     applyDecorators(
       SetMetadata(REPORTING_FIXED_BASIS, fixed),
       SetMetadata("reportingPartialBudget", options?.partialBudget === true),
+      SetMetadata("reportingMapResponse", options?.mapResponse === true),
       UseInterceptors(ReportingBasisInterceptor),
       ApiQuery({
         name: "basis",

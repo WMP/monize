@@ -237,3 +237,8 @@ The LLM cash-list adapter requests native currency buckets for counts and breakd
 Custom Accrual reports convert each native component at its recognition date through `backend/src/reports/report-row-converter.ts`, recording source-entered versus historical provenance. Missing rates leave the known subtotal available, with nullable summary total/average, excluded currencies and pair/date repair metadata; they do not abort the entire report or become zero. A budget whose currency cannot be priced does not become a zero budget or an actual-only variance. Cash reports retain their native latest-rate conversion path.
 
 Custom report selection reads at most 50001 roots to detect the 50000-row boundary, orders by date then identity, and aggregates only the first 50000. When bounded, `truncated:true` and `dataComplete:false` mean every displayed figure is partial; summary total and average are withheld even for COUNT, while knownTotal and count describe the returned selection. The viewer explains the bound and asks for narrower dates/filters. CSV carries completeness metadata; PDF captions disclose the limit and omit a complete total row. This does not change the separate reporting-detail endpoint's strict over-limit contract.
+
+
+### Reporting preference and keyed response contracts
+
+Built-in currency reads reuse `currentReportingRead` or the shared `reportingCurrency` loader, so one read retains its preference snapshot. Category-keyed reporting maps declare `mapResponse` on `ReportingEndpoint`: basis belongs in `X-Reporting-Basis`, not as a synthetic map entry. Explicit incomplete-result envelopes retain their FX diagnostics and basis metadata.

@@ -91,7 +91,7 @@ export class BudgetsController {
     return this.budgetsService.getDashboardSummary(req.user.id);
   }
 
-  @ReportingEndpoint(undefined, { partialBudget: true })
+  @ReportingEndpoint(undefined, { partialBudget: true, mapResponse: true })
   @Post("category-budget-status")
   @ApiOperation({
     summary:
