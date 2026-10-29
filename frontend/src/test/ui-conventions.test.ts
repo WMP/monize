@@ -2166,14 +2166,12 @@ describe("a keyboard focus ring is focus-visible, never focus", () => {
     "/src/components/transactions/TransactionList.tsx",
     "/src/components/transactions/TransactionRow.tsx",
     "/src/components/ui/ColorPicker.tsx",
-    "/src/components/ui/ConfirmDialog.tsx",
     "/src/components/ui/DragHandle.tsx",
     "/src/components/ui/IconPicker.tsx",
     "/src/components/ui/MultiSelect.tsx",
     "/src/components/ui/Pagination.tsx",
     "/src/components/ui/Select.tsx",
     "/src/components/ui/ThemeToggle.tsx",
-    "/src/components/ui/UnsavedChangesDialog.tsx",
   ];
 
   function filesWithFocusRing(): string[] {
@@ -3484,10 +3482,11 @@ describe("an investment amount is formatted with its own currency", () => {
 
 describe("a relative time is read through useRelativeTime", () => {
   /**
-   * `formatRelativeTime` in `lib/format.ts` hardcodes English ("5m ago",
+   * `formatRelativeTime` in `lib/format.ts` hardcoded English ("5m ago",
    * "Yesterday") and a browser-locale date, so a Polish reader got English
-   * beside a translated page. `useRelativeTime()` goes through
-   * `Intl.RelativeTimeFormat` in the reader's language.
+   * beside a translated page. It had no caller left and was removed;
+   * `useRelativeTime()` goes through `Intl.RelativeTimeFormat` in the reader's
+   * language.
    */
   const RAW_RELATIVE_TIME_IMPORT =
     /import\s*\{[^}]*\bformatRelativeTime\b[^}]*\}\s*from\s*["']@\/lib\/format["']/;
@@ -3512,6 +3511,9 @@ describe("a relative time is read through useRelativeTime", () => {
     expect(
       RAW_RELATIVE_TIME_IMPORT.test("import { useRelativeTime } from '@/hooks/useRelativeTime';"),
     ).toBe(false);
-    expect(sources["/src/lib/format.ts"]).toContain("export function formatRelativeTime");
+  });
+
+  it("has no English-only relative-time helper in lib/format.ts to import", () => {
+    expect(sources["/src/lib/format.ts"]).not.toContain("formatRelativeTime");
   });
 });
