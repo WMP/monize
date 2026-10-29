@@ -41,7 +41,7 @@ A warranty's status pill is `WarrantyStatusBadge` (`components/warranties/Warran
 
 `components/ui/Table.tsx` is constants (`TABLE_CLASS`, `TH_CLASS`, `TD_CLASS`) plus thin `Th`/`Td` cells, not a `<Table>` wrapper -- these tables are hand-laid with colspans and sticky cells. `SortableHeader` deliberately stays off `TH_CLASS` (about twenty-five report tables draw a lighter header, and folding it in would restyle every report).
 
-**A list's header cell is `Th` / `TH_CLASS`**, never a hand-copied `text-xs font-medium text-gray-500 uppercase tracking-wider` string or a local `HEADER_CLASS`. A sortable one is a `<th aria-sort>` in `TH_CLASS` holding a `<button>` with `SortIcon`: a `<th onClick>` is not reachable from the keyboard. `SortableHeader` reaches the same result the other way, a focusable `<th>` (`tabIndex={0}`, Enter and Space through `onKeyDown`) carrying `aria-sort`, and stays the report header. The reference lists still hand-copy the string; that is listed debt in `screens-and-dialogs.md`, not a pattern.
+**A list's header cell is `Th` / `TH_CLASS`**, never a hand-copied `text-xs font-medium text-gray-500 uppercase tracking-wider` string or a local `HEADER_CLASS`. A sortable one is a `<th aria-sort>` in `TH_CLASS` holding a `<button>` with `SortIcon`: a `<th onClick>` is not reachable from the keyboard. `SortableHeader` reaches the same result the other way, a focusable `<th>` (`tabIndex={0}`, Enter and Space through `onKeyDown`) carrying `aria-sort`, and stays the report header. `SortableTh` (`components/ui/Table.tsx`) is that list cell, written once. Lists that still hand-copy the string are listed debt in `screens-and-dialogs.md`, not a pattern.
 
 ## The card shadow is `--shadow-card`; the bare `shadow` reads no token
 
@@ -53,9 +53,9 @@ Tailwind v4 trap: the bare `shadow` utility is a legacy alias with the stock val
 
 ## A dialog is titled through `Modal`, never by a hand-rolled heading
 
-`Modal` takes `title` (and optional `description`, `footer`, `padding`), draws the standard header and wires `aria-labelledby` -- before it, none of the 74 hand-rolled headings reached the dialog, so every dialog announced itself as an unnamed region. `padding` defaults to `none` and leaves children unwrapped, because several call sites make the panel their own scroll or flex parent. A genuinely bespoke header (ConfirmDialog's icon) stays on the baseline deliberately.
+`Modal` takes `title` (and optional `description`, drawn as an `InfoTooltip` beside the title, `footer`, `padding`), draws the standard heading and wires `aria-labelledby` -- before it, none of the 74 hand-rolled headings reached the dialog, so every dialog announced itself as an unnamed region. `padding` defaults to `none` and leaves children unwrapped, because several call sites make the panel their own scroll or flex parent. A genuinely bespoke header (ConfirmDialog's icon) stays on the baseline deliberately.
 
-What the header looks like is `screens-and-dialogs.md`: the reference is the New Transaction dialog (large bold title, no X, no full-width divider), and the `title` header is to be brought to that look. Until it is, a new dialog adds no border or close button of its own around it. A confirmation (`ConfirmDialog`, `UnsavedChangesDialog`) is the one exempt kind -- icon, smaller title, the question as a paragraph -- and its buttons are still `Button` variants (`screens-and-dialogs.md`, "A confirmation is its own kind of dialog").
+What the header looks like is `screens-and-dialogs.md`: the reference is the New Transaction dialog (large bold title, no X, no full-width divider), and `Modal`'s `title` heading is drawn that way. There is no X, so a titled dialog draws its own Cancel or Close in every state. A confirmation (`ConfirmDialog`, `UnsavedChangesDialog`) is the one exempt kind -- icon, smaller title, the question as a paragraph -- and its buttons are still `Button` variants (`screens-and-dialogs.md`, "A confirmation is its own kind of dialog").
 
 ## An empty list renders `EmptyState`
 
