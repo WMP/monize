@@ -114,7 +114,7 @@ describe('WarrantyClaimList', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Add claim' }));
     });
     const dialog = screen.getByRole('dialog', { name: 'New claim' });
-    fireEvent.change(within(dialog).getByLabelText('What went wrong'), { target: { value: 'Hinge cracked' } });
+    fireEvent.change(within(dialog).getByLabelText('Description'), { target: { value: 'Hinge cracked' } });
     await act(async () => {
       fireEvent.click(within(dialog).getByRole('button', { name: 'Add claim' }));
     });

@@ -5,11 +5,12 @@ import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
-import { ArrowDownTrayIcon, ArrowUpTrayIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { ArrowDownTrayIcon, ArrowUpTrayIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Badge } from '@/components/ui/Badge';
+import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -334,6 +335,13 @@ function WarrantiesContent() {
     return formatNumber(count, 0);
   };
 
+  // The summary counts the current (unarchived) warranties, so a segment
+  // carries its count only over that list, once the counts have arrived.
+  const filterCount = (option: WarrantyStatusFilter): number | null => {
+    if (archived || summary === null || summaryFailed) return null;
+    return option === 'all' ? summary.total : summary.counts[option];
+  };
+
   const filtered = status !== 'all' || q !== '' || transactionFilter !== null;
   const empty = useMemo(() => {
     if (archived) return { title: t('page.empty.archivedTitle') };
@@ -385,37 +393,26 @@ function WarrantiesContent() {
         readOnly={readOnly}
         toolbarActions={
           <>
-            {/* A read, so a delegate exports too; adding and importing are the owner's. */}
+            {/* A read, so a delegate exports too; importing is the owner's. */}
             <button
               type="button"
               onClick={() => void handleExport()}
               disabled={exporting || pagination?.total === 0}
-              className={LIST_TOOLBAR_BUTTON_CLASS}
+              className={`${LIST_TOOLBAR_BUTTON_CLASS} gap-1`}
             >
-              <ArrowDownTrayIcon className="h-4 w-4 mr-1" aria-hidden="true" />
+              <ArrowDownTrayIcon className="h-4 w-4" aria-hidden="true" />
               {t('page.exportButton')}
             </button>
             {readOnly ? undefined : (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setImportOpen(true)}
-                  className={LIST_TOOLBAR_BUTTON_CLASS}
-                  {...tourAnchor(TOUR_ANCHORS.warrantiesImportButton)}
-                >
-                  <ArrowUpTrayIcon className="h-4 w-4 mr-1" aria-hidden="true" />
-                  {t('page.importButton')}
-                </button>
-                <button
-                  type="button"
-                  onClick={openNew}
-                  className={LIST_TOOLBAR_BUTTON_CLASS}
-                  {...tourAnchor(TOUR_ANCHORS.warrantiesAddButton)}
-                >
-                  <PlusIcon className="h-4 w-4 mr-1" aria-hidden="true" />
-                  {t('page.newButton')}
-                </button>
-              </>
+              <button
+                type="button"
+                onClick={() => setImportOpen(true)}
+                className={`${LIST_TOOLBAR_BUTTON_CLASS} gap-1`}
+                {...tourAnchor(TOUR_ANCHORS.warrantiesImportButton)}
+              >
+                <ArrowUpTrayIcon className="h-4 w-4" aria-hidden="true" />
+                {t('page.importButton')}
+              </button>
             )}
           </>
         }
@@ -436,7 +433,19 @@ function WarrantiesContent() {
   return (
     <PageLayout>
       <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">
-        <PageHeader title={t('page.title')} subtitle={t('page.subtitle')} />
+        <PageHeader
+          title={t('page.title')}
+          subtitle={t('page.subtitle')}
+          helpUrl="https://github.com/kenlasko/monize/wiki/Warranties"
+          actions={
+            readOnly ? undefined : (
+              // The screen's one primary action; adding is the owner's.
+              <Button onClick={openNew} {...tourAnchor(TOUR_ANCHORS.warrantiesAddButton)}>
+                {t('page.newButton')}
+              </Button>
+            )
+          }
+        />
 
         <div
           className={`grid grid-cols-2 md:grid-cols-4 gap-4 ${summaryFailed ? 'mb-3' : 'mb-6'}`}
@@ -490,21 +499,23 @@ function WarrantiesContent() {
         )}
 
         <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-3">
-          <div role="group" aria-label={t('page.filters.label')} className="flex flex-wrap items-center gap-2">
-            {STATUS_FILTERS.map((option) => (
-              <Badge
-                key={option}
-                as="button"
-                type="button"
-                size="md"
-                variant={status === option ? 'blue' : 'gray'}
-                aria-pressed={status === option}
-                onClick={() => changeStatus(option)}
-                className="cursor-pointer focus-visible:outline-2 focus-visible:outline-blue-500"
-              >
-                {t(`page.filters.${option}`)}
-              </Badge>
-            ))}
+          <div role="group" aria-label={t('page.filters.label')} className={SEGMENTED_GROUP_CLASS}>
+            {STATUS_FILTERS.map((option) => {
+              const count = filterCount(option);
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={status === option}
+                  onClick={() => changeStatus(option)}
+                  className={`${segmentClass(status === option)} focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500`}
+                >
+                  {count === null
+                    ? t(`page.filters.${option}`)
+                    : t(`page.filters.counted.${option}`, { count: formatNumber(count, 0) })}
+                </button>
+              );
+            })}
           </div>
           <div className="w-full sm:w-auto sm:min-w-[30rem]">
             <Input
