@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useState } from 'react';
 import { render, screen, waitFor, fireEvent, act, within } from '@/test/render';
 import SecuritiesPage from './page';
-import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
+import { SEGMENTED_TOOLBAR_GROUP_CLASS, toolbarSegmentClass } from '@/components/ui/segmented-control';
 import toast from 'react-hot-toast';
 
 // Per-test query string, so the `?price=<id>` deep link can be exercised.
@@ -958,10 +958,10 @@ describe('SecuritiesPage', () => {
       await waitFor(() => expect(screen.getByTestId('security-list')).toBeInTheDocument());
 
       const group = screen.getByRole('group', { name: 'Status' });
-      expect(group.className).toBe(SEGMENTED_GROUP_CLASS);
+      expect(group.className).toBe(SEGMENTED_TOOLBAR_GROUP_CLASS);
       const active = within(group).getByRole('button', { name: /^Active/ });
       expect(active).toHaveAttribute('aria-pressed', 'true');
-      expect(active.className).toBe(segmentClass(true));
+      expect(active.className).toBe(toolbarSegmentClass(true));
       expect(group.parentElement!.className).toContain('flex-wrap');
     });
 

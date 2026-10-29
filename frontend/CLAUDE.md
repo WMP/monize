@@ -67,6 +67,7 @@ npm run i18n:check         # Verify the pseudo-locale is up to date (CI gate)
 | Report refresh / export buttons | `ReportToolbarActions`, last child of the toolbar row | rendering `ExportDropdown` or `RefreshPricesButton` in a report |
 | A dashboard card filling its grid row | the grid's own `stretch` plus the card's min-height | `h-full` on a widget's outermost element |
 | Toolbar row on a phone | `flex-wrap`, `w-full sm:w-auto`, `sm:ml-auto`, a button's height from `items-stretch` + `LabelSpacer` | an unwrapped row, a bare `ml-auto`, a hand-matched padding |
+| A control alone on its phone line (list filter, lone button) | `w-full sm:w-auto`; a list toolbar's filter is `SEGMENTED_TOOLBAR_GROUP_CLASS` + `toolbarSegmentClass` | a pill or button keeping its desktop width on its own line |
 | A register's running balance | `walkRunningBalances` (`lib/running-balance.ts`) over the response's `startingBalance` | a second walk in a component, or a balance drawn under a sort other than date |
 | A picker that applies tags to a transaction | `useTagPickerOptions` (`hooks/useTagPickerOptions.ts`), recent-first | a local A-Z sort of `tags`, or the usage fetch inside the form's `Promise.all` |
 | Category filter pseudo-ids (`uncategorized`, `transfer`, `income`, `expense`) | `SPECIAL_CATEGORY_FILTER_IDS`, `canonicalizeCategoryFilter`, `useCategoryFilterLabels` (`lib/categoryUtils.ts`) | a literal pseudo-id check, or a type sent as its enumerated ids |

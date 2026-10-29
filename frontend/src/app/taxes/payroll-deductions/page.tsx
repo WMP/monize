@@ -216,6 +216,7 @@ function PayrollDeductionsContent() {
             {/* Collapsed by default: the figures are a detail behind the rules. */}
             <Button
               variant="outline"
+              className="w-full sm:w-auto"
               onClick={() => setShowYearToDate((open) => !open)}
               aria-expanded={showYearToDate}
             >
@@ -238,6 +239,7 @@ function PayrollDeductionsContent() {
             {/* Collapsed by default, loaded when opened: a look back, not a decision. */}
             <Button
               variant="outline"
+              className="w-full sm:w-auto"
               onClick={() => setShowPreviousPeriods((open) => !open)}
               aria-expanded={showPreviousPeriods}
             >

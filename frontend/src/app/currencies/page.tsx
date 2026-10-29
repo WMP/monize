@@ -27,7 +27,7 @@ import { useOnUndoRedo } from '@/hooks/useOnUndoRedo';
 import { useOnAiAction } from '@/hooks/useOnAiAction';
 import { PAGE_SIZE } from '@/lib/constants';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
-import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
+import { SEGMENTED_TOOLBAR_GROUP_CLASS, toolbarSegmentClass } from '@/components/ui/segmented-control';
 import { useRelativeTime } from '@/hooks/useRelativeTime';
 
 const logger = createLogger('Currencies');
@@ -345,14 +345,14 @@ function CurrenciesContent() {
             onChange={(e) => handleSearchChange(e.target.value)}
             className="block w-full sm:w-auto sm:flex-1 sm:max-w-md rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400"
           />
-          <div role="group" aria-label={t('page.statusFilterLabel')} className={SEGMENTED_GROUP_CLASS}>
+          <div role="group" aria-label={t('page.statusFilterLabel')} className={SEGMENTED_TOOLBAR_GROUP_CLASS}>
             {(['all', 'active', 'inactive'] as const).map((status) => (
               <button
                 key={status}
                 type="button"
                 onClick={() => handleStatusFilterChange(status)}
                 aria-pressed={statusFilter === status}
-                className={segmentClass(statusFilter === status)}
+                className={toolbarSegmentClass(statusFilter === status)}
               >
                 {status === 'active' ? t('page.statusActive', { count: activeCount }) :
                  status === 'inactive' ? t('page.statusInactive', { count: inactiveCount }) :

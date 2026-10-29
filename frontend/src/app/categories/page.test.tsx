@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useState } from 'react';
 import { render, screen, waitFor, fireEvent, act, within } from '@/test/render';
 import CategoriesPage from './page';
-import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
+import { SEGMENTED_TOOLBAR_GROUP_CLASS, toolbarSegmentClass } from '@/components/ui/segmented-control';
 import toast from 'react-hot-toast';
 
 // Mock next/image
@@ -287,10 +287,10 @@ describe('CategoriesPage', () => {
     mockGetAll.mockResolvedValue(mockCategories);
     render(<CategoriesPage />);
     const group = await screen.findByRole('group', { name: 'Type' });
-    expect(group.className).toBe(SEGMENTED_GROUP_CLASS);
+    expect(group.className).toBe(SEGMENTED_TOOLBAR_GROUP_CLASS);
     const all = within(group).getByRole('button', { name: 'All (4)' });
     expect(all).toHaveAttribute('aria-pressed', 'true');
-    expect(all.className).toBe(segmentClass(true));
+    expect(all.className).toBe(toolbarSegmentClass(true));
     const income = within(group).getByRole('button', { name: 'Income (1)' });
     expect(income).toHaveAttribute('aria-pressed', 'false');
     fireEvent.click(income);

@@ -10,7 +10,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Badge } from '@/components/ui/Badge';
-import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
+import { SEGMENTED_TOOLBAR_GROUP_CLASS, toolbarSegmentClass } from '@/components/ui/segmented-control';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -509,7 +509,7 @@ function WarrantiesContent() {
               onChange={(e) => setSearchInput(e.target.value)}
             />
           </div>
-          <div role="group" aria-label={t('page.filters.label')} className={SEGMENTED_GROUP_CLASS}>
+          <div role="group" aria-label={t('page.filters.label')} className={SEGMENTED_TOOLBAR_GROUP_CLASS}>
             {STATUS_FILTERS.map((option) => {
               const count = filterCount(option);
               return (
@@ -518,7 +518,7 @@ function WarrantiesContent() {
                   type="button"
                   aria-pressed={status === option}
                   onClick={() => changeStatus(option)}
-                  className={`${segmentClass(status === option)} focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500`}
+                  className={`${toolbarSegmentClass(status === option)} focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500`}
                 >
                   {count === null
                     ? t(`page.filters.${option}`)
