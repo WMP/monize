@@ -4,6 +4,7 @@
     "subtitle": "재무 건전성에 대한 통찰력을 생성하세요",
     "searchPlaceholder": "이름이나 설명으로 보고서 검색...",
     "allReports": "모든 보고서",
+    "categoryWithCount": "{label} ({count})",
     "removeFavourite": "즐겨찾기에서 제거",
     "addFavourite": "즐겨찾기에 추가",
     "tableReport": "보고서",
@@ -137,7 +138,8 @@
   },
   "reportPage": {
     "notFound": "보고서를 찾을 수 없음",
-    "notFoundDesc": "요청한 보고서가 존재하지 않습니다."
+    "notFoundDesc": "요청한 보고서가 존재하지 않습니다.",
+    "viewLabel": "보기"
   },
   "error": {
     "defaultMessage": "보고서 데이터를 불러오지 못했습니다. 다시 시도해 주세요.",
@@ -514,8 +516,6 @@
     "viewMonthly": "월별",
     "viewDaily": "일별",
     "viewBySecurity": "유가증권별",
-    "displayChart": "차트",
-    "displayTable": "표",
     "showLabel": "표시:",
     "seriesDividends": "배당금",
     "seriesInterest": "이자",
@@ -1251,7 +1251,6 @@
     "incompleteTooltip": "이 기간의 일부 날짜에 가격, 환율 또는 현금 잔액이 없어서 모든 날짜에 의존하는 수치는 표시되지 않습니다.",
     "measuredFromClose": "{date} 거래 마감 시점부터",
     "notAvailable": "N/A",
-    "intradayUnavailable": "상세 당일 가격 정보를 이용할 수 없습니다",
     "intradayUnavailableTitle": "이 계정 조합에 대한 당일 보기를 이용할 수 없습니다",
     "intradayUnavailableDesc": "하나 이상의 보유 항목이 당일 데이터를 제공하지 않는 시세 제공업체(MSN Money)를 사용합니다{skipped}. 일별 스냅샷을 보려면 더 긴 범위로 전환하세요.",
     "intradayUnavailableSkipped": ": {symbols}",
@@ -1302,8 +1301,6 @@
     "costBasis": "취득 원가",
     "realizedGainLoss": "실현 이익/손실",
     "securitiesSold": "매각된 유가증권",
-    "viewChart": "차트",
-    "viewTable": "표",
     "noTransactions": "이 기간에 매도 거래를 찾을 수 없습니다.",
     "noGainsLosses": "표시할 이익 또는 손실이 없습니다.",
     "bySecurityTitle": "유가증권별 실현 이익",
@@ -1339,7 +1336,7 @@
     "sixMonthTotal": "6개월 합계",
     "monthlyEstimate": "월 예상액",
     "identifiedPayees": "파악된 수취인",
-    "minOccurrencesLabel": "최소 발생 횟수:",
+    "minOccurrencesLabel": "최소 발생 횟수",
     "inLast6Months": "(지난 6개월)",
     "noRecurring": "지난 6개월 동안 {count}회 이상의 반복 지출을 찾을 수 없습니다.",
     "failedToLoad": "반복 지출 데이터를 불러오지 못했습니다.",
@@ -1699,8 +1696,6 @@
     "activeBills": "활성 청구서",
     "overdue": "연체",
     "thisMonth": "이번 달",
-    "autoPostsTitle": "만기 시 자동 처리",
-    "manualPostTitle": "수동 처리 필요",
     "autoLabel": "자동",
     "manualLabel": "수동",
     "overdueLabel": "연체",
@@ -1834,6 +1829,7 @@
     "removeAriaLabel": "비교에서 {title} 제거",
     "removeTitle": "비교에서 제거",
     "runFailed": "실행 실패",
+    "never": "없음",
     "errors": {
       "loadScenarioFailed": "시나리오를 불러오지 못했습니다.",
       "simulationFailed": "시뮬레이션에 실패했습니다."
@@ -1847,7 +1843,6 @@
     "backToReports": "보고서로 돌아가기",
     "deleteButton": "보고서 삭제",
     "deleteConfirmMessage": "\"{name}\"을(를) 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.",
-    "deleting": "삭제 중...",
     "toasts": {
       "loadFailed": "보고서 불러오기에 실패했습니다",
       "updated": "보고서가 업데이트되었습니다",
