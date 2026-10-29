@@ -6,7 +6,7 @@ Status: local feature scope approved by the deployment owner. Upstream discussio
 
 An optional schedule allocates one existing income or expense, or an eligible saved category split, equally across calendar months. The actual payment remains the cash ledger source. Recognition facts are separate from cash transactions and do not create bank payments or change reconciliation, import identity or account balances.
 
-- Previous twelve months and next twelve months include the payment month. Custom uses a start month and month count. Recognition occurs at month-end.
+- Previous twelve months and next twelve months include the payment month. Custom uses a start month and month count. Recognition defaults to month-end; the first-business-day option uses weekdays without a holiday calendar.
 - Allocation uses integer minor units, retaining source precision under the engine's currency rules; a division remainder belongs to the final period. The recognized amounts sum to the source amount.
 - Source edits, schedule writes and removals validate the reviewed fingerprint and revision under source locks inside the same `withScopedDb` transaction as their writes. A stale preview refuses before commit. Undo/redo retains linked schedule state.
 - Expense timing positions net in one Prepaid Expenses bucket; income positions net in one Unearned Revenue bucket. Past recognition and payment offset within that bucket. Read-only system-account detail remains separate by native currency under Accounts / Other.
@@ -37,4 +37,21 @@ Pure tests cover exact division, remainder, calendar boundaries, signs, fingerpr
 
 ## Limits
 
-Equal monthly allocations only. No daily recurrence, weighted allocations, partial-month proration, closed-period locking or general journal editor. An unsaved new split component must first receive its persisted identity. Unsupported report filters and oversized detail windows refuse rather than approximate or truncate.
+Equal monthly allocations only. No daily recurrence, weighted allocations, partial-month proration, closed-period locking or general journal editor. An unsaved new split component must first receive its persisted identity. Unsupported report filters refuse rather than approximate. Bounded custom-report selections disclose truncation and withhold complete totals; their known subtotals and selection counts describe only the returned rows.
+
+## Review repairs: previews, source writes and history
+
+Previews, including incremental split previews, read without source/schedule write locks or the bulk-history advisory lock. Source writers re-read and validate the reviewed fingerprint under the existing parent-before-leg row locks. Add/remove split and bulk deletion do not serialize unrelated sources on a user-wide accrual lock. Versioned bulk-history undo/redo retains its advisory lock before source/account rows, rechecks the history state after acquiring it, and conditionally writes history last. Existing source locks, fingerprint checks and rollback on a failed history write remain in place.
+
+New history stores the recognition date rule explicitly. A legacy history payload that omitted the rule may recover it only when exactly one regenerated supported plan matches its stored content fingerprint; failure refuses undo and rolls back source, schedules and balance changes. Closed-period accrual trends use the period's stored category IDs, rather than current budget membership; historical transfer/income metadata and deleted budget-category snapshots remain bounded by what the existing period schema actually retained.
+
+
+## Reporting compatibility decisions, October 29
+
+Native Cash net-worth output retains its existing whole-unit rounding; active Accrual net-worth uses four-decimal money. Selected Accrual with no schedules uses native execution, including closed budget snapshots. Active recognition trends and health comparisons use the retained period category IDs. Missing historical transfer/income metadata or cascaded-away snapshots cannot be reconstructed from that schema.
+
+Reporting entry points refuse a supplied owner that conflicts with the effective request owner before preferences or SQL. Delegation uses the effective owner, not the delegate's real identity; explicit system jobs may select an owner. Cash SQL and its parameters remain unchanged. This adds a caller-scope refusal without adding owner semi-joins to native queries.
+
+Taxonomy operations require owner review when the affected sources include an accrual schedule; an unrelated schedule is not by itself a delegate refusal. Parent-before-leg source locks and fresh membership checks fence matching import/category/payee writes. Automatic-rule APIs still accept existing IDs, so they retain a scoped lock/discovery batch rather than trusting a caller's claim that rows are new.
+
+Partial budget reads expose known components and missing pair/date details through an explicit opt-in response, with derived scores, ratios and recommendations withheld. Non-opt-in internal calls and period-closing writes retain refusal on unknown FX. Transaction summary/tool contracts carry nullable totals and named known subtotals; monthly charts still refuse missing FX until their partial-result public/UI contract is implemented.
