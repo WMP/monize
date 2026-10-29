@@ -37,6 +37,7 @@
   },
   "security": {
     "heading": "Seguridad",
+    "ssoPasswordFallbackNotice": "Tu cuenta usa Inicio de Sesión Único (SSO). También puedes iniciar sesión con la contraseña a continuación cuando el SSO no esté disponible. Activa la autenticación de dos factores para proteger este inicio de sesión alternativo.",
     "ssoNotice": "Tu cuenta usa Inicio de Sesión Único (SSO) para la autenticación. La contraseña a continuación no se usa para iniciar sesión, pero puede conservarse como respaldo si se deshabilita el SSO.",
     "currentPasswordLabel": "Contraseña actual",
     "currentPasswordPlaceholder": "Ingresa la contraseña actual",

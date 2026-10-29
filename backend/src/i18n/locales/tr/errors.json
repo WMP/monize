@@ -114,6 +114,8 @@
     "deleteLastAdmin": "Son yönetici hesabı silinemez.",
     "cannotResetOwnPassword": "Yönetici panelinden kendi şifrenizi sıfırlayamazsınız",
     "noLocalPassword": "Yerel şifresi olmayan hesapların şifresi sıfırlanamaz",
+    "cannotUnlinkOwnSso": "Yönetici panelinden kendi SSO hesabınızın bağlantısını kaldıramazsınız",
+    "notSsoAccount": "Bu hesap bir SSO hesabı değildir",
     "cannotResetOwnTwoFactor": "Yönetici panelinden kendi iki faktörlü kimlik doğrulamanızı sıfırlayamazsınız",
     "twoFactorNotEnabled": "Bu kullanıcı için iki faktörlü kimlik doğrulama ayarlanmamış."
   },

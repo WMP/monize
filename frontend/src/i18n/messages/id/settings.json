@@ -37,6 +37,7 @@
   },
   "security": {
     "heading": "Keamanan",
+    "ssoPasswordFallbackNotice": "Akun Anda menggunakan Single Sign-On (SSO). Anda juga dapat login dengan kata sandi di bawah ini saat SSO tidak tersedia. Aktifkan autentikasi dua faktor untuk melindungi login cadangan ini.",
     "ssoNotice": "Akun Anda menggunakan Single Sign-On (SSO) untuk autentikasi. Kata sandi di bawah ini tidak digunakan untuk login tetapi dapat disimpan sebagai cadangan jika SSO dinonaktifkan.",
     "currentPasswordLabel": "Kata Sandi Saat Ini",
     "currentPasswordPlaceholder": "Masukkan kata sandi saat ini",

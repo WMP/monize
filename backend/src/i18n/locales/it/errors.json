@@ -114,6 +114,8 @@
     "deleteLastAdmin": "Impossibile eliminare l'ultimo account amministratore.",
     "cannotResetOwnPassword": "Non puoi reimpostare la tua password tramite il pannello di amministrazione",
     "noLocalPassword": "Impossibile reimpostare la password per account senza password locale",
+    "cannotUnlinkOwnSso": "Non puoi scollegare il tuo account SSO tramite il pannello di amministrazione",
+    "notSsoAccount": "Questo account non è un account SSO",
     "cannotResetOwnTwoFactor": "Non puoi reimpostare la tua autenticazione a due fattori tramite il pannello di amministrazione",
     "twoFactorNotEnabled": "Questo utente non ha configurato l'autenticazione a due fattori."
   },

@@ -37,6 +37,7 @@
   },
   "security": {
     "heading": "Güvenlik",
+    "ssoPasswordFallbackNotice": "Hesabınız Tek Oturum Açma (SSO) kullanmaktadır. SSO kullanılamadığında aşağıdaki şifreyle de oturum açabilirsiniz. Bu yedek oturum açma yöntemini korumak için iki faktörlü kimlik doğrulamayı etkinleştirin.",
     "ssoNotice": "Hesabınız kimlik doğrulama için Tek Oturum Açma (SSO) kullanmaktadır. Aşağıdaki şifre oturum açma için kullanılmamaktadır; ancak SSO devre dışı bırakıldığında yedek olarak tutulabilir.",
     "currentPasswordLabel": "Mevcut Şifre",
     "currentPasswordPlaceholder": "Mevcut şifreyi girin",

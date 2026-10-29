@@ -37,6 +37,7 @@
   },
   "security": {
     "heading": "Segurança",
+    "ssoPasswordFallbackNotice": "A sua conta utiliza Single Sign-On (SSO). Também pode iniciar sessão com a palavra-passe abaixo quando o SSO não estiver disponível. Ative a autenticação de dois fatores para proteger este início de sessão alternativo.",
     "ssoNotice": "A sua conta utiliza Single Sign-On (SSO) para autenticação. A palavra-passe abaixo não é utilizada para iniciar sessão, mas pode ser mantida como cópia de segurança se o SSO for desativado.",
     "currentPasswordLabel": "Palavra-passe atual",
     "currentPasswordPlaceholder": "Introduza a palavra-passe atual",

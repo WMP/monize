@@ -63,6 +63,7 @@
     "clickToEnable": "点击启用",
     "resetPassword": "重置密码",
     "resetTwoFactor": "重置 2FA",
+    "unlinkSso": "解除 SSO 绑定",
     "noUsers": "未找到用户。",
     "storageLoading": "加载中…",
     "storageUnavailable": "不可用",
@@ -99,7 +100,8 @@
       "disableFailed": "禁用用户失败",
       "resetFailed": "重置密码失败",
       "twoFactorReset": "已重置 {name} 的双重身份验证。该用户已退出登录。",
-      "resetTwoFactorFailed": "重置双重身份验证失败"
+      "resetTwoFactorFailed": "重置双重身份验证失败",
+      "unlinkSsoFailed": "解除 SSO 绑定失败"
     },
     "dialogs": {
       "promoteTitle": "提升用户权限？",
@@ -114,6 +116,11 @@
       "resetTitle": "重置密码？",
       "resetMessage": "这将为 {name} 生成新的临时密码。他们下次登录时将被要求更改密码。",
       "resetConfirm": "重置密码",
+      "unlinkSsoTitle": "解除 SSO 绑定？",
+      "unlinkSsoMessage": "这将把 {name} 的账户转换为本地账户。该账户将无法再使用 SSO 登录。系统会生成临时密码，{name} 下次登录时必须更改密码。",
+      "unlinkSsoConfirm": "解除 SSO 绑定",
+      "unlinkSsoResultTitle": "SSO 绑定已解除",
+      "unlinkSsoResultDesc": "{name} 的账户现在是本地账户。请将此临时密码告知对方，以便其登录。",
       "resetTwoFactorTitle": "重置双重身份验证？",
       "resetTwoFactorMessage": "这将关闭 {name} 的双重身份验证，删除其备用码和受信任设备，并使其在所有位置退出登录。之后，该用户可以使用密码登录并重新设置 2FA。适用于用户丢失了身份验证器应用和备用码，或更改 JWT_SECRET 之后的情况。",
       "resetTwoFactorConfirm": "重置 2FA",

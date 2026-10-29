@@ -114,6 +114,8 @@
     "deleteLastAdmin": "Das letzte Administratorkonto kann nicht gelöscht werden.",
     "cannotResetOwnPassword": "Sie können Ihr eigenes Passwort nicht über das Admin-Panel zurücksetzen",
     "noLocalPassword": "Passwort kann für Konten ohne lokales Passwort nicht zurückgesetzt werden",
+    "cannotUnlinkOwnSso": "Sie können Ihr eigenes SSO-Konto nicht über das Admin-Panel trennen",
+    "notSsoAccount": "Dieses Konto ist kein SSO-Konto",
     "cannotResetOwnTwoFactor": "Sie können Ihre eigene Zwei-Faktor-Authentifizierung nicht über das Admin-Panel zurücksetzen",
     "twoFactorNotEnabled": "Für diesen Benutzer ist keine Zwei-Faktor-Authentifizierung eingerichtet."
   },

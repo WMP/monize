@@ -114,6 +114,8 @@
     "deleteLastAdmin": "마지막 관리자 계정은 삭제할 수 없습니다.",
     "cannotResetOwnPassword": "관리자 패널을 통해 자신의 비밀번호를 재설정할 수 없습니다",
     "noLocalPassword": "로컬 비밀번호가 없는 계정은 비밀번호를 재설정할 수 없습니다",
+    "cannotUnlinkOwnSso": "관리자 패널을 통해 자신의 SSO 계정 연결을 해제할 수 없습니다",
+    "notSsoAccount": "이 계정은 SSO 계정이 아닙니다",
     "cannotResetOwnTwoFactor": "관리자 패널을 통해 자신의 2단계 인증을 재설정할 수 없습니다",
     "twoFactorNotEnabled": "이 사용자는 2단계 인증을 설정하지 않았습니다."
   },

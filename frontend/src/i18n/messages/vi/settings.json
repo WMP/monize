@@ -37,6 +37,7 @@
   },
   "security": {
     "heading": "Bảo mật",
+    "ssoPasswordFallbackNotice": "Tài khoản của bạn sử dụng Đăng nhập một lần (SSO). Bạn cũng có thể đăng nhập bằng mật khẩu bên dưới khi SSO không khả dụng. Hãy bật xác thực hai yếu tố để bảo vệ cách đăng nhập dự phòng này.",
     "ssoNotice": "Tài khoản của bạn sử dụng Đăng nhập một lần (SSO) để xác thực. Mật khẩu bên dưới không được dùng để đăng nhập nhưng có thể được giữ như bản dự phòng nếu SSO bị tắt.",
     "currentPasswordLabel": "Mật khẩu hiện tại",
     "currentPasswordPlaceholder": "Nhập mật khẩu hiện tại",

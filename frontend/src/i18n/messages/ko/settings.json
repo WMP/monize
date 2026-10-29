@@ -37,6 +37,7 @@
   },
   "security": {
     "heading": "보안",
+    "ssoPasswordFallbackNotice": "계정이 SSO(Single Sign-On)를 사용합니다. SSO를 사용할 수 없을 때는 아래 비밀번호로도 로그인할 수 있습니다. 이 대체 로그인을 보호하려면 2단계 인증을 활성화하세요.",
     "ssoNotice": "계정이 인증에 SSO(Single Sign-On)를 사용합니다. 아래 비밀번호는 로그인에 사용되지 않지만 SSO가 비활성화된 경우를 대비해 백업으로 유지할 수 있습니다.",
     "currentPasswordLabel": "현재 비밀번호",
     "currentPasswordPlaceholder": "현재 비밀번호를 입력하세요",

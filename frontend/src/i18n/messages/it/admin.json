@@ -63,6 +63,7 @@
     "clickToEnable": "Clicca per abilitare",
     "resetPassword": "Reimposta password",
     "resetTwoFactor": "Reimposta 2FA",
+    "unlinkSso": "Scollega SSO",
     "noUsers": "Nessun utente trovato.",
     "storageLoading": "Caricamento…",
     "storageUnavailable": "Non disponibile",
@@ -99,7 +100,8 @@
       "disableFailed": "Disabilitazione utente non riuscita",
       "resetFailed": "Reimpostazione password non riuscita",
       "twoFactorReset": "L'autenticazione a due fattori di {name} è stata reimpostata. È stato disconnesso.",
-      "resetTwoFactorFailed": "Reimpostazione dell'autenticazione a due fattori non riuscita"
+      "resetTwoFactorFailed": "Reimpostazione dell'autenticazione a due fattori non riuscita",
+      "unlinkSsoFailed": "Impossibile scollegare SSO"
     },
     "dialogs": {
       "promoteTitle": "Promuovere l'utente?",
@@ -114,6 +116,11 @@
       "resetTitle": "Reimpostare la password?",
       "resetMessage": "Verrà generata una nuova password temporanea per {name}. Dovrà cambiarla al prossimo accesso.",
       "resetConfirm": "Reimposta password",
+      "unlinkSsoTitle": "Scollegare SSO?",
+      "unlinkSsoMessage": "Questa azione converte l'account di {name} in un account locale. L'accesso SSO non funziona più per questo account. Il sistema genera una password temporanea e {name} dovrà cambiarla al prossimo accesso.",
+      "unlinkSsoConfirm": "Scollega SSO",
+      "unlinkSsoResultTitle": "SSO scollegato",
+      "unlinkSsoResultDesc": "L'account di {name} ora è un account locale. Condividi questa password temporanea con l'utente per consentirgli di accedere.",
       "resetTwoFactorTitle": "Reimpostare l'autenticazione a due fattori?",
       "resetTwoFactorMessage": "Questa operazione disattiva l'autenticazione a due fattori per {name}, elimina i suoi codici di backup e i dispositivi attendibili e lo disconnette ovunque. Potrà poi accedere con la sua password e riconfigurare la 2FA. Usala quando ha perso l'app di autenticazione e i codici di backup, oppure dopo una modifica di JWT_SECRET.",
       "resetTwoFactorConfirm": "Reimposta 2FA",

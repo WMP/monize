@@ -37,6 +37,7 @@
   },
   "security": {
     "heading": "Sicherheit",
+    "ssoPasswordFallbackNotice": "Ihr Konto verwendet Single Sign-On (SSO). Wenn SSO nicht verfügbar ist, können Sie sich auch mit dem unten angegebenen Passwort anmelden. Aktivieren Sie die Zwei-Faktor-Authentifizierung, um diese Ausweichanmeldung zu schützen.",
     "ssoNotice": "Ihr Konto verwendet Single Sign-On (SSO) zur Authentifizierung. Das unten angegebene Passwort wird nicht für die Anmeldung verwendet, kann aber als Backup aufbewahrt werden, falls SSO deaktiviert wird.",
     "currentPasswordLabel": "Aktuelles Passwort",
     "currentPasswordPlaceholder": "Aktuelles Passwort eingeben",

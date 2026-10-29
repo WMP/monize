@@ -63,6 +63,7 @@
     "clickToEnable": "點擊以啟用",
     "resetPassword": "重設密碼",
     "resetTwoFactor": "重設 2FA",
+    "unlinkSso": "解除 SSO 綁定",
     "noUsers": "找不到使用者。",
     "storageLoading": "載入中…",
     "storageUnavailable": "無法取得",
@@ -99,7 +100,8 @@
       "disableFailed": "停用使用者失敗",
       "resetFailed": "重設密碼失敗",
       "twoFactorReset": "已重設 {name} 的雙重驗證。該使用者已登出。",
-      "resetTwoFactorFailed": "重設雙重驗證失敗"
+      "resetTwoFactorFailed": "重設雙重驗證失敗",
+      "unlinkSsoFailed": "解除 SSO 綁定失敗"
     },
     "dialogs": {
       "promoteTitle": "升級使用者？",
@@ -114,6 +116,11 @@
       "resetTitle": "重設密碼？",
       "resetMessage": "這將為 {name} 產生新的臨時密碼。他們下次登入時必須變更密碼。",
       "resetConfirm": "重設密碼",
+      "unlinkSsoTitle": "解除 SSO 綁定？",
+      "unlinkSsoMessage": "這將把 {name} 的帳戶轉換為本機帳戶。該帳戶將無法再使用 SSO 登入。系統會產生臨時密碼，{name} 下次登入時必須變更密碼。",
+      "unlinkSsoConfirm": "解除 SSO 綁定",
+      "unlinkSsoResultTitle": "SSO 綁定已解除",
+      "unlinkSsoResultDesc": "{name} 的帳戶現在是本機帳戶。請將此臨時密碼告知對方，以便其登入。",
       "resetTwoFactorTitle": "重設雙重驗證？",
       "resetTwoFactorMessage": "這將關閉 {name} 的雙重驗證，刪除其備份驗證碼和受信任的裝置，並讓其在所有位置登出。之後，該使用者可以使用密碼登入並重新設定 2FA。適用於使用者遺失驗證器 App 和備份驗證碼，或變更 JWT_SECRET 之後的情況。",
       "resetTwoFactorConfirm": "重設 2FA",

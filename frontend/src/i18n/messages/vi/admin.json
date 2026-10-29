@@ -63,6 +63,7 @@
     "clickToEnable": "Nhấn để kích hoạt",
     "resetPassword": "Đặt lại mật khẩu",
     "resetTwoFactor": "Đặt lại 2FA",
+    "unlinkSso": "Hủy liên kết SSO",
     "noUsers": "Không tìm thấy người dùng nào.",
     "storageLoading": "Đang tải…",
     "storageUnavailable": "Không khả dụng",
@@ -99,7 +100,8 @@
       "disableFailed": "Không thể vô hiệu hóa người dùng",
       "resetFailed": "Không thể đặt lại mật khẩu",
       "twoFactorReset": "Đã đặt lại xác thực hai yếu tố cho {name}. Họ đã bị đăng xuất.",
-      "resetTwoFactorFailed": "Không thể đặt lại xác thực hai yếu tố"
+      "resetTwoFactorFailed": "Không thể đặt lại xác thực hai yếu tố",
+      "unlinkSsoFailed": "Hủy liên kết SSO thất bại"
     },
     "dialogs": {
       "promoteTitle": "Thăng cấp người dùng?",
@@ -114,6 +116,11 @@
       "resetTitle": "Đặt lại mật khẩu?",
       "resetMessage": "Điều này sẽ tạo mật khẩu tạm thời mới cho {name}. Họ sẽ phải đổi mật khẩu khi đăng nhập tiếp theo.",
       "resetConfirm": "Đặt lại mật khẩu",
+      "unlinkSsoTitle": "Hủy liên kết SSO?",
+      "unlinkSsoMessage": "Thao tác này chuyển tài khoản của {name} thành tài khoản cục bộ. Đăng nhập SSO sẽ không còn hoạt động với tài khoản này. Hệ thống tạo mật khẩu tạm thời, và {name} phải đổi mật khẩu khi đăng nhập tiếp theo.",
+      "unlinkSsoConfirm": "Hủy liên kết SSO",
+      "unlinkSsoResultTitle": "Đã hủy liên kết SSO",
+      "unlinkSsoResultDesc": "Tài khoản của {name} hiện là tài khoản cục bộ. Hãy chia sẻ mật khẩu tạm thời này với họ để họ đăng nhập.",
       "resetTwoFactorTitle": "Đặt lại xác thực hai yếu tố?",
       "resetTwoFactorMessage": "Thao tác này tắt xác thực hai yếu tố của {name}, xóa mã dự phòng và các thiết bị đáng tin cậy của họ, đồng thời đăng xuất họ khỏi mọi nơi. Sau đó họ có thể đăng nhập bằng mật khẩu và thiết lập lại 2FA. Hãy dùng khi họ đã mất ứng dụng xác thực và mã dự phòng, hoặc sau khi JWT_SECRET được thay đổi.",
       "resetTwoFactorConfirm": "Đặt lại 2FA",

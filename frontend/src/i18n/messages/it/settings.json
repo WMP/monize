@@ -37,6 +37,7 @@
   },
   "security": {
     "heading": "Sicurezza",
+    "ssoPasswordFallbackNotice": "Il tuo account utilizza Single Sign-On (SSO). Puoi accedere anche con la password qui sotto quando SSO non è disponibile. Attiva l'autenticazione a due fattori per proteggere questo accesso alternativo.",
     "ssoNotice": "Il tuo account utilizza Single Sign-On (SSO) per l'autenticazione. La password qui sotto non viene usata per accedere, ma può essere mantenuta come riserva se SSO viene disabilitato.",
     "currentPasswordLabel": "Password attuale",
     "currentPasswordPlaceholder": "Inserisci la password attuale",
