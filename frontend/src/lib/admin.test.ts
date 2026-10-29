@@ -92,6 +92,13 @@ describe('adminApi', () => {
     expect(result).toEqual({ reset: true });
   });
 
+  it('unlinkSso posts to the unlink-sso endpoint and returns the temporary password', async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({ data: { temporaryPassword: 'Tmp-pass-1' } });
+    const result = await adminApi.unlinkSso('u-1');
+    expect(apiClient.post).toHaveBeenCalledWith('/admin/users/u-1/unlink-sso');
+    expect(result).toEqual({ temporaryPassword: 'Tmp-pass-1' });
+  });
+
   it('createUser posts the payload to /admin/users', async () => {
     vi.mocked(apiClient.post).mockResolvedValue({
       data: { id: 'u-9', email: 'new@example.com', invited: true, upgraded: false },

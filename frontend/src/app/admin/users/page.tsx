@@ -245,6 +245,35 @@ export default function AdminUsersPage() {
     });
   };
 
+  const handleUnlinkSso = (user: AdminUser) => {
+    const userName = user.firstName || user.email || 'this user';
+
+    setConfirmDialog({
+      isOpen: true,
+      title: t('usersPage.dialogs.unlinkSsoTitle'),
+      message: t('usersPage.dialogs.unlinkSsoMessage', { name: userName }),
+      variant: 'warning',
+      confirmLabel: t('usersPage.dialogs.unlinkSsoConfirm'),
+      onConfirm: async () => {
+        try {
+          const result = await adminApi.unlinkSso(user.id);
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+          setResetPasswordModal({
+            isOpen: true,
+            temporaryPassword: result.temporaryPassword,
+            userName,
+            title: t('usersPage.dialogs.unlinkSsoResultTitle'),
+            description: t('usersPage.dialogs.unlinkSsoResultDesc', { name: userName }),
+          });
+          loadUsers();
+        } catch (error) {
+          toast.error(getErrorMessage(error, t('usersPage.toasts.unlinkSsoFailed')));
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+        }
+      },
+    });
+  };
+
   const handleResetTwoFactor = (user: AdminUser) => {
     const userName = user.firstName || user.email || 'this user';
 
@@ -321,6 +350,7 @@ export default function AdminUsersPage() {
               onChangeRole={handleChangeRole}
               onToggleStatus={handleToggleStatus}
               onResetPassword={handleResetPassword}
+              onUnlinkSso={handleUnlinkSso}
               onResetTwoFactor={handleResetTwoFactor}
               onDeleteUser={handleDeleteUser}
             />

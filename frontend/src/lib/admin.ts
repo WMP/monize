@@ -139,6 +139,14 @@ export const adminApi = {
     return response.data;
   },
 
+  /** Convert an SSO account to a local one; returns its temporary password. */
+  unlinkSso: async (userId: string): Promise<ResetPasswordResponse> => {
+    const response = await apiClient.post<ResetPasswordResponse>(
+      `/admin/users/${userId}/unlink-sso`,
+    );
+    return response.data;
+  },
+
   /**
    * Switch a user's two-factor authentication off so they can sign in with
    * their password and enroll again: clears their TOTP secret and backup codes,

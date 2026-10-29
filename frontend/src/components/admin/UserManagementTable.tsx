@@ -62,13 +62,14 @@ interface UserManagementTableProps {
   onChangeRole: (user: AdminUser, role: 'admin' | 'user') => void;
   onToggleStatus: (user: AdminUser) => void;
   onResetPassword: (user: AdminUser) => void;
+  onUnlinkSso: (user: AdminUser) => void;
   onResetTwoFactor: (user: AdminUser) => void;
   onDeleteUser: (user: AdminUser) => void;
 }
 
 type UserRowActions = Pick<
   UserManagementTableProps,
-  'onChangeRole' | 'onToggleStatus' | 'onResetPassword' | 'onResetTwoFactor' | 'onDeleteUser'
+  'onChangeRole' | 'onToggleStatus' | 'onResetPassword' | 'onUnlinkSso' | 'onResetTwoFactor' | 'onDeleteUser'
 >;
 
 export function UserManagementTable({
@@ -394,6 +395,7 @@ function StatusControl({
 function UserActionButtons({
   user,
   onResetPassword,
+  onUnlinkSso,
   onResetTwoFactor,
   onDeleteUser,
 }: { user: AdminUser } & UserRowActions) {
@@ -404,6 +406,11 @@ function UserActionButtons({
       {user.hasPassword && (
         <Button variant="outline" size="sm" onClick={() => onResetPassword(user)}>
           {t('userTable.resetPassword')}
+        </Button>
+      )}
+      {user.authProvider === 'oidc' && (
+        <Button variant="outline" size="sm" onClick={() => onUnlinkSso(user)}>
+          {t('userTable.unlinkSso')}
         </Button>
       )}
       {/* Offered for every other user: the list does not carry 2FA state, and

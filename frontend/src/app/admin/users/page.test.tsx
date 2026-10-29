@@ -83,6 +83,7 @@ const mockUpdateUserStatus = vi.fn();
 const mockResetUserPassword = vi.fn();
 const mockResetUserTwoFactor = vi.fn();
 const mockDeleteUser = vi.fn();
+const mockUnlinkSso = vi.fn();
 const mockGetUserStorage = vi.fn();
 
 vi.mock('@/lib/admin', () => ({
@@ -94,6 +95,7 @@ vi.mock('@/lib/admin', () => ({
     resetUserPassword: (...args: any[]) => mockResetUserPassword(...args),
     resetUserTwoFactor: (...args: any[]) => mockResetUserTwoFactor(...args),
     deleteUser: (...args: any[]) => mockDeleteUser(...args),
+    unlinkSso: (...args: any[]) => mockUnlinkSso(...args),
     getUserStorage: (...args: any[]) => mockGetUserStorage(...args),
   },
 }));
@@ -174,7 +176,7 @@ vi.mock('@/components/admin/ResetPasswordModal', () => ({
 }));
 
 vi.mock('@/components/admin/UserManagementTable', () => ({
-  UserManagementTable: ({ users, storage, currentUserId, onChangeRole, onToggleStatus, onResetPassword, onResetTwoFactor, onDeleteUser }: any) => (
+  UserManagementTable: ({ users, storage, currentUserId, onChangeRole, onToggleStatus, onResetPassword, onUnlinkSso, onResetTwoFactor, onDeleteUser }: any) => (
     <div data-testid="user-table">
       <span data-testid="storage-status">{storage.status}</span>
       {storage.status === 'ready' && (
@@ -194,6 +196,7 @@ vi.mock('@/components/admin/UserManagementTable', () => ({
                 {user.isActive ? 'Disable' : 'Enable'}
               </button>
               <button onClick={() => onResetPassword(user)}>Reset Password</button>
+              <button onClick={() => onUnlinkSso(user)}>Unlink SSO</button>
               <button onClick={() => onResetTwoFactor(user)}>Reset 2FA</button>
               <button onClick={() => onDeleteUser(user)}>Delete</button>
             </>
@@ -371,6 +374,39 @@ describe('AdminUsersPage', () => {
         expect(screen.getByTestId('reset-password-modal')).toBeInTheDocument();
         expect(screen.getByText(/TempPass123!/)).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('Unlink SSO', () => {
+    it('confirms, unlinks, shows the temporary password and reloads the list', async () => {
+      mockUnlinkSso.mockResolvedValue({ temporaryPassword: 'Tmp-pass-1' });
+      render(<AdminUsersPage />);
+      await waitFor(() => expect(screen.getByTestId('user-table')).toBeInTheDocument());
+
+      fireEvent.click(screen.getAllByText('Unlink SSO')[0]);
+      await waitFor(() => expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument());
+      expect(mockUnlinkSso).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByText('Unlink SSO', { selector: '[data-testid="confirm-dialog"] button' }));
+      await waitFor(() => expect(mockUnlinkSso).toHaveBeenCalledWith('user-1'));
+      await waitFor(() =>
+        expect(screen.getByTestId('reset-password-modal')).toHaveTextContent('Tmp-pass-1'),
+      );
+      await waitFor(() => expect(mockGetUsers).toHaveBeenCalledTimes(2));
+    });
+
+    it('reports a refusal as an error toast', async () => {
+      mockUnlinkSso.mockRejectedValue(new Error('400'));
+      const toast = await import('react-hot-toast');
+      render(<AdminUsersPage />);
+      await waitFor(() => expect(screen.getByTestId('user-table')).toBeInTheDocument());
+
+      fireEvent.click(screen.getAllByText('Unlink SSO')[0]);
+      await waitFor(() => expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument());
+      fireEvent.click(screen.getByText('Unlink SSO', { selector: '[data-testid="confirm-dialog"] button' }));
+
+      await waitFor(() => expect(toast.default.error).toHaveBeenCalledWith('Failed to unlink SSO'));
+      expect(screen.queryByTestId('reset-password-modal')).not.toBeInTheDocument();
     });
   });
 

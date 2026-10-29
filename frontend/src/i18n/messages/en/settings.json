@@ -37,6 +37,7 @@
   },
   "security": {
     "heading": "Security",
+    "ssoPasswordFallbackNotice": "Your account uses Single Sign-On (SSO). You can also sign in with the password below when SSO is unavailable. Enable two-factor authentication to protect this fallback sign-in.",
     "ssoNotice": "Your account uses Single Sign-On (SSO) for authentication. The password below is not used for login but can be kept as a backup if SSO is disabled.",
     "currentPasswordLabel": "Current Password",
     "currentPasswordPlaceholder": "Enter current password",

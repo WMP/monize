@@ -390,6 +390,54 @@ describe('SecuritySection', () => {
     });
   });
 
+  // --- SSO account with a local password ---
+  describe('SSO user with a local password', () => {
+    const ssoUser = { ...mockUser, authProvider: 'oidc' as const, hasPassword: true };
+
+    it('shows only the SSO-unavailable message when the instance flag is off', () => {
+      render(
+        <SecuritySection
+          user={ssoUser}
+          preferences={mockPreferences}
+          force2fa={false}
+          onPreferencesUpdated={mockOnPreferencesUpdated}
+        />
+      );
+      expect(screen.getByText(/Two-factor authentication is not available for SSO accounts/)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Enable 2FA' })).not.toBeInTheDocument();
+      expect(screen.getByText(/The password below is not used for login/)).toBeInTheDocument();
+    });
+
+    it('shows the 2FA controls and the fallback notice when the flag is on', () => {
+      render(
+        <SecuritySection
+          user={ssoUser}
+          preferences={mockPreferences}
+          force2fa={false}
+          oidcPasswordLogin={true}
+          onPreferencesUpdated={mockOnPreferencesUpdated}
+        />
+      );
+      expect(screen.getByRole('button', { name: 'Enable 2FA' })).toBeInTheDocument();
+      expect(screen.queryByText(/Two-factor authentication is not available for SSO accounts/)).not.toBeInTheDocument();
+      expect(screen.getByText(/when SSO is unavailable/)).toBeInTheDocument();
+    });
+
+    it('loads trusted devices when the flag is on and 2FA is enabled', async () => {
+      render(
+        <SecuritySection
+          user={ssoUser}
+          preferences={{ ...mockPreferences, twoFactorEnabled: true }}
+          force2fa={false}
+          oidcPasswordLogin={true}
+          onPreferencesUpdated={mockOnPreferencesUpdated}
+        />
+      );
+      await waitFor(() => expect(authApi.getTrustedDevices).toHaveBeenCalled());
+      expect(screen.getByRole('button', { name: 'Disable 2FA' })).toBeInTheDocument();
+    });
+  });
+
   // --- 2FA disable button (when enabled) ---
   it('shows Disable 2FA button when 2FA is enabled and force2fa is false', async () => {
     const prefsWith2fa = { ...mockPreferences, twoFactorEnabled: true };
