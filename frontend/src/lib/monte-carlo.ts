@@ -146,6 +146,12 @@ export interface HistoricalStats {
   unpricedSecurityIds?: string[];
   unweightableSecurityIds?: string[];
   /**
+   * True when the current portfolio value could not be determined, so the
+   * idle-cash weight is unknown and the statistics are withheld for that
+   * reason (a missing currency pair, if any, is in `missingRatePairs`).
+   */
+  portfolioValueUnknown?: boolean;
+  /**
    * Aggregate current market value of the selected accounts, or `null` when the
    * server could not determine it (a missing price or exchange rate, or a failed
    * portfolio valuation).

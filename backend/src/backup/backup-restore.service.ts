@@ -14,6 +14,7 @@ import { withScopedDb } from "../common/db/scoped-db";
 import { withPreserveTimestamps } from "../common/db/with-context";
 import { recalculateUserCurrentBalances } from "../accounts/accounts.service";
 import { todayInTimezoneOrUtc } from "../common/date-utils";
+import { preferredCurrency } from "../common/default-currency.util";
 import { getEffectiveTimezoneOfUser } from "../common/users-by-timezone.util";
 import { UserMaintenanceService } from "../common/jobs/user-maintenance.service";
 import { EncryptionService } from "../common/encryption/encryption.service";
@@ -796,6 +797,13 @@ export class BackupRestoreService {
       else assetsByStrategy.set(key, [asset]);
     }
 
+    // The hash carries the reporting currency; the backup's own preference row
+    // is the one the signals were stamped under.
+    const reportingCurrency = preferredCurrency({
+      defaultCurrency: data.user_preferences?.[0]?.default_currency as
+        string | undefined,
+    });
+
     /** The backup's snake_case rows in the shape the hash function wants. */
     const fingerprintOf = (
       strategy: Record<string, unknown>,
@@ -814,6 +822,7 @@ export class BackupRestoreService {
               securityId: securityIdOf(asset),
             }) as GemStrategyAsset,
         ),
+        reportingCurrency,
       );
 
     for (const strategy of data.gem_strategies ?? []) {

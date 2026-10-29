@@ -66,6 +66,13 @@ export interface HistoricalStats {
    */
   unweightableSecurityIds: string[];
   /**
+   * True when the current portfolio value itself could not be determined (the
+   * summary failed or was incomplete), so the idle-cash weight is unknown and
+   * the statistics are withheld for that reason. Any missing currency pair the
+   * summary named is in `missingRatePairs`.
+   */
+  portfolioValueUnknown: boolean;
+  /**
    * Aggregate current market value of the selected accounts in the user's
    * default currency, or `null` when it could not be determined.
    *
@@ -479,12 +486,13 @@ export class MonteCarloService {
         missingRatePairs: [],
         unpricedSecurityIds: [],
         unweightableSecurityIds: [],
+        portfolioValueUnknown: false,
         currentBalance: 0,
       };
     }
 
     const current = await this.computeCurrentSummary(userId, ownedIds);
-    const currentBalance = current?.value ?? null;
+    const currentBalance = current.value;
 
     // Build a value-weighted series of yearly returns from the price history
     // of currently held securities. This answers "what would my current mix
@@ -508,6 +516,7 @@ export class MonteCarloService {
         missingRatePairs: [],
         unpricedSecurityIds: [],
         unweightableSecurityIds: [],
+        portfolioValueUnknown: false,
         currentBalance,
       };
     }
@@ -633,14 +642,22 @@ export class MonteCarloService {
       }
       yearlyReturns.set(secId, toYearlyReturns(closes));
     }
+    // A failed or incomplete summary leaves the cash weight unknown; name the
+    // pairs it could not convert (a cash balance in a currency with no rate)
+    // and flag the failure itself, so the withheld statistics have a reason.
+    const portfolioValueUnknown = current.value === null;
     const missingRatePairs = [
-      ...new Set([...converted.missingRatePairs, ...missingFxPairs]),
+      ...new Set([
+        ...converted.missingRatePairs,
+        ...missingFxPairs,
+        ...current.missingRatePairs,
+      ]),
     ].sort();
 
     // Idle cash is part of the starting value and earns nothing: it joins the
     // weights at a 0% return. An unknown cash balance is not zero cash.
     const cashWeight =
-      current !== null && Number.isFinite(current.cash)
+      current.cash !== null && Number.isFinite(current.cash)
         ? Math.max(0, current.cash)
         : null;
 
@@ -670,6 +687,7 @@ export class MonteCarloService {
         missingRatePairs,
         unpricedSecurityIds: [...unpricedSecurityIds].sort(),
         unweightableSecurityIds: [...unweightableSecurityIds].sort(),
+        portfolioValueUnknown,
         currentBalance,
       };
     }
@@ -719,6 +737,7 @@ export class MonteCarloService {
         missingRatePairs: [],
         unpricedSecurityIds: [],
         unweightableSecurityIds: [],
+        portfolioValueUnknown: false,
         currentBalance,
       };
     }
@@ -738,6 +757,7 @@ export class MonteCarloService {
       missingRatePairs: [],
       unpricedSecurityIds: [],
       unweightableSecurityIds: [],
+      portfolioValueUnknown: false,
       currentBalance,
     };
   }
@@ -962,16 +982,24 @@ export class MonteCarloService {
     userId: string,
     accountIds: string[],
   ): Promise<number | null> {
-    return (
-      (await this.computeCurrentSummary(userId, accountIds))?.value ?? null
-    );
+    return (await this.computeCurrentSummary(userId, accountIds)).value;
   }
 
   /** `computeCurrentValue`, with the idle-cash part of it alongside. */
   private async computeCurrentSummary(
     userId: string,
     accountIds: string[],
-  ): Promise<{ value: number; cash: number } | null> {
+  ): Promise<{
+    value: number | null;
+    cash: number | null;
+    /** Pairs the summary could not convert; empty when it failed outright. */
+    missingRatePairs: string[];
+  }> {
+    const unknown = (missingRatePairs: string[] = []) => ({
+      value: null,
+      cash: null,
+      missingRatePairs,
+    });
     try {
       const summary = await this.portfolioService.getPortfolioSummary(
         userId,
@@ -986,7 +1014,7 @@ export class MonteCarloService {
         this.logger.warn(
           `Current portfolio value for accounts ${accountIds.join(",")} is incomplete (${[...summary.missingRatePairs, ...summary.unpricedSecurityIds.map((id) => `unpriced:${id}`)].join(", ")}); reporting it as unavailable`,
         );
-        return null;
+        return unknown(summary.missingRatePairs);
       }
 
       const value = summary.totalPortfolioValue;
@@ -996,16 +1024,20 @@ export class MonteCarloService {
         this.logger.warn(
           `Current portfolio value for accounts ${accountIds.join(",")} is not finite; reporting it as unavailable`,
         );
-        return null;
+        return unknown();
       }
-      return { value: roundMoney(value), cash: summary.totalCashValue };
+      return {
+        value: roundMoney(value),
+        cash: summary.totalCashValue,
+        missingRatePairs: [],
+      };
     } catch (err) {
       this.logger.warn(
         `Failed to compute current portfolio value for accounts ${accountIds.join(",")}: ${
           err instanceof Error ? err.message : String(err)
         }`,
       );
-      return null;
+      return unknown();
     }
   }
 

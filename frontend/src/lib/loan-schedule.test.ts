@@ -881,8 +881,12 @@ describe('effectiveAnnualRateOn', () => {
     expect(effectiveAnnualRateOn(rows, '2025-06-05', 9)).toBe(5.5);
   });
 
-  it('falls back to the account rate, not a future row, for a date before the first change', () => {
-    expect(effectiveAnnualRateOn(rows, '2020-01-01', 9)).toBe(9);
+  it('uses the earliest row, not the account rate, for a date before the first row of a history that has begun', () => {
+    expect(effectiveAnnualRateOn(rows, '2020-01-01', 9, '2026-01-01')).toBe(1.95);
+  });
+
+  it('falls back to the account rate when the whole history starts in the future', () => {
+    expect(effectiveAnnualRateOn(rows, '2020-01-01', 9, '2019-01-01')).toBe(9);
   });
 
   it('falls back to the account rate when there are no rows', () => {

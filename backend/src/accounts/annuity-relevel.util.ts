@@ -34,18 +34,27 @@ function monthsBetweenYmd(fromYmd: string, toYmdStr: string): number {
   return Math.max(0, (toYear - fromYear) * 12 + (toMonth - fromMonth));
 }
 
-/** Whether the occurrence due on `dueDate` of the loan's schedule is posted. */
+/**
+ * Whether the installment due in (`afterDate`, `throughDate`] is posted.
+ *
+ * A window, not an exact date: the scheduler clamps a 31st to the 30th and an
+ * occurrence can be moved within its period, so its `original_due_date` need
+ * not equal the calendar date. The previous calendar due date bounds it below.
+ */
 async function isInstallmentPosted(
   m: EntityManager,
   account: Account,
-  dueDate: string | null,
+  afterDate: string | null,
+  throughDate: string,
 ): Promise<boolean> {
-  if (!account.scheduledTransactionId || !dueDate) return false;
+  if (!account.scheduledTransactionId) return false;
   const rows: unknown[] = await m.query(
     `SELECT 1 FROM scheduled_transaction_postings
-      WHERE scheduled_transaction_id = $1 AND original_due_date = $2
+      WHERE scheduled_transaction_id = $1
+        AND original_due_date <= $2
+        AND ($3::date IS NULL OR original_due_date > $3)
       LIMIT 1`,
-    [account.scheduledTransactionId, dueDate],
+    [account.scheduledTransactionId, throughDate, afterDate],
   );
   return rows.length > 0;
 }
@@ -97,7 +106,8 @@ export async function datedAnnuityInstallment(
     !(await isInstallmentPosted(
       m,
       account,
-      scheduledPaymentDate(terms, dueNumber),
+      scheduledPaymentDate(terms, dueNumber - 1),
+      asOfDate,
     ))
       ? dueNumber - 1
       : dueNumber;

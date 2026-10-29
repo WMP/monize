@@ -682,6 +682,47 @@ describe("MonteCarloService", () => {
       expect(stats.yearsObserved).toBe(1);
     });
 
+    it("names a missing cash pair when the summary is incomplete", async () => {
+      portfolioService.getPortfolioSummary.mockResolvedValue({
+        totalPortfolioValue: 200000,
+        totalCashValue: 100000,
+        fxComplete: false,
+        missingRatePairs: ["EUR->USD"],
+        pricesComplete: true,
+        unpricedSecurityIds: [],
+        valuationComplete: false,
+      });
+      holdingsRepository.find.mockResolvedValueOnce([holding("sec-1")]);
+      prices([["sec-1", 100000]]);
+      manager.query.mockResolvedValue([
+        yearEnd("sec-1", "2022", "100"),
+        yearEnd("sec-1", "2023", "120"),
+        yearEnd("sec-1", "2024", "120"),
+      ]);
+      const stats = await service.getHistoricalStats(userId, ["acct-1"]);
+      expect(stats.returnsComplete).toBe(false);
+      expect(stats.meanReturn).toBeNull();
+      expect(stats.missingRatePairs).toEqual(["EUR->USD"]);
+      expect(stats.portfolioValueUnknown).toBe(true);
+    });
+
+    it("flags an unknown portfolio value when the summary fails outright", async () => {
+      portfolioService.getPortfolioSummary.mockRejectedValue(
+        new Error("db down"),
+      );
+      holdingsRepository.find.mockResolvedValueOnce([holding("sec-1")]);
+      prices([["sec-1", 100000]]);
+      manager.query.mockResolvedValue([
+        yearEnd("sec-1", "2022", "100"),
+        yearEnd("sec-1", "2023", "120"),
+        yearEnd("sec-1", "2024", "120"),
+      ]);
+      const stats = await service.getHistoricalStats(userId, ["acct-1"]);
+      expect(stats.returnsComplete).toBe(false);
+      expect(stats.missingRatePairs).toEqual([]);
+      expect(stats.portfolioValueUnknown).toBe(true);
+    });
+
     it("weights idle cash at zero return and zero volatility", async () => {
       portfolioService.getPortfolioSummary.mockResolvedValue({
         totalPortfolioValue: 200000,

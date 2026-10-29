@@ -62,7 +62,9 @@ describe("datedAnnuityInstallment remaining term", () => {
     // due 2024-04-30 was posted under 2024-04-29. An exact-date match missed
     // it and counted the payment as still to come.
     postingDates = ["2024-03-29", "2024-04-29"];
-    const monthEnd = account({ paymentStartDate: "2024-01-31" as unknown as Date });
+    const monthEnd = account({
+      paymentStartDate: "2024-01-31" as unknown as Date,
+    });
     expect(
       await datedAnnuityInstallment(manager, monthEnd, 5, "2024-04-30"),
     ).toBe(expected(296));

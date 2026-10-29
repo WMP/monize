@@ -14,17 +14,21 @@ import type {
   ScenarioComparison,
 } from '@/lib/loan-schedule-types';
 import { roundToCents } from '@/lib/format';
+import { financialTodayYmd } from '@/lib/financial-today';
 
 /**
  * The annual rate (percentage) in effect on a given date: the latest row with
- * `effectiveDate <= date`, else the fallback (the account's rate; a row dated
- * after the date is never used). Shared by the schedule table (per-row historical rate) and
+ * `effectiveDate <= date`. Before the first row, the earliest row when it is
+ * dated on or before today (the loan's recorded history start, so an
+ * origination-era payment keeps the origination rate), else the fallback (the
+ * account's rate: a history that starts in the future). Shared by the schedule table (per-row historical rate) and
  * `buildRateTimeline`'s starting rate.
  */
 export function effectiveAnnualRateOn(
   rows: RateTimelineRow[],
   dateIso: string,
   fallbackAnnualRate: number,
+  todayYmd: string = financialTodayYmd(undefined),
 ): number {
   const sorted = [...rows].sort((a, b) =>
     a.effectiveDate.localeCompare(b.effectiveDate),
@@ -33,8 +37,12 @@ export function effectiveAnnualRateOn(
   if (atOrBefore.length > 0) {
     return atOrBefore[atOrBefore.length - 1].annualRate;
   }
-  // Nothing on or before the date: the account's own rate, as the backend's
-  // `effective-loan-rate.util.ts` does, never a row dated in the future.
+  // Nothing on or before the date. A history that already began (earliest row
+  // not in the future) gives its origination rate to earlier payments; one that
+  // only starts ahead says nothing about today, so the account's own rate.
+  if (sorted.length > 0 && sorted[0].effectiveDate <= todayYmd) {
+    return sorted[0].annualRate;
+  }
   return fallbackAnnualRate;
 }
 

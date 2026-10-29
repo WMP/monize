@@ -140,9 +140,16 @@ describe("GemBackfillService", () => {
       ["spy"],
       "2023-02-14",
       "day",
-      undefined,
-      userId,
     );
+  });
+
+  it("checks coverage on the native series, so a missing FX rate cannot look like missing prices", async () => {
+    // A converted series drops a close with no rate, which made a security
+    // with every price stored read as short and re-fetched on each run.
+    await service.ensureHistory(userId, ["spy"], 12, "MONTHLY");
+    for (const call of priceService.loadSeries.mock.calls) {
+      expect(call[4]).toBeUndefined();
+    }
   });
 
   it("counts a monthly strategy's history in single months", async () => {
