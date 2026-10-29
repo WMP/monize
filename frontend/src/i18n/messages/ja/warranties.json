@@ -22,7 +22,14 @@
       "expiring": "期限切れ間近",
       "active": "有効",
       "expired": "期限切れ",
-      "lifetime": "永久保証"
+      "lifetime": "永久保証",
+      "counted": {
+        "all": "すべて（{count}）",
+        "expiring": "期限切れ間近（{count}）",
+        "active": "有効（{count}）",
+        "expired": "期限切れ（{count}）",
+        "lifetime": "永久保証（{count}）"
+      }
     },
     "search": {
       "label": "保証を検索",
@@ -163,14 +170,21 @@
     "notFound": "この保証は見つかりませんでした。",
     "retry": "再試行",
     "archivedBadge": "アーカイブ済み",
+    "switcher": {
+      "trigger": "保証を切り替える",
+      "placeholder": "保証を絞り込む...",
+      "noMatches": "一致する保証はありません"
+    },
+    "summary": {
+      "expires": "期限",
+      "purchased": "購入日",
+      "price": "購入価格",
+      "openClaims": "未完了の請求"
+    },
     "card": {
       "title": "詳細",
-      "expires": "期限",
-      "daysLeft": "残り期間",
       "kind": "保証の種類",
       "vendor": "販売店",
-      "purchaseDate": "購入日",
-      "price": "購入価格",
       "serialNumbers": "シリアル番号",
       "model": "型番",
       "productUrl": "製品ページ",
@@ -228,7 +242,7 @@
     "form": {
       "claimDateLabel": "請求日",
       "statusLabel": "ステータス",
-      "descriptionLabel": "不具合の内容",
+      "descriptionLabel": "説明",
       "resolutionLabel": "対応結果",
       "resolvedOnLabel": "完了日",
       "resolvedOnHint": "解決済みまたは却下された請求のみ",

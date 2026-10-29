@@ -7,6 +7,7 @@
     "filterAll": "Wszystkie ({count})",
     "filterExpenses": "Wydatki ({count})",
     "filterIncome": "Przychody ({count})",
+    "typeFilterLabel": "Typ",
     "modalTitleNew": "Nowa kategoria",
     "modalTitleEdit": "Edytuj kategorie",
     "countSingle": "1 kategoria",
@@ -71,8 +72,8 @@
     "submitUpdate": "Zaktualizuj kategorie"
   },
   "list": {
-    "emptyHeading": "Brak kategorii",
-    "emptyDescription": "Zacznij od utworzenia nowej kategorii.",
+    "emptyHeading": "Nie znaleziono kategorii",
+    "emptyDescription": "Żadna kategoria nie pasuje do bieżącego wyszukiwania lub filtra.",
     "colName": "Nazwa",
     "colType": "Typ",
     "colCount": "Liczba",
@@ -85,7 +86,7 @@
     "viewTransactionsTitle": "Wyswietl transakcje w tej kategorii"
   },
   "deleteDialog": {
-    "title": "Usunąć \"{name}\"?",
+    "title": "Usuń \"{name}\"",
     "checkingUsage": "Sprawdzanie uzycia...",
     "usedBy": "Ta kategoria jest używana przez {count, plural, one {# element} few {# elementy} many {# elementów} other {# elementu}} (transakcje i/lub zaplanowane rachunki oraz wpłaty).",
     "reassignLabel": "Przypisz ponownie do:",

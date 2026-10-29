@@ -6,7 +6,7 @@
       "category": "Категорія",
       "amount": "Сума",
       "schedule": "Розклад",
-      "auto": "Авто",
+      "auto": "Автопроведення",
       "actions": "Дії"
     },
     "empty": {
@@ -25,7 +25,6 @@
     "modifiedDateTitle": "Дату змінено для цього виконання",
     "splitBadge": "Розподілена ({count})",
     "autoPostBadge": "Увімк.",
-    "autoPostTitle": "Автоматично проводиться в термін",
     "inactiveSuffix": " — Неактивний",
     "actionTitles": {
       "post": "Провести транзакцію",
@@ -76,9 +75,7 @@
     "accountsLabel": "Рахунки",
     "accountsPlaceholder": "Всі рахунки",
     "categoriesLabel": "Категорії",
-    "categoriesPlaceholder": "Всі категорії",
-    "collapseAriaLabel": "Згорнути фільтри",
-    "expandAriaLabel": "Розгорнути фільтри"
+    "categoriesPlaceholder": "Всі категорії"
   },
   "postDialog": {
     "title": "Провести транзакцію",

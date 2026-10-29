@@ -31,9 +31,15 @@
     },
     "accountCount": "{count, plural, =0 {无账户} one {# 个账户} other {# 个账户}}",
     "statusFilter": {
+      "label": "账户状态",
       "all": "全部",
       "active": "活跃",
-      "closed": "已关闭"
+      "closed": "已关闭",
+      "counted": {
+        "all": "全部（{count}）",
+        "active": "活跃（{count}）",
+        "closed": "已关闭（{count}）"
+      }
     },
     "actions": {
       "manageAccounts": "账户"

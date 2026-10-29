@@ -763,8 +763,7 @@
     },
     "search": {
       "label": "Rechercher des e-mails",
-      "text": "Rechercher",
-      "placeholder": "Objet, expéditeur ou contenu",
+      "placeholder": "Rechercher par objet, expéditeur ou contenu...",
       "in": "Rechercher dans",
       "fields": {
         "all": "Tous les champs",
@@ -806,10 +805,10 @@
       "body": "Les confirmations de commande apparaissent ici une fois la boîte mail lue.",
       "filteredTitle": "Aucun e-mail avec ce statut",
       "filteredBody": "Choisissez un autre statut pour voir les autres.",
-      "noMailboxBody": "Aucune boîte mail n'est encore connectée. Connectez-en une pour commencer à lire les confirmations de commande.",
-      "connectButton": "Connecter une boîte mail",
       "searchTitle": "Aucun e-mail ne correspond à la recherche",
-      "searchBody": "Modifiez les mots ou les dates, ou effacez la recherche pour voir tous les e-mails."
+      "searchBody": "Modifiez les mots ou les dates, ou effacez la recherche pour voir tous les e-mails.",
+      "noMailboxBody": "Aucune boîte mail n'est encore connectée. Connectez-en une pour commencer à lire les confirmations de commande.",
+      "connectButton": "Connecter une boîte mail"
     },
     "actions": {
       "view": "Voir",
@@ -1092,9 +1091,7 @@
     "help": "Aucune transaction n'a été associée automatiquement. Voici vos transactions de la plage de dates ci-dessous, qui commence par les jours autour de l'achat. Choisissez celle qu'il a réglée, ou modifiez les dates pour chercher plus loin.",
     "fromLabel": "Du",
     "toLabel": "Au",
-    "searchLabel": "Rechercher",
-    "searchPlaceholder": "Bénéficiaire, description ou montant",
-    "searchButton": "Rechercher",
+    "searchPlaceholder": "Rechercher par bénéficiaire, description ou montant...",
     "loading": "Chargement des transactions",
     "error": "Impossible de charger les transactions.",
     "retry": "Réessayer",
@@ -1331,7 +1328,7 @@
       "reviseHelp": "Dites à l'assistant ce qu'il faut changer. Il met à jour le même brouillon à partir de ces e-mails et transactions.",
       "tradeHelp": "L'assistant lit ces confirmations et écrit un brouillon de profil pour {domain} qui propose la transaction d'investissement indiquée par chacune. Rien n'est encore approuvé.",
       "tradeSample": "Confirmation d'opération",
-      "feedbackLabel": "Ce qui doit changer",
+      "feedbackLabel": "Modifications demandées",
       "feedbackPlaceholder": "Par exemple : le total est la ligne qui indique Montant payé, pas le sous-total.",
       "send": "Envoyer à l'IA",
       "sendFeedback": "Envoyer une note à l'IA",

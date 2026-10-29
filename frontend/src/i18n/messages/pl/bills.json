@@ -16,12 +16,13 @@
     "chartUnavailable": "Wykres chwilowo niedostępny"
   },
   "viewTabs": {
-    "list": "Lista",
-    "calendar": "Kalendarz",
+    "filterLabel": "Typ harmonogramu",
     "filterAll": "Wszystkie ({count})",
     "filterBills": "Rachunki ({count})",
     "filterDeposits": "Wpłaty ({count})",
-    "todayButton": "Dzisiaj"
+    "todayButton": "Dzisiaj",
+    "previousMonth": "Poprzedni miesiąc",
+    "nextMonth": "Następny miesiąc"
   },
   "form": {
     "titleNew": "Nowa zaplanowana transakcja",

@@ -139,7 +139,7 @@ describe('WizardSamplesStep', () => {
   it('starts the transaction search with the wizard domain, and the first request uses it', async () => {
     await renderStep();
     await click(screen.getByText('Order 1'));
-    expect(screen.getByLabelText('Search')).toHaveValue('allegro.pl');
+    expect(screen.getByRole('searchbox', { name: 'Search by payee, description or amount...' })).toHaveValue('allegro.pl');
     expect(txApi.getAll).toHaveBeenCalledWith(expect.objectContaining({ search: 'allegro.pl' }));
   });
 

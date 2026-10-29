@@ -763,8 +763,7 @@
     },
     "search": {
       "label": "Tìm email",
-      "text": "Tìm kiếm",
-      "placeholder": "Tiêu đề, người gửi hoặc nội dung",
+      "placeholder": "Tìm theo tiêu đề, người gửi hoặc nội dung...",
       "in": "Tìm trong",
       "fields": {
         "all": "Tất cả các trường",
@@ -806,10 +805,10 @@
       "body": "Email xác nhận đơn hàng sẽ xuất hiện ở đây sau khi hộp thư được đọc.",
       "filteredTitle": "Không có email ở trạng thái này",
       "filteredBody": "Hãy chọn trạng thái khác để xem phần còn lại.",
-      "noMailboxBody": "Chưa kết nối hộp thư nào. Hãy kết nối một hộp thư để bắt đầu đọc email xác nhận đơn hàng.",
-      "connectButton": "Kết nối hộp thư",
       "searchTitle": "Không có email nào khớp với tìm kiếm",
-      "searchBody": "Đổi từ khóa hoặc ngày, hoặc xóa tìm kiếm để xem tất cả email."
+      "searchBody": "Đổi từ khóa hoặc ngày, hoặc xóa tìm kiếm để xem tất cả email.",
+      "noMailboxBody": "Chưa kết nối hộp thư nào. Hãy kết nối một hộp thư để bắt đầu đọc email xác nhận đơn hàng.",
+      "connectButton": "Kết nối hộp thư"
     },
     "actions": {
       "view": "Xem",
@@ -1092,9 +1091,7 @@
     "help": "Không có giao dịch nào được khớp tự động. Đây là các giao dịch của bạn trong khoảng ngày bên dưới, ban đầu là những ngày quanh thời điểm mua hàng. Hãy chọn giao dịch mà nó đã thanh toán, hoặc đổi ngày để tìm xa hơn.",
     "fromLabel": "Từ ngày",
     "toLabel": "Đến ngày",
-    "searchLabel": "Tìm kiếm",
-    "searchPlaceholder": "Người nhận, mô tả hoặc số tiền",
-    "searchButton": "Tìm kiếm",
+    "searchPlaceholder": "Tìm theo người nhận, mô tả hoặc số tiền...",
     "loading": "Đang tải các giao dịch",
     "error": "Không thể tải các giao dịch.",
     "retry": "Thử lại",
@@ -1331,7 +1328,7 @@
       "reviseHelp": "Hãy cho trợ lý biết cần thay đổi gì. Trợ lý sẽ cập nhật cùng bản nháp đó từ các email và giao dịch này.",
       "tradeHelp": "Trợ lý đọc các xác nhận giao dịch này và viết bản nháp trình phân tích cho {domain} đề xuất giao dịch đầu tư mà mỗi email báo cáo. Chưa có gì được phê duyệt.",
       "tradeSample": "Xác nhận giao dịch",
-      "feedbackLabel": "Cần thay đổi gì",
+      "feedbackLabel": "Các thay đổi được yêu cầu",
       "feedbackPlaceholder": "Ví dụ: tổng cộng là dòng ghi Số tiền đã thanh toán, không phải tạm tính.",
       "send": "Gửi cho AI",
       "sendFeedback": "Gửi ghi chú cho AI",

@@ -1,9 +1,10 @@
 'use client';
 
-import { memo, useCallback, useMemo, useState, type SyntheticEvent } from 'react';
+import { memo, useCallback, useMemo, useState, type KeyboardEvent, type SyntheticEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFormatter, useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/Badge';
+import { DensityToggleBar } from '@/components/ui/DensityToggle';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { RowActions } from '@/components/ui/row-actions/RowActions';
@@ -11,9 +12,13 @@ import { RowActionSheet } from '@/components/ui/row-actions/RowActionSheet';
 import type { RowAction } from '@/components/ui/row-actions/rowAction';
 import { HOVER_ROW_ON_CARD } from '@/components/ui/Card';
 import { INTERACTIVE_ROW_FOCUS_CLASS, activateOnKey } from '@/components/ui/interactive-row';
-import { TABLE_BODY_CLASS, TABLE_CLASS, Td, Th } from '@/components/ui/Table';
+import { CellLabel, TABLE_BODY_CLASS, TABLE_CLASS, Td, Th } from '@/components/ui/Table';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { useLongPress, type LongPressRowHandlers } from '@/hooks/useLongPress';
+import { useTableDensity, type DensityLevel } from '@/hooks/useTableDensity';
 import { ruleInvalidReasonKeys, ruleSummaryValues } from '@/lib/rule-summary';
+import { cn } from '@/lib/utils';
+import { useDensityPreference } from '@/store/densityStore';
 import type { TransactionRule } from '@/types/transaction-rule';
 
 export type RuleMoveDirection = 'up' | 'down';
@@ -41,6 +46,10 @@ interface RuleRowProps {
   index: number;
   pending: boolean;
   actions: RowAction[];
+  density: DensityLevel;
+  cellPadding: string;
+  /** Phone at Normal density: one card per rule instead of the table's cells. */
+  wrapped: boolean;
   getRowHandlers: (rule: TransactionRule) => LongPressRowHandlers;
   onToggle: (rule: TransactionRule, enabled: boolean) => void;
   onOpen: (rule: TransactionRule) => void;
@@ -51,6 +60,9 @@ const RuleRow = memo(function RuleRow({
   index,
   pending,
   actions,
+  density,
+  cellPadding,
+  wrapped,
   getRowHandlers,
   onToggle,
   onOpen,
@@ -62,19 +74,95 @@ const RuleRow = memo(function RuleRow({
   const reasons = ruleInvalidReasonKeys(rule).map((key) => t(`invalid.reasons.${key}`));
   const invalidText = t('invalid.tooltip', { reasons: format.list(reasons, { type: 'conjunction' }) });
 
-  return (
-    <tr
-      role="row"
-      tabIndex={0}
-      className={`group cursor-pointer select-none ${INTERACTIVE_ROW_FOCUS_CLASS} ${HOVER_ROW_ON_CARD}`}
-      {...getRowHandlers(rule)}
-      onKeyDown={(event) => {
-        // Enter on the switch or a menu button is theirs, not the row's.
-        if (event.target === event.currentTarget) activateOnKey(() => onOpen(rule))(event);
-      }}
+  const rowProps = {
+    role: 'row',
+    tabIndex: 0,
+    className: `group cursor-pointer select-none ${INTERACTIVE_ROW_FOCUS_CLASS} ${HOVER_ROW_ON_CARD}`,
+    ...getRowHandlers(rule),
+    onKeyDown: (event: KeyboardEvent<HTMLTableRowElement>) => {
+      // Enter on the switch or a menu button is theirs, not the row's.
+      if (event.target === event.currentTarget) activateOnKey(() => onOpen(rule))(event);
+    },
+  };
+
+  const toggle = (
+    <ToggleSwitch
+      checked={rule.enabled}
+      disabled={pending}
+      label={t('list.enabledLabel', { name: rule.name })}
+      onChange={(next) => onToggle(rule, next)}
+    />
+  );
+
+  const name = (
+    <div
+      className={`text-sm font-medium ${
+        rule.enabled ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'
+      }`}
     >
-      <Td className="hidden w-12 text-gray-500 dark:text-gray-400 sm:table-cell">{index + 1}</Td>
-      <Td className="w-16">
+      {rule.name}
+    </div>
+  );
+
+  const invalid = rule.invalid && (
+    <div
+      className="mt-1 inline-flex items-center gap-1"
+      onClick={keepInsideControl}
+      onMouseDown={keepInsideControl}
+      onTouchStart={keepInsideControl}
+    >
+      <Badge variant="red" size="sm">
+        {t('invalid.badge')}
+      </Badge>
+      <InfoTooltip text={invalidText} placement="top" usePortal />
+    </div>
+  );
+
+  // Phone at Normal density: one card per rule. The card has no column header
+  // above it, so the switch carries its own visible name; the actions are the
+  // long-press sheet's, as on the other phone lists.
+  if (wrapped) {
+    return (
+      <tr {...rowProps}>
+        <td className="p-0">
+          <div className={cellPadding}>
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2">
+              <div className="min-w-0 break-words">
+                {name}
+                {invalid}
+              </div>
+              <div
+                className="inline-flex items-center gap-2"
+                onClick={keepInsideControl}
+                onMouseDown={keepInsideControl}
+                onTouchStart={keepInsideControl}
+                onContextMenu={keepInsideControl}
+              >
+                {toggle}
+                <span className="text-sm text-gray-700 dark:text-gray-300">{t('list.header.enabled')}</span>
+              </div>
+              <div className="col-span-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4">
+                <div>
+                  <CellLabel>{t('list.header.order')}</CellLabel>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">{index + 1}</div>
+                </div>
+                <div className="min-w-0">
+                  <CellLabel>{t('list.header.summary')}</CellLabel>
+                  <div className="text-sm text-gray-500 dark:text-gray-400 break-words">{summary}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </td>
+      </tr>
+    );
+  }
+
+  return (
+    <tr {...rowProps}>
+      <Td className={cn(cellPadding, 'hidden w-12 text-gray-500 dark:text-gray-400 sm:table-cell')}>{index + 1}</Td>
+      <Td className={cn(cellPadding, 'w-16')}>
+        {/* The column header names the switch; its accessible name adds the rule's. */}
         <div
           className="inline-flex"
           onClick={keepInsideControl}
@@ -82,40 +170,17 @@ const RuleRow = memo(function RuleRow({
           onTouchStart={keepInsideControl}
           onContextMenu={keepInsideControl}
         >
-          <ToggleSwitch
-            checked={rule.enabled}
-            disabled={pending}
-            label={t('list.enabledLabel', { name: rule.name })}
-            onChange={(next) => onToggle(rule, next)}
-          />
+          {toggle}
         </div>
       </Td>
-      <Td>
-        <div
-          className={`text-sm font-medium ${
-            rule.enabled ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'
-          }`}
-        >
-          {rule.name}
-        </div>
+      <Td className={cellPadding}>
+        {name}
         <div className="mt-0.5 text-xs text-gray-500 dark:text-gray-400 sm:hidden">{summary}</div>
-        {rule.invalid && (
-          <div
-            className="mt-1 inline-flex items-center gap-1"
-            onClick={keepInsideControl}
-            onMouseDown={keepInsideControl}
-            onTouchStart={keepInsideControl}
-          >
-            <Badge variant="red" size="sm">
-              {t('invalid.badge')}
-            </Badge>
-            <InfoTooltip text={invalidText} placement="top" usePortal />
-          </div>
-        )}
+        {invalid}
       </Td>
-      <Td className="hidden text-gray-500 dark:text-gray-400 sm:table-cell">{summary}</Td>
-      <Td align="right" className="hidden whitespace-nowrap font-medium min-[480px]:table-cell">
-        <RowActions actions={actions} density="normal" maxInline={2} />
+      <Td className={cn(cellPadding, 'hidden text-gray-500 dark:text-gray-400 sm:table-cell')}>{summary}</Td>
+      <Td align="right" className={cn(cellPadding, 'hidden whitespace-nowrap font-medium min-[480px]:table-cell')}>
+        <RowActions actions={actions} density={density} maxInline={2} />
       </Td>
     </tr>
   );
@@ -125,6 +190,8 @@ const RuleRow = memo(function RuleRow({
  * The rules in evaluation order, one row each. Reordering is a move up or down
  * in the row menu (no drag library); the order the reader sees is the order the
  * server holds, so a move waits for the server's answer instead of guessing.
+ * The headers do not sort: the list's order IS the order the rules run in, and
+ * a list sorted by name would show an order that is not the one applied.
  */
 export function RulesList({
   rules,
@@ -140,6 +207,10 @@ export function RulesList({
   const tc = useTranslations('common');
   const router = useRouter();
   const [sheetRule, setSheetRule] = useState<TransactionRule | null>(null);
+  const { density } = useDensityPreference('rules');
+  const { cellPadding, headerPadding } = useTableDensity(density);
+  const isMobile = useIsMobile();
+  const wrapped = isMobile && density === 'normal';
 
   const openRule = useCallback(
     (rule: TransactionRule) => router.push(`/rules/${rule.id}`),
@@ -192,34 +263,43 @@ export function RulesList({
   const sheetCurrent = sheetIndex >= 0 ? rules[sheetIndex] : null;
 
   return (
-    <div className="overflow-x-auto">
-      <table className={TABLE_CLASS}>
-        <thead className="bg-gray-50 dark:bg-gray-800">
-          <tr>
-            <Th className="hidden sm:table-cell">{t('list.header.order')}</Th>
-            <Th>{t('list.header.enabled')}</Th>
-            <Th>{t('list.header.name')}</Th>
-            <Th className="hidden sm:table-cell">{t('list.header.summary')}</Th>
-            <Th align="right" className="hidden min-[480px]:table-cell">
-              {t('list.header.actions')}
-            </Th>
-          </tr>
-        </thead>
-        <tbody className={TABLE_BODY_CLASS}>
-          {rules.map((rule, index) => (
-            <RuleRow
-              key={rule.id}
-              rule={rule}
-              index={index}
-              pending={pendingIds.has(rule.id)}
-              actions={rowActions[index]}
-              getRowHandlers={getRowHandlers}
-              onToggle={onToggle}
-              onOpen={openRule}
-            />
-          ))}
-        </tbody>
-      </table>
+    <div>
+      <DensityToggleBar view="rules" />
+      <div className="overflow-x-auto">
+        <table className={TABLE_CLASS}>
+          {/* The phone card captions its own values, and nothing here sorts, so it has no header row. */}
+          {!wrapped && (
+            <thead className="bg-gray-50 dark:bg-gray-800">
+              <tr>
+                <Th className={cn(headerPadding, 'hidden sm:table-cell')}>{t('list.header.order')}</Th>
+                <Th className={headerPadding}>{t('list.header.enabled')}</Th>
+                <Th className={headerPadding}>{t('list.header.name')}</Th>
+                <Th className={cn(headerPadding, 'hidden sm:table-cell')}>{t('list.header.summary')}</Th>
+                <Th align="right" className={cn(headerPadding, 'hidden min-[480px]:table-cell')}>
+                  {t('list.header.actions')}
+                </Th>
+              </tr>
+            </thead>
+          )}
+          <tbody className={TABLE_BODY_CLASS}>
+            {rules.map((rule, index) => (
+              <RuleRow
+                key={rule.id}
+                rule={rule}
+                index={index}
+                pending={pendingIds.has(rule.id)}
+                actions={rowActions[index]}
+                density={density}
+                cellPadding={cellPadding}
+                wrapped={wrapped}
+                getRowHandlers={getRowHandlers}
+                onToggle={onToggle}
+                onOpen={openRule}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
       <RowActionSheet
         isOpen={sheetCurrent !== null}
         title={sheetCurrent?.name ?? ''}

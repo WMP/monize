@@ -114,8 +114,8 @@
       "matchAll": "Wszystkie z poniższych",
       "matchAny": "Dowolny z poniższych",
       "matchLabel": "Dopasowanie",
-      "not": "Nie",
-      "notLabel": "Zaprzecz tej grupie: pasuje, gdy jej warunki nie są spełnione",
+      "not": "Zaneguj grupę",
+      "notHelp": "Zanegowana grupa jest dopasowana, gdy jej warunki nie są spełnione.",
       "title": "Grupa",
       "addCondition": "+ Dodaj warunek",
       "addGroup": "+ Dodaj grupę",
@@ -201,7 +201,7 @@
       "tags": "Tagi",
       "category": "Kategoria",
       "payee": "Odbiorca",
-      "instruction": "Co należy sprawdzić",
+      "instruction": "Instrukcje przeglądu",
       "instructionPlaceholder": "Na przykład: podziel ten zakup według paragonu",
       "instructionHelp": "Reguła tylko prosi o sprawdzenie. Każdą zmianę zatwierdza człowiek, zanim zostanie wprowadzona.",
       "onlyIfEmpty": "Tylko jeśli puste",
@@ -220,7 +220,7 @@
       "createIfMissing": "Utwórz odbiorcę, jeśli nie istnieje",
       "createIfMissingHelp": "Gdy opcja jest włączona i żaden odbiorca nie pasuje do nazwy (według nazwy, aliasu lub zbliżonego dopasowania), tworzony jest nowy odbiorca. Odbiorca utworzony przez regułę zostaje, jeśli cofniesz uruchomienie.",
       "onlyIfEmptyDescriptionHelp": "Gdy opcja jest włączona, reguła zapisuje opis tylko wtedy, gdy transakcja go nie ma. Wyłącz ją, aby zapisywać opis za każdym razem.",
-      "mode": "Sposób zapisu",
+      "mode": "Tryb opisu",
       "modes": {
         "replace": "Zastąp opis",
         "append": "Dodaj po opisie",
@@ -262,12 +262,12 @@
         "windowHelp": "Jak daleko od terminu bank może pobrać płatność. Obciążenie do tej liczby dni przed lub po terminie raty płaci tę ratę; obciążenie poza oknem pozostaje bez zmian.",
         "daysBefore": "Dni przed terminem",
         "daysAfter": "Dni po terminie",
-        "excess": "Gdy obciążenie jest większe niż rata",
+        "excess": "Obciążenie wyższe niż rata",
         "excessPolicies": {
           "extra_principal": "Zapłać różnicę jako dodatkową spłatę kapitału",
           "refuse": "Pozostaw transakcję bez zmian"
         },
-        "shortfall": "Gdy obciążenie jest mniejsze niż rata",
+        "shortfall": "Obciążenie niższe niż rata",
         "shortfallPolicies": {
           "refuse": "Pozostaw transakcję bez zmian",
           "interest_first": "Zapłać najpierw odsetki, resztę jako kapitał"

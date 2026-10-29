@@ -2120,7 +2120,7 @@ describe('ScheduledTransactionForm', () => {
 
     await act(async () => { fireEvent.click(screen.getByText('Transfer')); });
 
-    expect(screen.getByText('Category (Optional)')).toBeInTheDocument();
+    expect(screen.getByText('Category (optional)')).toBeInTheDocument();
   });
 
   it('keeps the category when submitting an existing transfer schedule (#743)', async () => {
@@ -2527,8 +2527,8 @@ describe('ScheduledTransactionForm', () => {
 
     it('shows Quantity / Price / Commission inputs for BUY', async () => {
       await openInvestmentTab();
-      expect(screen.getByLabelText('Quantity (shares)')).toBeInTheDocument();
-      expect(screen.getByLabelText('Price per share')).toBeInTheDocument();
+      expect(screen.getByLabelText('Quantity (Shares)')).toBeInTheDocument();
+      expect(screen.getByLabelText('Price per Share')).toBeInTheDocument();
       expect(screen.getByLabelText('Commission')).toBeInTheDocument();
       expect(screen.getByLabelText('Total Value')).toBeInTheDocument();
     });
@@ -2537,7 +2537,7 @@ describe('ScheduledTransactionForm', () => {
       await openInvestmentTab();
       fireEvent.change(screen.getByLabelText('Action'), { target: { value: 'DIVIDEND' } });
       await waitFor(() => {
-        expect(screen.queryByLabelText('Quantity (shares)')).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('Quantity (Shares)')).not.toBeInTheDocument();
       });
       expect(screen.getByLabelText('Total Amount')).toBeInTheDocument();
     });
@@ -2546,9 +2546,9 @@ describe('ScheduledTransactionForm', () => {
       await openInvestmentTab();
       fireEvent.change(screen.getByLabelText('Action'), { target: { value: 'ADD_SHARES' } });
       await waitFor(() => {
-        expect(screen.queryByLabelText('Price per share')).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('Price per Share')).not.toBeInTheDocument();
       });
-      expect(screen.getByLabelText('Quantity (shares)')).toBeInTheDocument();
+      expect(screen.getByLabelText('Quantity (Shares)')).toBeInTheDocument();
     });
 
     it('shows Funding Account dropdown for BUY only', async () => {
@@ -2583,7 +2583,7 @@ describe('ScheduledTransactionForm', () => {
         });
       });
       await waitFor(() => {
-        const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
+        const priceInput = screen.getByLabelText('Price per Share') as HTMLInputElement;
         expect(priceInput.value).toBe('500.000000');
       });
     });
@@ -2598,14 +2598,14 @@ describe('ScheduledTransactionForm', () => {
       });
       // Wait for price to auto-populate
       await waitFor(() => {
-        const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
+        const priceInput = screen.getByLabelText('Price per Share') as HTMLInputElement;
         expect(priceInput.value).toBe('500.000000');
       });
       const totalInput = screen.getByLabelText('Total Value') as HTMLInputElement;
       // 1000 / 500 = 2 shares
       fireEvent.change(totalInput, { target: { value: '1000' } });
       await waitFor(() => {
-        const qtyInput = screen.getByLabelText('Quantity (shares)') as HTMLInputElement;
+        const qtyInput = screen.getByLabelText('Quantity (Shares)') as HTMLInputElement;
         expect(qtyInput.value).toBe('2.00000000');
       });
     });
@@ -2619,10 +2619,10 @@ describe('ScheduledTransactionForm', () => {
         target: { value: 'sec-voo' },
       });
       await waitFor(() => {
-        const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
+        const priceInput = screen.getByLabelText('Price per Share') as HTMLInputElement;
         expect(priceInput.value).toBe('500.000000');
       });
-      fireEvent.change(screen.getByLabelText('Quantity (shares)'), {
+      fireEvent.change(screen.getByLabelText('Quantity (Shares)'), {
         target: { value: '3' },
       });
       await waitFor(() => {
@@ -2654,7 +2654,7 @@ describe('ScheduledTransactionForm', () => {
         target: { value: 'sec-voo' },
       });
       // Enter quantity and total while the price fetch is still pending.
-      fireEvent.change(screen.getByLabelText('Quantity (shares)'), {
+      fireEvent.change(screen.getByLabelText('Quantity (Shares)'), {
         target: { value: '10' },
       });
       fireEvent.change(screen.getByLabelText('Total Value'), {
@@ -2666,7 +2666,7 @@ describe('ScheduledTransactionForm', () => {
       });
 
       const totalInput = screen.getByLabelText('Total Value') as HTMLInputElement;
-      const qtyInput = screen.getByLabelText('Quantity (shares)') as HTMLInputElement;
+      const qtyInput = screen.getByLabelText('Quantity (Shares)') as HTMLInputElement;
       // The typed budget stands; the quantity is re-derived from it, so the shown
       // total and the amount submit will persist agree.
       expect(Number(totalInput.value.replace(/,/g, ''))).toBe(950);
@@ -2683,10 +2683,10 @@ describe('ScheduledTransactionForm', () => {
       });
       await waitFor(() => {
         expect(
-          (screen.getByLabelText('Price per share') as HTMLInputElement).value,
+          (screen.getByLabelText('Price per Share') as HTMLInputElement).value,
         ).toBe('500.000000');
       });
-      fireEvent.change(screen.getByLabelText('Quantity (shares)'), {
+      fireEvent.change(screen.getByLabelText('Quantity (Shares)'), {
         target: { value: '10' },
       });
       await waitFor(() => {
@@ -2720,10 +2720,10 @@ describe('ScheduledTransactionForm', () => {
       });
       await waitFor(() => {
         expect(
-          (screen.getByLabelText('Price per share') as HTMLInputElement).value,
+          (screen.getByLabelText('Price per Share') as HTMLInputElement).value,
         ).toBe('500.000000');
       });
-      fireEvent.change(screen.getByLabelText('Quantity (shares)'), {
+      fireEvent.change(screen.getByLabelText('Quantity (Shares)'), {
         target: { value: '10' },
       });
       fireEvent.change(screen.getByLabelText('Commission'), {
@@ -2766,7 +2766,7 @@ describe('ScheduledTransactionForm', () => {
       });
       await waitFor(() => {
         expect(
-          (screen.getByLabelText('Price per share') as HTMLInputElement).value,
+          (screen.getByLabelText('Price per Share') as HTMLInputElement).value,
         ).toBe('100.000000');
       });
       // Switch securities: the old 100 must be cleared and B's 250 fill in, not
@@ -2776,7 +2776,7 @@ describe('ScheduledTransactionForm', () => {
       });
       await waitFor(() => {
         expect(
-          (screen.getByLabelText('Price per share') as HTMLInputElement).value,
+          (screen.getByLabelText('Price per Share') as HTMLInputElement).value,
         ).toBe('250.000000');
       });
     });
@@ -2803,11 +2803,11 @@ describe('ScheduledTransactionForm', () => {
       });
       await waitFor(() => {
         expect(
-          (screen.getByLabelText('Price per share') as HTMLInputElement).value,
+          (screen.getByLabelText('Price per Share') as HTMLInputElement).value,
         ).toBe('100.000000');
       });
       // Enter a share count; the total derives to 10 * 100 = 1000.
-      fireEvent.change(screen.getByLabelText('Quantity (shares)'), {
+      fireEvent.change(screen.getByLabelText('Quantity (Shares)'), {
         target: { value: '10' },
       });
       await waitFor(() => {
@@ -2824,11 +2824,11 @@ describe('ScheduledTransactionForm', () => {
       });
       await waitFor(() => {
         expect(
-          (screen.getByLabelText('Price per share') as HTMLInputElement).value,
+          (screen.getByLabelText('Price per Share') as HTMLInputElement).value,
         ).toBe('250.000000');
       });
       expect(
-        Number((screen.getByLabelText('Quantity (shares)') as HTMLInputElement).value),
+        Number((screen.getByLabelText('Quantity (Shares)') as HTMLInputElement).value),
       ).toBe(10);
       expect(
         Number(
@@ -2894,7 +2894,7 @@ describe('ScheduledTransactionForm', () => {
       // The price stays empty (no NaN written) and the "no price history" hint
       // shows because the field is genuinely empty.
       expect(
-        (screen.getByLabelText('Price per share') as HTMLInputElement).value,
+        (screen.getByLabelText('Price per Share') as HTMLInputElement).value,
       ).toBe('');
       expect(screen.getByText(/No price history yet/)).toBeInTheDocument();
     });
@@ -2917,7 +2917,7 @@ describe('ScheduledTransactionForm', () => {
         expect(mockGetSecurityPrices).toHaveBeenCalled();
       });
       expect(
-        (screen.getByLabelText('Price per share') as HTMLInputElement).value,
+        (screen.getByLabelText('Price per Share') as HTMLInputElement).value,
       ).toBe('');
       expect(screen.getByText(/No price history yet/)).toBeInTheDocument();
     });
@@ -3036,10 +3036,10 @@ describe('ScheduledTransactionForm', () => {
         target: { value: 'sec-voo' },
       });
       await waitFor(() => {
-        const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
+        const priceInput = screen.getByLabelText('Price per Share') as HTMLInputElement;
         expect(priceInput.value).toBe('500.000000');
       });
-      fireEvent.change(screen.getByLabelText('Quantity (shares)'), {
+      fireEvent.change(screen.getByLabelText('Quantity (Shares)'), {
         target: { value: '1' },
       });
       const submitBtn = container.querySelector('button[type="submit"]')!;
@@ -3209,7 +3209,7 @@ describe('ScheduledTransactionForm - extra coverage', () => {
     await act(async () => {
       fireEvent.change(screen.getByLabelText('Action'), { target: { value: 'ADD_SHARES' } });
     });
-    expect(screen.getByLabelText('Quantity (shares)')).toBeInTheDocument();
+    expect(screen.getByLabelText('Quantity (Shares)')).toBeInTheDocument();
     expect(screen.queryByLabelText('Funding Account (optional)')).not.toBeInTheDocument();
   });
 
@@ -3221,10 +3221,10 @@ describe('ScheduledTransactionForm - extra coverage', () => {
     });
     await act(async () => {}); // market price arrives
     await act(async () => {
-      fireEvent.change(screen.getByLabelText('Price per share'), { target: { value: '10' } });
+      fireEvent.change(screen.getByLabelText('Price per Share'), { target: { value: '10' } });
     });
     await act(async () => {
-      fireEvent.change(screen.getByLabelText('Quantity (shares)'), { target: { value: '5' } });
+      fireEvent.change(screen.getByLabelText('Quantity (Shares)'), { target: { value: '5' } });
     });
     const total = screen.getByLabelText('Total Value') as HTMLInputElement;
     await waitFor(() =>
@@ -3355,10 +3355,10 @@ describe('ScheduledTransactionForm - extra coverage', () => {
     });
     await act(async () => {});
     await act(async () => {
-      fireEvent.change(screen.getByLabelText('Price per share'), { target: { value: '10' } });
+      fireEvent.change(screen.getByLabelText('Price per Share'), { target: { value: '10' } });
     });
     await act(async () => {
-      fireEvent.change(screen.getByLabelText('Quantity (shares)'), { target: { value: '5' } });
+      fireEvent.change(screen.getByLabelText('Quantity (Shares)'), { target: { value: '5' } });
     });
     await act(async () => { submit(container); });
     await act(async () => {});

@@ -13,6 +13,7 @@ function resetStore() {
     surfaces: {
       transactions: { view: 'table', layers: ['transactions'] },
       investments: { view: 'table', layers: ['transactions'] },
+      bills: { view: 'table', layers: ['transactions'] },
     },
   });
 }
@@ -85,6 +86,17 @@ describe('viewModeStore', () => {
     expect(result.current.layers).toEqual(['transactions']);
   });
 
+  it('keeps the Bills list/calendar choice apart from the registers', () => {
+    const { result } = renderHook(() => useViewMode('bills'));
+    expect(result.current.view).toBe('table');
+
+    act(() => result.current.setView('calendar'));
+
+    expect(useViewModeStore.getState().surfaces.bills.view).toBe('calendar');
+    expect(useViewModeStore.getState().surfaces.transactions.view).toBe('table');
+    expect(useViewModeStore.getState().surfaces.investments.view).toBe('table');
+  });
+
   it('offers each surface only its own layers', () => {
     expect(SURFACE_LAYERS.transactions).not.toContain('dailyChange');
     expect(SURFACE_LAYERS.investments).not.toContain('balances');
@@ -112,6 +124,20 @@ describe('viewModeStore rehydration', () => {
     });
 
     expect(surfaces.transactions).toEqual({ view: 'calendar', layers: ['balances'] });
+  });
+
+  it('starts Bills on the list when storage predates the bills surface', async () => {
+    const surfaces = await rehydrate({
+      transactions: { view: 'calendar', layers: ['balances'] },
+      investments: { view: 'table', layers: ['transactions'] },
+    });
+    expect(surfaces.bills).toEqual({ view: 'table', layers: ['transactions'] });
+  });
+
+  it('restores a stored Bills calendar choice', async () => {
+    const surfaces = await rehydrate({ bills: { view: 'calendar', layers: ['balances'] } });
+    // A layer the bills calendar does not offer is discarded, not rendered.
+    expect(surfaces.bills).toEqual({ view: 'calendar', layers: ['transactions'] });
   });
 
   it('discards a view it does not recognise', async () => {

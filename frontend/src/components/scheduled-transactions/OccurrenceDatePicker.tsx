@@ -197,21 +197,16 @@ export function OccurrenceDatePicker({
   const nextDueDate = scheduledTransaction.nextDueDate.split('T')[0];
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} maxWidth="sm" className="p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-          {t('occurrencePicker.title')}
-        </h3>
-        <button
-          onClick={onClose}
-          className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
-        >
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-
+    // Titled through Modal, so the dialog is named by its heading; there is no
+    // X, and the Cancel below is rendered in every state (loading and a failed
+    // loan projection included).
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      maxWidth="sm"
+      className="p-6"
+      title={t('occurrencePicker.title')}
+    >
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
         {t('occurrencePicker.description', { name: scheduledTransaction.name })}
       </p>

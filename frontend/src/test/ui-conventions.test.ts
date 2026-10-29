@@ -2270,11 +2270,8 @@ describe("row hover comes from the shared pair, not a hand-picked grey", () => {
   const BASELINE: ReadonlyArray<string> = [
     "/src/app/bills/page.tsx",
     "/src/app/budgets/[id]/edit/page.tsx",
-    "/src/app/categories/page.tsx",
     "/src/app/error.tsx",
-    "/src/app/institutions/page.tsx",
     "/src/app/not-found.tsx",
-    "/src/app/payees/page.tsx",
     "/src/app/reports/page.tsx",
     "/src/app/settings/page.tsx",
     "/src/components/accounts/AccountForm.tsx",
@@ -2465,7 +2462,6 @@ describe("a dialog is titled through Modal, not by a hand-rolled heading", () =>
   const MODAL = "/src/components/ui/Modal.tsx";
 
   const BASELINE: ReadonlyArray<string> = [
-    "/src/app/bills/page.tsx",
     "/src/app/budgets/[id]/edit/page.tsx",
     "/src/app/categories/[id]/page.tsx",
     "/src/app/categories/page.tsx",
@@ -2479,22 +2475,11 @@ describe("a dialog is titled through Modal, not by a hand-rolled heading", () =>
     "/src/components/accounts/AccountFormModal.tsx",
     "/src/components/accounts/shared/ForeignCurrencyFeesSection.tsx",
     "/src/components/accounts/shared/RecurringChargesPanel.tsx",
-    "/src/components/categories/DeleteCategoryDialog.tsx",
-    "/src/components/categories/ImportDefaultCategoriesDialog.tsx",
     "/src/components/categories/detail/CategoryTransactionsTab.tsx",
-    "/src/components/institutions/InstitutionAccountsManager.tsx",
     "/src/components/investments/InvestmentTransactionForm.tsx",
     "/src/components/layout/MobileNavDrawer.tsx",
-    "/src/components/payees/AutoMergePayeesDialog.tsx",
-    "/src/components/payees/CategoryAutoAssignDialog.tsx",
-    "/src/components/payees/DeactivateUnusedPayeesDialog.tsx",
-    "/src/components/payees/MergePayeeDialog.tsx",
-    "/src/components/payees/ReactivatePayeeDialog.tsx",
     "/src/components/payees/detail/PayeeTransactionsTab.tsx",
     "/src/components/reports/ForeignCurrencyFeesReport.tsx",
-    "/src/components/scheduled-transactions/OccurrenceDatePicker.tsx",
-    "/src/components/scheduled-transactions/OverrideEditorDialog.tsx",
-    "/src/components/scheduled-transactions/PostTransactionDialog.tsx",
     "/src/components/scheduled-transactions/ScheduledTransactionForm.tsx",
     "/src/components/securities/SecurityForm.tsx",
     "/src/components/securities/SecurityTransactionHistory.tsx",
@@ -2583,7 +2568,6 @@ describe("a status pill is Badge, not a hand-rolled rounded-full", () => {
     /rounded-full[^"'`]*(?:text-xs|text-\[10px\])[^"'`]*font-medium|(?:text-xs|text-\[10px\])[^"'`]*font-medium[^"'`]*rounded-full|rounded-full[^"'`]*font-medium[^"'`]*(?:text-xs|text-\[10px\])/;
 
   const BASELINE: ReadonlyArray<string> = [
-    "/src/app/budgets/page.tsx",
     "/src/components/budgets/BudgetCategoryTrend.tsx",
     "/src/components/budgets/BudgetPeriodDetail.tsx",
     "/src/components/budgets/BudgetWizard.tsx",

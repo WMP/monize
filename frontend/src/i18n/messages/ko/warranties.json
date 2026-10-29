@@ -22,7 +22,14 @@
       "expiring": "만료 임박",
       "active": "유효",
       "expired": "만료됨",
-      "lifetime": "평생 보증"
+      "lifetime": "평생 보증",
+      "counted": {
+        "all": "전체 ({count})",
+        "expiring": "만료 임박 ({count})",
+        "active": "유효 ({count})",
+        "expired": "만료됨 ({count})",
+        "lifetime": "평생 보증 ({count})"
+      }
     },
     "search": {
       "label": "보증 검색",
@@ -163,14 +170,21 @@
     "notFound": "이 보증을 찾을 수 없습니다.",
     "retry": "다시 시도",
     "archivedBadge": "보관됨",
+    "switcher": {
+      "trigger": "보증 전환",
+      "placeholder": "보증 검색...",
+      "noMatches": "일치하는 보증이 없습니다"
+    },
+    "summary": {
+      "expires": "만료일",
+      "purchased": "구매일",
+      "price": "구매 가격",
+      "openClaims": "진행 중인 청구"
+    },
     "card": {
       "title": "세부 정보",
-      "expires": "만료일",
-      "daysLeft": "남은 기간",
       "kind": "보증 유형",
       "vendor": "판매처",
-      "purchaseDate": "구매일",
-      "price": "구매 가격",
       "serialNumbers": "일련번호",
       "model": "모델 번호",
       "productUrl": "제품 페이지",
@@ -228,7 +242,7 @@
     "form": {
       "claimDateLabel": "청구일",
       "statusLabel": "상태",
-      "descriptionLabel": "문제 내용",
+      "descriptionLabel": "설명",
       "resolutionLabel": "처리 결과",
       "resolvedOnLabel": "종료일",
       "resolvedOnHint": "해결되었거나 거절된 청구에만 해당",

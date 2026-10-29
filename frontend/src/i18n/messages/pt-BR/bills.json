@@ -16,12 +16,13 @@
     "chartUnavailable": "Gráfico temporariamente indisponível"
   },
   "viewTabs": {
-    "list": "Lista",
-    "calendar": "Calendário",
+    "filterLabel": "Tipo de agendamento",
     "filterAll": "Todas ({count})",
     "filterBills": "Faturas ({count})",
     "filterDeposits": "Depósitos ({count})",
-    "todayButton": "Hoje"
+    "todayButton": "Hoje",
+    "previousMonth": "Mês anterior",
+    "nextMonth": "Próximo mês"
   },
   "form": {
     "titleNew": "Nova transação agendada",

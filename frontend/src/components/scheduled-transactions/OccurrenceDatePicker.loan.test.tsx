@@ -168,6 +168,18 @@ describe('OccurrenceDatePicker: a loan bill priced per occurrence (issue #1643)'
     expect(rowFor('2023-02-03')).toHaveTextContent('CAD 584.59');
   });
 
+  it('keeps its Cancel while the projection loads, since the dialog has no corner X', async () => {
+    mockGetLoanOccurrences.mockReturnValue(new Promise(() => {}));
+    const onClose = vi.fn();
+    await act(async () => {
+      render(<OccurrenceDatePicker isOpen scheduledTransaction={loanBill} onSelect={vi.fn()} onClose={onClose} />);
+    });
+
+    expect(screen.getByRole('status')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(onClose).toHaveBeenCalled();
+  });
+
   it('lists dates only for a loan bill the pricing declines', async () => {
     mockGetLoanOccurrences.mockResolvedValue({ ...timelineA, status: 'declined', occurrences: [] });
     const onSelect = await renderPicker();

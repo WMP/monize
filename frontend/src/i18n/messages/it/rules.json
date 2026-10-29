@@ -114,8 +114,8 @@
       "matchAll": "Tutte queste",
       "matchAny": "Una qualsiasi di queste",
       "matchLabel": "Corrispondenza",
-      "not": "Non",
-      "notLabel": "Nega questo gruppo: corrisponde quando le sue condizioni non sono soddisfatte",
+      "not": "Nega gruppo",
+      "notHelp": "Un gruppo negato corrisponde quando le sue condizioni non corrispondono.",
       "title": "Gruppo",
       "addCondition": "+ Aggiungi condizione",
       "addGroup": "+ Aggiungi gruppo",
@@ -201,7 +201,7 @@
       "tags": "Tag",
       "category": "Categoria",
       "payee": "Beneficiario",
-      "instruction": "Cosa deve essere controllato",
+      "instruction": "Istruzioni per la revisione",
       "instructionPlaceholder": "Ad esempio: suddividi questo acquisto secondo lo scontrino",
       "instructionHelp": "La regola si limita a richiedere una revisione. Una persona approva ogni modifica prima che venga applicata.",
       "onlyIfEmpty": "Solo se vuoto",
@@ -220,7 +220,7 @@
       "createIfMissing": "Crea il beneficiario se non esiste",
       "createIfMissingHelp": "Se attivo, e nessun beneficiario corrisponde al nome (per nome, alias o corrispondenza approssimata), viene creato un nuovo beneficiario. Un beneficiario creato da una regola viene mantenuto se annulli l'esecuzione.",
       "onlyIfEmptyDescriptionHelp": "Se attivo, la regola scrive la descrizione solo se la transazione non ne ha una. Disattivalo per scriverla ogni volta.",
-      "mode": "Come scriverla",
+      "mode": "Modalità descrizione",
       "modes": {
         "replace": "Sostituisci la descrizione",
         "append": "Aggiungi dopo la descrizione",
@@ -262,12 +262,12 @@
         "windowHelp": "Quanto la banca può allontanarsi dalla data di scadenza per effettuare il pagamento. Un addebito fino a questo numero di giorni prima o dopo la scadenza di una rata paga quella rata; uno fuori dalla finestra viene lasciato invariato.",
         "daysBefore": "Giorni prima della data di scadenza",
         "daysAfter": "Giorni dopo la data di scadenza",
-        "excess": "Quando l'addebito è maggiore della rata",
+        "excess": "Addebito superiore alla rata",
         "excessPolicies": {
           "extra_principal": "Pagare la differenza come capitale aggiuntivo",
           "refuse": "Lasciare la transazione invariata"
         },
-        "shortfall": "Quando l'addebito è minore della rata",
+        "shortfall": "Addebito inferiore alla rata",
         "shortfallPolicies": {
           "refuse": "Lasciare la transazione invariata",
           "interest_first": "Pagare prima gli interessi, il resto come capitale"

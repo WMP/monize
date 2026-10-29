@@ -11,17 +11,14 @@ import { LinkedDraftDialog } from '@/components/email-receipts/LinkedDraftDialog
 import { LinkedProfilesHint } from '@/components/email-receipts/LinkedProfilesHint';
 import { EmailReceiptDetailDialog } from '@/components/email-receipts/EmailReceiptDetailDialog';
 import { ReceiptBulkBar } from '@/components/email-receipts/ReceiptBulkBar';
+import { ReceiptListTable } from '@/components/email-receipts/ReceiptListTable';
 import { ReceiptSearchBar } from '@/components/email-receipts/ReceiptSearchBar';
 import { RetryFailedEmailsButton } from '@/components/email-receipts/RetryFailedEmailsButton';
-import { SelectAllCheckbox } from '@/components/email-receipts/SelectAllCheckbox';
 import { SenderDomainCloud } from '@/components/email-receipts/SenderDomainCloud';
 import { ParserEditorDialog } from '@/components/email-receipts/ParserEditorDialog';
 import { RecognizeWithAiDialog } from '@/components/email-receipts/RecognizeWithAiDialog';
-import { ReceiptStateBadge } from '@/components/email-receipts/ReceiptStateBadge';
-import { useBookedTradeSummary } from '@/components/email-receipts/useBookedTradeSummary';
 import { useParserDraftWithAi } from '@/components/email-receipts/useParserDraftWithAi';
 import { useProfileDiscardOffer } from '@/components/email-receipts/useProfileDiscardOffer';
-import { Badge } from '@/components/ui/Badge';
 import { useReceiptBulkActions } from '@/components/email-receipts/useReceiptBulkActions';
 import { useReceiptBulkProcessing } from '@/components/email-receipts/useReceiptBulkProcessing';
 import { useReceiptNarrowing } from '@/components/email-receipts/useReceiptNarrowing';
@@ -32,10 +29,8 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ListBottomPager } from '@/components/ui/ListBottomPager';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { RowActions, type RowAction } from '@/components/ui/row-actions';
+import type { RowAction } from '@/components/ui/row-actions';
 import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
-import { TABLE_BODY_CLASS, TABLE_CLASS, Td, Th } from '@/components/ui/Table';
-import { useDateFormat } from '@/hooks/useDateFormat';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useReceiptParserLookups } from '@/hooks/useReceiptParserLookups';
 import { emailReceiptsApi } from '@/lib/email-receipts-api';
@@ -169,9 +164,7 @@ interface Notice {
 export function EmailReceiptsManager() {
   const t = useTranslations('emailReceipts.receipts');
   const tc = useTranslations('common');
-  const { formatDate, formatDateTime } = useDateFormat();
-  const { formatCurrency, formatNumber } = useNumberFormat();
-  const bookedTradeSummary = useBookedTradeSummary();
+  const { formatNumber } = useNumberFormat();
   const { state: lookups, reload: reloadLookups } = useReceiptParserLookups();
 
   const router = useRouter();
@@ -861,97 +854,16 @@ export function EmailReceiptsManager() {
     );
   } else {
     body = (
-      <div className="overflow-x-auto">
-        <table className={TABLE_CLASS}>
-          <thead>
-            <tr>
-              <Th className="w-8 px-2 sm:px-4">
-                <SelectAllCheckbox
-                  checked={allSelected}
-                  indeterminate={someSelected}
-                  disabled={drafting || locked}
-                  label={t('selection.selectAll')}
-                  onChange={toggleAll}
-                />
-              </Th>
-              <Th className="px-2 sm:px-4">{t('columns.date')}</Th>
-              <Th className="px-2 sm:px-4">{t('columns.email')}</Th>
-              <Th className="hidden px-2 sm:table-cell sm:px-4">{t('columns.transaction')}</Th>
-              <Th className="px-2 sm:px-4">{t('columns.state')}</Th>
-              <Th align="right" className="px-2 sm:px-4">
-                {t('columns.actions')}
-              </Th>
-            </tr>
-          </thead>
-          <tbody className={TABLE_BODY_CLASS}>
-            {current.items.map((receipt) => {
-              // A trade email accounts for an investment transaction, never a bank one.
-              const booked = receipt.isTrade ? (receipt.investmentTransaction ?? null) : null;
-              const summary = booked
-                ? bookedTradeSummary(booked)
-                : receipt.transaction && !receipt.isTrade
-                  ? t('transactionSummary', {
-                      date: formatDate(receipt.transaction.date),
-                      amount: formatCurrency(receipt.transaction.amount, receipt.transaction.currencyCode),
-                      payee: receipt.transaction.payeeName ?? t('noPayee'),
-                    })
-                  : null;
-              const summaryHref = booked
-                ? `/investments?edit=${booked.id}`
-                : receipt.transaction
-                  ? `/transactions?targetTransactionId=${receipt.transaction.id}`
-                  : null;
-              return (
-                <tr key={receipt.id}>
-                  <Td className="px-2 align-top sm:px-4">
-                    <input
-                      type="checkbox"
-                      checked={isChecked(receipt)}
-                      disabled={drafting || locked}
-                      onChange={() => toggleSelected(receipt)}
-                      aria-label={t('selection.select', { subject: receipt.subject })}
-                      className="h-4 w-4 cursor-pointer rounded border-gray-300 text-blue-600 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600"
-                    />
-                  </Td>
-                  <Td className="px-2 align-top whitespace-nowrap sm:px-4">{formatDateTime(receipt.effectiveDate)}</Td>
-                  <Td className="min-w-0 px-2 align-top break-words sm:px-4">
-                    <div className="font-medium">
-                      {receipt.subject}
-                      {receipt.isTrade && (
-                        <>
-                          {' '}
-                          <Badge variant="blue" className="align-middle">
-                            {t('tradeBadge')}
-                          </Badge>
-                        </>
-                      )}
-                    </div>
-                    <div className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{receipt.fromAddress}</div>
-                    {summary && (
-                      <div className="mt-1 text-xs text-gray-700 dark:text-gray-300 sm:hidden">{summary}</div>
-                    )}
-                  </Td>
-                  <Td className="hidden px-2 align-top sm:table-cell sm:px-4">
-                    {summary && summaryHref ? (
-                      <Link href={summaryHref} className="text-blue-600 hover:underline dark:text-blue-400">
-                        {summary}
-                      </Link>
-                    ) : (
-                      <span className="text-gray-500 dark:text-gray-400">{t('noTransaction')}</span>
-                    )}
-                  </Td>
-                  <Td className="px-2 align-top sm:px-4">
-                    <ReceiptStateBadge receipt={receipt} />
-                  </Td>
-                  <Td align="right" className="px-2 align-top sm:px-4">
-                    <RowActions actions={actionsFor(receipt)} density="normal" maxInline={3} />
-                  </Td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      <ReceiptListTable
+        items={current.items}
+        isChecked={isChecked}
+        allSelected={allSelected}
+        someSelected={someSelected}
+        selectionDisabled={drafting || locked}
+        onToggle={toggleSelected}
+        onToggleAll={toggleAll}
+        actionsFor={actionsFor}
+      />
     );
   }
 
@@ -970,6 +882,14 @@ export function EmailReceiptsManager() {
 
       <LinkedProfilesHint variant="emails" />
 
+      {/* The search leads the toolbar; the state and sender filters follow it. */}
+      <ReceiptSearchBar
+        input={receiptSearch.input}
+        onChange={receiptSearch.change}
+        onClear={receiptSearch.clear}
+        canClear={receiptSearch.hasInput}
+        rangeBackwards={receiptSearch.rangeBackwards}
+      />
       <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
         <div role="group" aria-label={t('filter.label')} className={`${SEGMENTED_GROUP_CLASS} max-w-full flex-wrap`}>
           {FILTERS.map((option) => (
@@ -994,13 +914,6 @@ export function EmailReceiptsManager() {
         <SenderDomainCloud domains={cloudDomains} selected={domain} onSelect={changeDomain} />
       </div>
       {domain !== '' && <p className="text-xs text-gray-500 dark:text-gray-400">{t('domainFilter.help', { domain })}</p>}
-      <ReceiptSearchBar
-        input={receiptSearch.input}
-        onChange={receiptSearch.change}
-        onClear={receiptSearch.clear}
-        canClear={receiptSearch.hasInput}
-        rangeBackwards={receiptSearch.rangeBackwards}
-      />
 
       {failedCount > 0 && (
         <RetryFailedEmailsButton

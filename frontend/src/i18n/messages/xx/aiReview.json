@@ -17,7 +17,8 @@
     "label": "[XX-Filter by kind-XX]",
     "all": "[XX-All-XX]",
     "email_receipt": "[XX-Email receipts-XX]",
-    "transaction_review": "[XX-Rules-XX]"
+    "transaction_review": "[XX-Rules-XX]",
+    "option": "[XX-{label} ({count})-XX]"
   },
   "status": {
     "pending": "[XX-Pending-XX]",

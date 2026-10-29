@@ -16,12 +16,13 @@
     "chartUnavailable": "图表暂时不可用"
   },
   "viewTabs": {
-    "list": "列表",
-    "calendar": "日历",
+    "filterLabel": "计划类型",
     "filterAll": "全部（{count}）",
     "filterBills": "账单（{count}）",
     "filterDeposits": "存款（{count}）",
-    "todayButton": "今天"
+    "todayButton": "今天",
+    "previousMonth": "上个月",
+    "nextMonth": "下个月"
   },
   "form": {
     "titleNew": "新建定期交易",

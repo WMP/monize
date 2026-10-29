@@ -2,6 +2,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@/test/render';
 import { BudgetPeriodDetail } from './BudgetPeriodDetail';
 import type { BudgetPeriod, BudgetPeriodCategory, BudgetCategory } from '@/types/budget';
+import type { UserPreferences } from '@/types/auth';
+import { usePreferencesStore } from '@/store/preferencesStore';
 
 vi.mock('./BudgetProgressBar', () => ({
   BudgetProgressBar: ({ percentUsed }: { percentUsed: number }) => (
@@ -105,13 +107,22 @@ describe('BudgetPeriodDetail', () => {
     expect(screen.getByText('CLOSED')).toBeInTheDocument();
   });
 
-  it('renders period date range', () => {
-    render(
+  it('renders period date range in the reader\'s date format', () => {
+    // The range goes through useDateFormat(), so the reader's own format
+    // decides it, not a fixed English 'MMM d, yyyy'.
+    usePreferencesStore.setState({
+      preferences: { dateFormat: 'YYYY-MM-DD' } as UserPreferences,
+    });
+    const { unmount } = render(
       <BudgetPeriodDetail period={mockPeriod} formatCurrency={mockFormat} />,
     );
 
-    expect(screen.getByText(/Jan 1/)).toBeInTheDocument();
-    expect(screen.getByText(/Jan 31, 2026/)).toBeInTheDocument();
+    expect(screen.getByText('2026-01-01 to 2026-01-31')).toBeInTheDocument();
+    expect(screen.queryByText(/Jan 31, 2026/)).toBeNull();
+    // Unmounted first: a store write under a mounted tree re-renders it
+    // outside act().
+    unmount();
+    usePreferencesStore.setState({ preferences: null });
   });
 
   it('renders summary cards with correct values', () => {

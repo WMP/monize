@@ -142,10 +142,13 @@ describe('RuleConditionCard', () => {
   it('uses a switch named after the field for has an attachment', () => {
     const onLeaf = vi.fn();
     render(<Card initial={createLeaf('hasAttachment')} onLeaf={onLeaf} />);
-    expect(screen.getByText('Yes')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('switch', { name: 'Has an attachment' }));
+    const toggle = screen.getByRole('switch', { name: 'Has an attachment' });
+    // The visible text beside the switch names the setting, not its state.
+    expect(toggle.parentElement).toHaveTextContent('Has an attachment');
+    expect(screen.queryByText('Yes')).not.toBeInTheDocument();
+    fireEvent.click(toggle);
     expect(onLeaf).toHaveBeenLastCalledWith(expect.objectContaining({ field: 'hasAttachment', value: false }));
-    expect(screen.getByText('No')).toBeInTheDocument();
+    expect(screen.queryByText('No')).not.toBeInTheDocument();
   });
 
   it('explains captures under a pattern, and flags a name the server would refuse', () => {
@@ -347,10 +350,11 @@ describe('RuleConditionCard', () => {
   it('uses a switch for has-splits and no value control for isEmpty', () => {
     const onLeaf = vi.fn();
     render(<Card initial={leaf({ field: 'hasSplits', op: 'eq', value: true })} onLeaf={onLeaf} />);
-    expect(screen.getByText('Yes')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('switch', { name: 'Has splits' }));
+    const toggle = screen.getByRole('switch', { name: 'Has splits' });
+    expect(toggle).toHaveAttribute('aria-checked', 'true');
+    expect(toggle.parentElement).toHaveTextContent('Has splits');
+    fireEvent.click(toggle);
     expect(onLeaf).toHaveBeenLastCalledWith(expect.objectContaining({ value: false }));
-    expect(screen.getByText('No')).toBeInTheDocument();
   });
 
   it('shows its errors on the card', () => {

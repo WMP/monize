@@ -763,8 +763,7 @@
     },
     "search": {
       "label": "Pesquisar emails",
-      "text": "Pesquisar",
-      "placeholder": "Assunto, remetente ou conteúdo",
+      "placeholder": "Pesquisar por assunto, remetente ou conteúdo...",
       "in": "Pesquisar em",
       "fields": {
         "all": "Todos os campos",
@@ -806,10 +805,10 @@
       "body": "As confirmações de encomenda aparecem aqui depois de a caixa de correio ser lida.",
       "filteredTitle": "Sem e-mails neste estado",
       "filteredBody": "Escolha outro estado para ver os restantes.",
-      "noMailboxBody": "Ainda não há nenhuma caixa de correio ligada. Ligue uma para começar a ler confirmações de encomenda.",
-      "connectButton": "Ligar uma caixa de correio",
       "searchTitle": "Nenhum email corresponde à pesquisa",
-      "searchBody": "Altere as palavras ou as datas, ou limpe a pesquisa para ver todos os emails."
+      "searchBody": "Altere as palavras ou as datas, ou limpe a pesquisa para ver todos os emails.",
+      "noMailboxBody": "Ainda não há nenhuma caixa de correio ligada. Ligue uma para começar a ler confirmações de encomenda.",
+      "connectButton": "Ligar uma caixa de correio"
     },
     "actions": {
       "view": "Ver",
@@ -1092,9 +1091,7 @@
     "help": "Nenhuma transação foi correspondida automaticamente. Estas são as suas transações do intervalo de datas abaixo, que começa pelos dias em torno da compra. Escolha aquela que ele pagou ou altere as datas para procurar mais longe.",
     "fromLabel": "De",
     "toLabel": "Até",
-    "searchLabel": "Pesquisar",
-    "searchPlaceholder": "Beneficiário, descrição ou montante",
-    "searchButton": "Pesquisar",
+    "searchPlaceholder": "Pesquisar por beneficiário, descrição ou montante...",
     "loading": "A carregar as transações",
     "error": "Não foi possível carregar as transações.",
     "retry": "Tentar novamente",
@@ -1331,7 +1328,7 @@
       "reviseHelp": "Diga ao assistente o que alterar. Ele atualiza o mesmo rascunho a partir destes e-mails e transações.",
       "tradeHelp": "O assistente lê estas confirmações e escreve um rascunho de analisador para {domain} que propõe a transação de investimento reportada por cada uma. Ainda não está nada aprovado.",
       "tradeSample": "Confirmação de negociação",
-      "feedbackLabel": "O que deve mudar",
+      "feedbackLabel": "Alterações pedidas",
       "feedbackPlaceholder": "Por exemplo: o total é a linha que diz Montante pago, não o subtotal.",
       "send": "Enviar à IA",
       "sendFeedback": "Enviar nota à IA",

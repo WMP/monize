@@ -16,12 +16,13 @@
     "chartUnavailable": "Grafik sementara tidak tersedia"
   },
   "viewTabs": {
-    "list": "Daftar",
-    "calendar": "Kalender",
+    "filterLabel": "Jenis jadwal",
     "filterAll": "Semua ({count})",
     "filterBills": "Tagihan ({count})",
     "filterDeposits": "Setoran ({count})",
-    "todayButton": "Hari Ini"
+    "todayButton": "Hari Ini",
+    "previousMonth": "Bulan sebelumnya",
+    "nextMonth": "Bulan berikutnya"
   },
   "form": {
     "titleNew": "Transaksi Terjadwal Baru",

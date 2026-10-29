@@ -7,7 +7,6 @@ import { ArrowTopRightOnSquareIcon, ChevronRightIcon } from '@heroicons/react/24
 import { PayeeLogo } from '@/components/payees/PayeeLogo';
 import { Card, HOVER_ROW_ON_CARD } from '@/components/ui/Card';
 import { LinkifiedText } from '@/components/ui/LinkifiedText';
-import { useWarrantyDaysLeftText } from '@/components/warranties/WarrantyStatusBadge';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { toSafeExternalUrl } from '@/lib/external-url';
@@ -158,24 +157,14 @@ interface WarrantyDetailCardProps {
 }
 
 /**
- * What a warranty is: when its coverage ends, what kind it is, who sold it and
- * for how much, the identifiers to quote in a claim, and the purchase it
- * came from. Status and days left are the server's (WTY-002); the price is
- * informational and in its own currency (design decision 6).
+ * What a warranty is: the purchase it came from, what kind it is, who sold
+ * it, and the identifiers to quote in a claim. When it expires, the purchase
+ * date and the price are the figures in `WarrantySummaryCards` above it.
  */
 export function WarrantyDetailCard({ warranty, onEditPurchase }: WarrantyDetailCardProps) {
   const t = useTranslations('warranties');
-  const { formatDate } = useDateFormat();
-  const { formatCurrency, defaultCurrency } = useNumberFormat();
-  const daysLeftText = useWarrantyDaysLeftText();
 
   const none = t('detail.card.none');
-  const expires = warranty.isLifetime || warranty.expiresOn === null ? t('detail.card.lifetime') : formatDate(warranty.expiresOn);
-  const daysLeft = daysLeftText(warranty);
-  const price =
-    warranty.purchasePrice !== null && warranty.currencyCode !== null
-      ? withCurrencyCode(formatCurrency(warranty.purchasePrice, warranty.currencyCode), warranty.currencyCode, defaultCurrency)
-      : none;
   // Null unless the stored address is really http(s).
   const productUrl = toSafeExternalUrl(warranty.productUrl);
 
@@ -216,12 +205,8 @@ export function WarrantyDetailCard({ warranty, onEditPurchase }: WarrantyDetailC
         <Field label={t('detail.transaction.title')} wide>
           <LinkedPurchase warranty={warranty} onEdit={onEditPurchase} />
         </Field>
-        <Field label={t('detail.card.expires')}>{expires}</Field>
-        {daysLeft !== null && <Field label={t('detail.card.daysLeft')}>{daysLeft}</Field>}
         <Field label={t('detail.card.kind')}>{t(`kind.${warranty.warrantyKind}`)}</Field>
         <Field label={t('detail.card.vendor')}>{vendor}</Field>
-        <Field label={t('detail.card.purchaseDate')}>{formatDate(warranty.purchaseDate)}</Field>
-        <Field label={t('detail.card.price')}>{price}</Field>
         <Field label={t('detail.card.model')}>{warranty.modelNumber ?? none}</Field>
         <Field label={t('detail.card.serialNumbers')}>
           {warranty.serialNumbers.length === 0 ? (

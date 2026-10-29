@@ -165,6 +165,7 @@ function withBalancesLayer() {
     surfaces: {
       transactions: { view: 'calendar', layers: ['transactions', 'balances'] },
       investments: { view: 'table', layers: ['transactions'] },
+      bills: { view: 'table', layers: ['transactions'] },
     },
   });
 }
@@ -248,6 +249,7 @@ beforeEach(() => {
     surfaces: {
       transactions: { view: 'calendar', layers: ['transactions'] },
       investments: { view: 'table', layers: ['transactions'] },
+      bills: { view: 'table', layers: ['transactions'] },
     },
   });
 });

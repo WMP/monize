@@ -14,8 +14,11 @@ import { persist, createJSONStorage } from 'zustand/middleware';
  */
 export const VIEW_MODE_STORAGE_KEY = 'monize-view-mode';
 
-/** A screen that offers the Table / Calendar switch. */
-export type ViewModeSurface = 'transactions' | 'investments';
+/**
+ * A screen that offers the Table / Calendar switch. Bills & Deposits calls its
+ * table "the list", but it is the same choice and the same toggle.
+ */
+export type ViewModeSurface = 'transactions' | 'investments' | 'bills';
 
 export type ViewMode = 'table' | 'calendar';
 
@@ -35,6 +38,10 @@ export type CalendarLayer = 'transactions' | 'balances' | 'values' | 'dailyChang
 export const SURFACE_LAYERS = {
   transactions: ['transactions', 'balances'],
   investments: ['transactions', 'values', 'dailyChange'],
+  // The bills calendar draws one body of figures, its scheduled occurrences,
+  // and offers no layer switch: the entry exists so the surface's state has
+  // the same shape as the others' and a stored foreign layer is discarded.
+  bills: ['transactions'],
 } as const satisfies Readonly<Record<ViewModeSurface, readonly CalendarLayer[]>>;
 
 /**
@@ -48,7 +55,7 @@ export const SURFACE_LAYERS = {
  */
 export type LayerOf<S extends ViewModeSurface> = (typeof SURFACE_LAYERS)[S][number];
 
-export const VIEW_MODE_SURFACES: readonly ViewModeSurface[] = ['transactions', 'investments'];
+export const VIEW_MODE_SURFACES: readonly ViewModeSurface[] = ['transactions', 'investments', 'bills'];
 
 const VIEW_MODES: readonly ViewMode[] = ['table', 'calendar'];
 
@@ -68,7 +75,11 @@ function defaultSurfaceState(): SurfaceViewState {
 }
 
 function defaultSurfaces(): Record<ViewModeSurface, SurfaceViewState> {
-  return { transactions: defaultSurfaceState(), investments: defaultSurfaceState() };
+  return {
+    transactions: defaultSurfaceState(),
+    investments: defaultSurfaceState(),
+    bills: defaultSurfaceState(),
+  };
 }
 
 function isViewMode(value: unknown): value is ViewMode {

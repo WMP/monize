@@ -11,7 +11,8 @@ import { describe, expect, it } from 'vitest';
  * strings can only ever find those four.
  *
  * So this scans instead. The subject is every attribute a reader actually reads
- * (`title`, `aria-label`, `placeholder`, `alt`), and the rule is that after the
+ * (`title`, `aria-label`, `placeholder`, `alt`, and `InfoTooltip`'s `text`,
+ * which is both its popover and its accessible name), and the rule is that after the
  * translator calls are blanked out, no prose literal is left in one. That is
  * mechanical, it covers a literal nobody has thought of yet, and it says
  * `path:line` when it fails.
@@ -19,7 +20,7 @@ import { describe, expect, it } from 'vitest';
  * What it does NOT see, stated so the next reader does not over-trust it: a
  * literal assembled in a variable and passed in by name (the scan follows no
  * identifier), copy inside a `<span>` text child, a value coming from another
- * module, and anything outside the four attributes. It is a floor, not a proof.
+ * module, and anything outside these attributes. It is a floor, not a proof.
  *
  * The source is read through `import.meta.glob`, like its siblings
  * (`SecurityTypeAllocationReport.i18n.guard.test.ts`,
@@ -51,7 +52,7 @@ function withoutComments(source: string): string {
  */
 function userFacingAttributes(source: string): { line: number; expression: string }[] {
   const found: { line: number; expression: string }[] = [];
-  const attribute = /\b(?:title|aria-label|placeholder|alt)\s*=\s*/g;
+  const attribute = /\b(?:title|aria-label|placeholder|alt|text)\s*=\s*/g;
   let match: RegExpExecArray | null;
   while ((match = attribute.exec(source)) !== null) {
     const start = match.index + match[0].length;
@@ -102,7 +103,7 @@ describe('ScheduledTransactionList shows no untranslated copy', () => {
     expect(userFacingAttributes(withoutComments(sources[SUBJECT])).length).toBeGreaterThan(8);
   });
 
-  it('has no prose literal in a title, aria-label, placeholder or alt', () => {
+  it('has no prose literal in a title, aria-label, placeholder, alt or text', () => {
     const source = withoutComments(sources[SUBJECT]);
     const offenders = userFacingAttributes(source)
       .map(({ line, expression }) => ({ line, prose: proseLiteralsIn(expression) }))

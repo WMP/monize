@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useState } from 'react';
-import { render, screen, waitFor, fireEvent, act } from '@/test/render';
+import { render, screen, waitFor, fireEvent, act, within } from '@/test/render';
 import InstitutionsPage from './page';
+import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
 import toast from 'react-hot-toast';
 
 vi.mock('@/lib/logger', () => ({
@@ -73,8 +74,13 @@ vi.mock('@/components/layout/PageLayout', () => ({
   PageLayout: ({ children }: any) => <div data-testid="page-layout">{children}</div>,
 }));
 vi.mock('@/components/layout/PageHeader', () => ({
-  PageHeader: ({ title, subtitle, actions }: any) => (
-    <div><h1>{title}</h1>{subtitle && <p>{subtitle}</p>}{actions}</div>
+  PageHeader: ({ title, subtitle, actions, helpUrl }: any) => (
+    <div>
+      <h1>{title}</h1>
+      {helpUrl && <a data-testid="help-link" href={helpUrl}>Help</a>}
+      {subtitle && <p>{subtitle}</p>}
+      {actions}
+    </div>
   ),
 }));
 vi.mock('@/components/ui/Button', () => ({
@@ -154,6 +160,58 @@ describe('InstitutionsPage', () => {
     expect(screen.getByTestId('summary-Total Institutions')).toHaveTextContent('2');
     expect(screen.getByTestId('summary-With Logo')).toHaveTextContent('1');
     expect(screen.getByTestId('summary-Linked Accounts')).toHaveTextContent('2');
+  });
+
+  it('links the page header to the financial institutions section of the wiki', async () => {
+    render(<InstitutionsPage />);
+    await waitFor(() => expect(screen.getByText('TD')).toBeInTheDocument());
+    expect(screen.getByTestId('help-link')).toHaveAttribute(
+      'href',
+      'https://github.com/kenlasko/monize/wiki/Accounts#financial-institutions',
+    );
+  });
+
+  it('draws the account status filter as the segmented control, counting the accounts each segment shows', async () => {
+    mockAccountsGetAll.mockResolvedValue([
+      { id: 'a-1', name: 'Chequing', institutionId: 'i-1', isClosed: false },
+      { id: 'a-2', name: 'Old Savings', institutionId: 'i-1', isClosed: true },
+    ]);
+    render(<InstitutionsPage />);
+    const group = await screen.findByRole('group', { name: 'Account Status' });
+    expect(group.className).toBe(SEGMENTED_GROUP_CLASS);
+    const all = await within(group).findByRole('button', { name: 'All (2)' });
+    expect(all).toHaveAttribute('aria-pressed', 'true');
+    expect(all.className).toBe(segmentClass(true));
+    const active = within(group).getByRole('button', { name: 'Active (1)' });
+    expect(within(group).getByRole('button', { name: 'Closed (1)' })).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(active);
+    expect(active).toHaveAttribute('aria-pressed', 'true');
+    expect(all).toHaveAttribute('aria-pressed', 'false');
+    expect(group.parentElement!.className).toContain('flex-wrap');
+  });
+
+  it('counts All from the same accounts list as Active and Closed, not from the server total', async () => {
+    // The server says TD has 2 accounts; the list the segments split holds 3.
+    mockAccountsGetAll.mockResolvedValue([
+      { id: 'a-1', name: 'Chequing', institutionId: 'i-1', isClosed: false },
+      { id: 'a-2', name: 'Savings', institutionId: 'i-1', isClosed: false },
+      { id: 'a-3', name: 'Old Savings', institutionId: 'i-1', isClosed: true },
+    ]);
+    render(<InstitutionsPage />);
+    const group = await screen.findByRole('group', { name: 'Account Status' });
+    expect(await within(group).findByRole('button', { name: 'All (3)' })).toBeInTheDocument();
+    expect(within(group).getByRole('button', { name: 'Active (2)' })).toBeInTheDocument();
+    expect(within(group).getByRole('button', { name: 'Closed (1)' })).toBeInTheDocument();
+  });
+
+  it('draws the segments without counts when the accounts could not be read, never as zero', async () => {
+    mockAccountsGetAll.mockRejectedValue(new Error('boom'));
+    render(<InstitutionsPage />);
+    await waitFor(() => expect(screen.getByText('TD')).toBeInTheDocument());
+    const group = screen.getByRole('group', { name: 'Account Status' });
+    expect(within(group).getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(group).getByRole('button', { name: 'Active' })).toBeInTheDocument();
+    expect(within(group).getByRole('button', { name: 'Closed' })).toBeInTheDocument();
   });
 
   it('filters by search query', async () => {

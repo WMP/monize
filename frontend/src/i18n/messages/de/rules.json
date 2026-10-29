@@ -114,8 +114,8 @@
       "matchAll": "Alle dieser Bedingungen",
       "matchAny": "Eine dieser Bedingungen",
       "matchLabel": "Übereinstimmung",
-      "not": "Nicht",
-      "notLabel": "Diese Gruppe umkehren: sie trifft zu, wenn ihre Bedingungen nicht zutreffen",
+      "not": "Gruppe negieren",
+      "notHelp": "Eine negierte Gruppe trifft zu, wenn ihre Bedingungen nicht zutreffen.",
       "title": "Gruppe",
       "addCondition": "+ Bedingung hinzufügen",
       "addGroup": "+ Gruppe hinzufügen",
@@ -201,7 +201,7 @@
       "tags": "Tags",
       "category": "Kategorie",
       "payee": "Zahlungsempfänger",
-      "instruction": "Was soll geprüft werden",
+      "instruction": "Prüfanweisungen",
       "instructionPlaceholder": "Zum Beispiel: diesen Einkauf nach dem Beleg aufteilen",
       "instructionHelp": "Die Regel bittet nur um eine Prüfung. Eine Person bestätigt jede Änderung, bevor sie vorgenommen wird.",
       "onlyIfEmpty": "Nur wenn leer",
@@ -220,7 +220,7 @@
       "createIfMissing": "Zahlungsempfänger anlegen, falls nicht vorhanden",
       "createIfMissingHelp": "Wenn aktiviert und kein Zahlungsempfänger zum Namen passt (nach Name, Alias oder ähnlicher Übereinstimmung), wird ein neuer Zahlungsempfänger angelegt. Ein von einer Regel angelegter Zahlungsempfänger bleibt erhalten, wenn Sie den Lauf rückgängig machen.",
       "onlyIfEmptyDescriptionHelp": "Wenn aktiviert, schreibt die Regel die Beschreibung nur, wenn die Transaktion keine hat. Deaktivieren Sie die Option, um sie jedes Mal zu schreiben.",
-      "mode": "Art des Schreibens",
+      "mode": "Beschreibungsmodus",
       "modes": {
         "replace": "Beschreibung ersetzen",
         "append": "Nach der Beschreibung anfügen",
@@ -262,12 +262,12 @@
         "windowHelp": "Wie weit vom Fälligkeitsdatum entfernt die Bank die Zahlung abbuchen darf. Eine Abbuchung bis zu dieser Anzahl von Tagen vor oder nach dem Fälligkeitsdatum einer Rate bezahlt diese Rate; eine außerhalb des Fensters wird unverändert gelassen.",
         "daysBefore": "Tage vor dem Fälligkeitsdatum",
         "daysAfter": "Tage nach dem Fälligkeitsdatum",
-        "excess": "Wenn die Abbuchung höher ist als die Rate",
+        "excess": "Abbuchung über der Rate",
         "excessPolicies": {
           "extra_principal": "Die Differenz als Sondertilgung bezahlen",
           "refuse": "Die Transaktion unverändert lassen"
         },
-        "shortfall": "Wenn die Abbuchung niedriger ist als die Rate",
+        "shortfall": "Abbuchung unter der Rate",
         "shortfallPolicies": {
           "refuse": "Die Transaktion unverändert lassen",
           "interest_first": "Zuerst die Zinsen bezahlen, den Rest als Tilgung"

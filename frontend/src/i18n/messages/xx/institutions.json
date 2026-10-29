@@ -31,9 +31,15 @@
     },
     "accountCount": "[XX-{count, plural, =0 {No accounts} one {# account} other {# accounts}}-XX]",
     "statusFilter": {
+      "label": "[XX-Account Status-XX]",
       "all": "[XX-All-XX]",
       "active": "[XX-Active-XX]",
-      "closed": "[XX-Closed-XX]"
+      "closed": "[XX-Closed-XX]",
+      "counted": {
+        "all": "[XX-All ({count})-XX]",
+        "active": "[XX-Active ({count})-XX]",
+        "closed": "[XX-Closed ({count})-XX]"
+      }
     },
     "actions": {
       "manageAccounts": "[XX-Accounts-XX]"

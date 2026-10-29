@@ -7,6 +7,7 @@
     "filterAll": "Toutes ({count})",
     "filterExpenses": "Dépenses ({count})",
     "filterIncome": "Revenus ({count})",
+    "typeFilterLabel": "Type",
     "modalTitleNew": "Nouvelle catégorie",
     "modalTitleEdit": "Modifier la catégorie",
     "countSingle": "1 catégorie",
@@ -71,8 +72,8 @@
     "submitUpdate": "Mettre à jour la catégorie"
   },
   "list": {
-    "emptyHeading": "Aucune catégorie",
-    "emptyDescription": "Commencez par créer une nouvelle catégorie.",
+    "emptyHeading": "Aucune catégorie trouvée",
+    "emptyDescription": "Aucune catégorie ne correspond à votre recherche ou à votre filtre actuel.",
     "colName": "Nom",
     "colType": "Type",
     "colCount": "Nombre",
@@ -85,7 +86,7 @@
     "viewTransactionsTitle": "Voir les transactions de cette catégorie"
   },
   "deleteDialog": {
-    "title": "Supprimer « {name} » ?",
+    "title": "Supprimer « {name} »",
     "checkingUsage": "Vérification de l'utilisation...",
     "usedBy": "Cette catégorie est utilisée par {count, plural, one {# élément} other {# éléments}} (transactions et/ou factures et dépôts récurrents).",
     "reassignLabel": "Réaffecter à :",

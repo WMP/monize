@@ -6,7 +6,7 @@
       "category": "分类",
       "amount": "金额",
       "schedule": "计划",
-      "auto": "自动",
+      "auto": "自动过账",
       "actions": "操作"
     },
     "empty": {
@@ -25,7 +25,6 @@
     "modifiedDateTitle": "已修改此次执行的日期",
     "splitBadge": "拆分（{count}）",
     "autoPostBadge": "开启",
-    "autoPostTitle": "到期自动过账",
     "inactiveSuffix": " — 非活跃",
     "actionTitles": {
       "post": "过账交易",
@@ -76,9 +75,7 @@
     "accountsLabel": "账户",
     "accountsPlaceholder": "所有账户",
     "categoriesLabel": "分类",
-    "categoriesPlaceholder": "所有分类",
-    "collapseAriaLabel": "收起筛选",
-    "expandAriaLabel": "展开筛选"
+    "categoriesPlaceholder": "所有分类"
   },
   "postDialog": {
     "title": "过账交易",

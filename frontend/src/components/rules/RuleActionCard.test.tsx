@@ -156,7 +156,7 @@ describe('RuleActionCard', () => {
   it('takes the instruction of an AI review, bounded to what the server accepts', () => {
     const onAction = vi.fn();
     render(<Card initial={createAction('request_ai_review')} onAction={onAction} />);
-    const box = screen.getByLabelText('What should be checked');
+    const box = screen.getByLabelText('Review Instructions');
     expect(box).toHaveAttribute('maxlength', String(MAX_RULE_AI_INSTRUCTION_LENGTH));
     fireEvent.change(box, { target: { value: 'Split by the receipt' } });
     expect(onAction).toHaveBeenLastCalledWith(
@@ -221,7 +221,7 @@ describe('RuleActionCard', () => {
       expect(onAction).toHaveBeenLastCalledWith(
         expect.objectContaining({ type: 'set_description', template: '', mode: 'replace', onlyIfEmpty: false }),
       );
-      expect(optionLabels(screen.getByLabelText('How to write it'))).toEqual([
+      expect(optionLabels(screen.getByLabelText('Description Mode'))).toEqual([
         'Replace the description',
         'Add after the description',
         'Add before the description',
@@ -234,7 +234,7 @@ describe('RuleActionCard', () => {
       const onAction = vi.fn();
       render(<Card initial={createAction('set_description')} onAction={onAction} />);
       expect(screen.queryByText(/joined to the current description exactly as written/)).not.toBeInTheDocument();
-      fireEvent.change(screen.getByLabelText('How to write it'), { target: { value: 'prepend' } });
+      fireEvent.change(screen.getByLabelText('Description Mode'), { target: { value: 'prepend' } });
       expect(onAction).toHaveBeenLastCalledWith(expect.objectContaining({ mode: 'prepend' }));
       expect(screen.getByText(/joined to the current description exactly as written/)).toBeInTheDocument();
     });

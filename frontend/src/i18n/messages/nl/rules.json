@@ -114,8 +114,8 @@
       "matchAll": "Al deze",
       "matchAny": "Een van deze",
       "matchLabel": "Overeenkomst",
-      "not": "Niet",
-      "notLabel": "Deze groep omkeren: ze komt overeen als haar voorwaarden niet gelden",
+      "not": "Groep omkeren",
+      "notHelp": "Een omgekeerde groep komt overeen wanneer de voorwaarden niet overeenkomen.",
       "title": "Groep",
       "addCondition": "+ Voorwaarde toevoegen",
       "addGroup": "+ Groep toevoegen",
@@ -201,7 +201,7 @@
       "tags": "Tags",
       "category": "Categorie",
       "payee": "Begunstigde",
-      "instruction": "Wat moet worden gecontroleerd",
+      "instruction": "Controle-instructies",
       "instructionPlaceholder": "Bijvoorbeeld: splits deze aankoop volgens de bon",
       "instructionHelp": "De regel vraagt alleen om een controle. Een persoon keurt elke wijziging goed voordat ze wordt doorgevoerd.",
       "onlyIfEmpty": "Alleen als leeg",
@@ -220,7 +220,7 @@
       "createIfMissing": "Begunstigde aanmaken als die niet bestaat",
       "createIfMissingHelp": "Als dit aan staat en geen begunstigde overeenkomt met de naam (op naam, alias of een dichte overeenkomst), wordt een nieuwe begunstigde aangemaakt. Een door een regel aangemaakte begunstigde blijft bestaan als u de uitvoering ongedaan maakt.",
       "onlyIfEmptyDescriptionHelp": "Als dit aan staat, schrijft de regel de omschrijving alleen als de transactie er geen heeft. Zet het uit om de omschrijving elke keer te schrijven.",
-      "mode": "Hoe te schrijven",
+      "mode": "Omschrijvingsmodus",
       "modes": {
         "replace": "Omschrijving vervangen",
         "append": "Toevoegen na de omschrijving",
@@ -262,12 +262,12 @@
         "windowHelp": "Hoe ver van de vervaldatum de bank de betaling mag innen. Een afschrijving tot dit aantal dagen voor of na de vervaldatum van een termijn betaalt die termijn; een afschrijving buiten de marge wordt ongewijzigd gelaten.",
         "daysBefore": "Dagen voor de vervaldatum",
         "daysAfter": "Dagen na de vervaldatum",
-        "excess": "Als de afschrijving hoger is dan de termijn",
+        "excess": "Afschrijving hoger dan de termijn",
         "excessPolicies": {
           "extra_principal": "Het verschil als extra aflossing betalen",
           "refuse": "De transactie ongewijzigd laten"
         },
-        "shortfall": "Als de afschrijving lager is dan de termijn",
+        "shortfall": "Afschrijving lager dan de termijn",
         "shortfallPolicies": {
           "refuse": "De transactie ongewijzigd laten",
           "interest_first": "Eerst de rente betalen, de rest als aflossing"

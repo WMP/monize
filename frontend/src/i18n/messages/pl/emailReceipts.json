@@ -763,8 +763,7 @@
     },
     "search": {
       "label": "Szukaj e-maili",
-      "text": "Szukaj",
-      "placeholder": "Temat, nadawca lub treść",
+      "placeholder": "Szukaj po temacie, nadawcy lub treści...",
       "in": "Szukaj w",
       "fields": {
         "all": "Wszystkie pola",
@@ -806,10 +805,10 @@
       "body": "Potwierdzenia zamówień pojawią się tutaj po odczytaniu skrzynki pocztowej.",
       "filteredTitle": "Brak wiadomości o tym statusie",
       "filteredBody": "Wybierz inny status, aby zobaczyć pozostałe.",
-      "noMailboxBody": "Nie połączono jeszcze żadnej skrzynki pocztowej. Połącz ją, aby zacząć odczytywać potwierdzenia zamówień.",
-      "connectButton": "Połącz skrzynkę pocztową",
       "searchTitle": "Żaden e-mail nie pasuje do wyszukiwania",
-      "searchBody": "Zmień słowa lub daty albo wyczyść wyszukiwanie, aby zobaczyć wszystkie e-maile."
+      "searchBody": "Zmień słowa lub daty albo wyczyść wyszukiwanie, aby zobaczyć wszystkie e-maile.",
+      "noMailboxBody": "Nie połączono jeszcze żadnej skrzynki pocztowej. Połącz ją, aby zacząć odczytywać potwierdzenia zamówień.",
+      "connectButton": "Połącz skrzynkę pocztową"
     },
     "actions": {
       "view": "Zobacz",
@@ -1092,9 +1091,7 @@
     "help": "Żadna transakcja nie została dopasowana automatycznie. To Twoje transakcje z zakresu dat poniżej, który początkowo obejmuje dni wokół zakupu. Wybierz tę, którą opłacono, albo zmień daty, aby szukać dalej.",
     "fromLabel": "Od",
     "toLabel": "Do",
-    "searchLabel": "Szukaj",
-    "searchPlaceholder": "Odbiorca, opis lub kwota",
-    "searchButton": "Szukaj",
+    "searchPlaceholder": "Szukaj po odbiorcy, opisie lub kwocie...",
     "loading": "Wczytywanie transakcji",
     "error": "Nie udało się wczytać transakcji.",
     "retry": "Spróbuj ponownie",
@@ -1331,7 +1328,7 @@
       "reviseHelp": "Powiedz asystentowi, co zmienić. Zaktualizuje ten sam szkic na podstawie tych wiadomości i transakcji.",
       "tradeHelp": "Asystent czyta te potwierdzenia i pisze wersję roboczą parsera dla {domain}, który proponuje transakcję inwestycyjną zgłaszaną w każdym z nich. Nic jeszcze nie jest zatwierdzone.",
       "tradeSample": "Potwierdzenie transakcji",
-      "feedbackLabel": "Co należy zmienić",
+      "feedbackLabel": "Oczekiwane zmiany",
       "feedbackPlaceholder": "Na przykład: suma to wiersz z napisem Kwota zapłacona, a nie suma częściowa.",
       "send": "Wyślij do AI",
       "sendFeedback": "Wyślij uwagę do AI",

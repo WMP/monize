@@ -6,7 +6,7 @@
       "category": "Danh mục",
       "amount": "Số tiền",
       "schedule": "Lịch",
-      "auto": "Tự động",
+      "auto": "Tự động đăng",
       "actions": "Hành động"
     },
     "empty": {
@@ -25,7 +25,6 @@
     "modifiedDateTitle": "Ngày đã được thay đổi cho lần này",
     "splitBadge": "Phần chia ({count})",
     "autoPostBadge": "Bật",
-    "autoPostTitle": "Tự động đăng khi đến hạn",
     "inactiveSuffix": " — Không hoạt động",
     "actionTitles": {
       "post": "Đăng giao tác",
@@ -76,9 +75,7 @@
     "accountsLabel": "Tài khoản",
     "accountsPlaceholder": "Tất cả tài khoản",
     "categoriesLabel": "Danh mục",
-    "categoriesPlaceholder": "Tất cả danh mục",
-    "collapseAriaLabel": "Thu gọn bộ lọc",
-    "expandAriaLabel": "Mở rộng bộ lọc"
+    "categoriesPlaceholder": "Tất cả danh mục"
   },
   "postDialog": {
     "title": "Đăng giao tác",
@@ -259,7 +256,7 @@
     "toAccountLabel": "Đến tài khoản",
     "toAccountPlaceholder": "Chọn tài khoản đích...",
     "transferAmountLabel": "Số tiền chuyển",
-    "transferCategoryLabel": "Danh mục (Tùy chọn)",
+    "transferCategoryLabel": "Danh mục (tùy chọn)",
     "transferCategoryNote": "Tùy chọn: phân loại khoản chuyển này (ví dụ: khoản đóng góp đầu tư định kỳ) để nó xuất hiện trong bảng phân tích danh mục hằng tháng. Khoản này không được tính là thu nhập hay chi phí.",
     "actionLabel": "Hành động",
     "securityLabel": "Giấy chứng khoán",

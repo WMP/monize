@@ -89,7 +89,7 @@ test('the mortgage, with its overpayment scenarios', async () => {
 test('bills and deposits', async () => {
   await open(page, '/bills');
   await expect(page.getByText('Massage therapy').first()).toBeVisible();
-  await scrollTo(page.getByText('List', { exact: true }), 40);
+  await scrollTo(page.getByRole('group', { name: 'Schedule type' }), 40);
   await shoot(page, 'mobile-bills');
 });
 

@@ -197,7 +197,7 @@ Each line is a reference screen or shared component that does not yet follow a r
 | A report keeps its toolbar mounted | Most reports return early with a skeleton card. |
 | Title Case labels and buttons | Whole feature areas use sentence case (auth, import, email receipts, rules, GEM, warranties, Monte Carlo, loan detail), and button labels are split about evenly. |
 | `<Button isLoading>` | Several save buttons swap their label with `isSaving ? ... : ...`. |
-| One size for the `TransactionForm` dialog | The warranty detail page passes the width with `padding="md"` instead of `p-6`; `PayeeTransactionsTab` and `CategoryTransactionsTab` open it at `maxWidth="2xl"`. |
+| One size for the `TransactionForm` dialog | `PayeeTransactionsTab` and `CategoryTransactionsTab` open it at `maxWidth="2xl"`. |
 | Wording | Save buttons read "Save", "Save changes", "Save Changes" and "Update"; retry reads "Try again", "Retry" and "Try Again"; placeholders mix "e.g." and "e.g.,"; about half the confirmation titles are questions. |
 
 ## Before you open the PR

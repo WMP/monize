@@ -6,7 +6,7 @@
       "category": "Categoria",
       "amount": "Importo",
       "schedule": "Pianificazione",
-      "auto": "Auto",
+      "auto": "Registrazione automatica",
       "actions": "Azioni"
     },
     "empty": {
@@ -25,7 +25,6 @@
     "modifiedDateTitle": "Data modificata per questa occorrenza",
     "splitBadge": "Suddivisione ({count})",
     "autoPostBadge": "Attivo",
-    "autoPostTitle": "Registrazione automatica alla scadenza",
     "inactiveSuffix": " — Inattiva",
     "actionTitles": {
       "post": "Registra transazione",
@@ -76,9 +75,7 @@
     "accountsLabel": "Conti",
     "accountsPlaceholder": "Tutti i conti",
     "categoriesLabel": "Categorie",
-    "categoriesPlaceholder": "Tutte le categorie",
-    "collapseAriaLabel": "Comprimi filtri",
-    "expandAriaLabel": "Espandi filtri"
+    "categoriesPlaceholder": "Tutte le categorie"
   },
   "postDialog": {
     "title": "Registra transazione",

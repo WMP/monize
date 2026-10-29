@@ -146,7 +146,7 @@ function TagsContent() {
       setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortField(field);
-      setSortDirection(field === 'createdAt' ? 'desc' : 'asc');
+      setSortDirection(field === 'count' ? 'desc' : 'asc');
     }
   }, [sortField, setSortField, setSortDirection]);
 
@@ -163,6 +163,7 @@ function TagsContent() {
         <PageHeader
           title={t('page.title')}
           subtitle={t('page.subtitle')}
+          helpUrl="https://github.com/kenlasko/monize/wiki/Tags"
           actions={<Button onClick={openCreate}>{t('page.newButton')}</Button>}
         />
         {/* Summary Cards */}
@@ -231,36 +232,11 @@ function TagsContent() {
         <div className={`${CARD_CLASS} overflow-hidden`}>
           {isLoading ? (
             <LoadingSpinner text={t('page.loading')} />
-          ) : tags.length === 0 ? (
-            <div className="p-12 text-center">
-              <svg
-                className="mx-auto h-16 w-16 text-gray-400 dark:text-gray-500"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
-                />
-              </svg>
-              <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-gray-100">
-                {t('page.emptyState.title')}
-              </h3>
-              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-                {t('page.emptyState.body')}
-              </p>
-              <div className="mt-6">
-                <Button onClick={openCreate}>
-                  {t('page.emptyState.createButton')}
-                </Button>
-              </div>
-            </div>
           ) : (
             <TagList
               tags={filteredTags}
+              isFiltered={tags.length > 0}
+              onCreate={openCreate}
               transactionCounts={transactionCounts}
               onEdit={openEdit}
               onDelete={handleDeleteClick}

@@ -114,8 +114,8 @@
       "matchAll": "Todas estas",
       "matchAny": "Qualquer uma destas",
       "matchLabel": "Correspondência",
-      "not": "Não",
-      "notLabel": "Negar este grupo: corresponde quando as suas condições não se verificam",
+      "not": "Negar grupo",
+      "notHelp": "Um grupo negado corresponde quando as suas condições não correspondem.",
       "title": "Grupo",
       "addCondition": "+ Adicionar condição",
       "addGroup": "+ Adicionar grupo",
@@ -201,7 +201,7 @@
       "tags": "Etiquetas",
       "category": "Categoria",
       "payee": "Beneficiário",
-      "instruction": "O que deve ser verificado",
+      "instruction": "Instruções de revisão",
       "instructionPlaceholder": "Por exemplo: dividir esta compra de acordo com o recibo",
       "instructionHelp": "A regra limita-se a pedir uma revisão. Uma pessoa aprova qualquer alteração antes de esta ser feita.",
       "onlyIfEmpty": "Apenas se vazio",
@@ -220,7 +220,7 @@
       "createIfMissing": "Criar o beneficiário se não existir",
       "createIfMissingHelp": "Se ativado e nenhum beneficiário corresponder ao nome (por nome, alias ou correspondência aproximada), é criado um novo beneficiário. Um beneficiário criado por uma regra é mantido se anular a execução.",
       "onlyIfEmptyDescriptionHelp": "Se ativado, a regra escreve a descrição apenas se a transação não tiver nenhuma. Desative para a escrever sempre.",
-      "mode": "Como escrever",
+      "mode": "Modo de descrição",
       "modes": {
         "replace": "Substituir a descrição",
         "append": "Acrescentar depois da descrição",
@@ -262,12 +262,12 @@
         "windowHelp": "A que distância da data de vencimento o banco pode cobrar o pagamento. Um débito até este número de dias antes ou depois da data de vencimento de uma prestação paga essa prestação; um que esteja fora da margem fica inalterado.",
         "daysBefore": "Dias antes da data de vencimento",
         "daysAfter": "Dias depois da data de vencimento",
-        "excess": "Quando o débito é superior à prestação",
+        "excess": "Débito acima da prestação",
         "excessPolicies": {
           "extra_principal": "Pagar a diferença como capital adicional",
           "refuse": "Deixar a transação inalterada"
         },
-        "shortfall": "Quando o débito é inferior à prestação",
+        "shortfall": "Débito abaixo da prestação",
         "shortfallPolicies": {
           "refuse": "Deixar a transação inalterada",
           "interest_first": "Pagar primeiro os juros, o resto como capital"

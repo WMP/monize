@@ -123,7 +123,7 @@ describe('ScheduledTransactionList', () => {
     expect(screen.getByText('Category')).toBeInTheDocument();
     expect(screen.getByText('Amount')).toBeInTheDocument();
     expect(screen.getByText('Schedule')).toBeInTheDocument();
-    expect(screen.getByText('Auto')).toBeInTheDocument();
+    expect(screen.getByText('Auto-Post')).toBeInTheDocument();
     expect(screen.getByText('Actions')).toBeInTheDocument();
   });
 
@@ -446,6 +446,20 @@ describe('ScheduledTransactionList', () => {
     const transactions = [createTransaction({ autoPost: true })];
     render(<ScheduledTransactionList transactions={transactions} />);
     expect(screen.getByText('On')).toBeInTheDocument();
+    // The column's own name says what "On" means ("Auto-Post: On"), in both
+    // layouts; the chip no longer carries a hover-only `title` for it.
+    expect(screen.getByText('On')).not.toHaveAttribute('title');
+    expect(screen.getByText('Auto-Post')).toBeInTheDocument();
+  });
+
+  it('explains a re-priced next occurrence beside its amount, not in a title', () => {
+    const transactions = [createTransaction({
+      amount: -15.99,
+      nextOverride: { amount: -19.99, overrideDate: null },
+    })];
+    render(<ScheduledTransactionList transactions={transactions} />);
+    expect(screen.getByRole('button', { name: 'Modified for next occurrence' })).toBeInTheDocument();
+    expect(document.querySelector('[title="Modified for next occurrence"]')).toBeNull();
   });
 
   it('shows dash when autoPost is false', () => {
@@ -501,10 +515,12 @@ describe('ScheduledTransactionList', () => {
     render(<ScheduledTransactionList transactions={transactions} />);
     // Both dates should be shown
     expect(screen.getByText('2025-03-01')).toBeInTheDocument();
-    expect(screen.getByText('2025-03-05')).toHaveAttribute(
-      'title',
-      'Date modified for this occurrence',
-    );
+    // What the pair means is an InfoTooltip a phone and a keyboard reach, not a
+    // hover-only `title` on the date.
+    expect(screen.getByText('2025-03-05')).not.toHaveAttribute('title');
+    expect(
+      screen.getByRole('button', { name: 'Date modified for this occurrence' }),
+    ).toBeInTheDocument();
   });
 
   // --- Action buttons ---
@@ -1229,14 +1245,16 @@ describe('ScheduledTransactionList', () => {
     const transactions = [createTransaction({ overrideCount: 1 })];
     render(<ScheduledTransactionList transactions={transactions} />);
     const badge = screen.getByText('1 modified');
-    expect(badge.title).toContain('1 upcoming occurrence modified');
+    expect(badge).not.toHaveAttribute('title');
+    expect(screen.getByRole('button', { name: '1 upcoming occurrence modified' })).toBeInTheDocument();
   });
 
   it('shows plural modified text for overrideCount > 1', () => {
     const transactions = [createTransaction({ overrideCount: 2 })];
     render(<ScheduledTransactionList transactions={transactions} />);
     const badge = screen.getByText('2 modified');
-    expect(badge.title).toContain('2 upcoming occurrences modified');
+    expect(badge).not.toHaveAttribute('title');
+    expect(screen.getByRole('button', { name: '2 upcoming occurrences modified' })).toBeInTheDocument();
   });
 });
 
@@ -1259,6 +1277,12 @@ describe('ScheduledTransactionList - foreign currency', () => {
 
     expect(screen.getByText('-$54.61')).toBeInTheDocument();
     expect(screen.getByText('USD 40.00')).toBeInTheDocument();
+    // What the second figure is: an InfoTooltip beside it, not a hover-only
+    // `title` a phone never shows.
+    expect(screen.getByText('USD 40.00').closest('[title]')).toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'The amount the biller charges, in its own currency' }),
+    ).toBeInTheDocument();
   });
 
   it('shows no second line for an ordinary schedule', () => {

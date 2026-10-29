@@ -259,8 +259,17 @@ describe('BudgetCategoryTrend (phone wrapped averages table)', () => {
     // The header row is the same claim: three `pr-4` cells and a bare last one.
     const headerCells = Array.from(container.querySelectorAll('thead th'));
     expect(headerCells.slice(0, 3).every((th) => th.className.includes('py-2 pr-4'))).toBe(true);
-    expect(headerCells[3].className).toContain('py-2 font-medium');
+    expect(headerCells[3].className).toContain('py-2');
     expect(headerCells[3].className).not.toContain('pr-4');
+    // The face is the shared header cell's (`Th` / `TH_CLASS`), not a local
+    // class string; only the padding is this table's own.
+    for (const th of headerCells) {
+      expect(th.className).toContain('uppercase');
+      expect(th.className).toContain('tracking-wider');
+      expect(th.className).toContain('text-xs');
+      expect(th.className).not.toMatch(/\bpx-4\b/);
+      expect(th.className).not.toMatch(/\bpy-3\b/);
+    }
 
     // And the two agree about which column is last.
     const bodyCells = Array.from(

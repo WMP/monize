@@ -6,7 +6,7 @@
       "category": "類別",
       "amount": "金額",
       "schedule": "排程",
-      "auto": "自動",
+      "auto": "自動過帳",
       "actions": "動作"
     },
     "empty": {
@@ -25,7 +25,6 @@
     "modifiedDateTitle": "已修改此次執行的日期",
     "splitBadge": "分割（{count}）",
     "autoPostBadge": "開",
-    "autoPostTitle": "到期自動過帳",
     "inactiveSuffix": " — 非活躍",
     "actionTitles": {
       "post": "過帳交易",
@@ -76,9 +75,7 @@
     "accountsLabel": "科目",
     "accountsPlaceholder": "所有科目",
     "categoriesLabel": "類別",
-    "categoriesPlaceholder": "所有類別",
-    "collapseAriaLabel": "收合篩選",
-    "expandAriaLabel": "展開篩選"
+    "categoriesPlaceholder": "所有類別"
   },
   "postDialog": {
     "title": "過帳交易",

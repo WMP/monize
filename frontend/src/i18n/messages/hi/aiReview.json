@@ -17,7 +17,8 @@
     "label": "प्रकार के अनुसार फ़िल्टर करें",
     "all": "सभी",
     "email_receipt": "ईमेल रसीदें",
-    "transaction_review": "नियम"
+    "transaction_review": "नियम",
+    "option": "{label} ({count})"
   },
   "status": {
     "pending": "लंबित",

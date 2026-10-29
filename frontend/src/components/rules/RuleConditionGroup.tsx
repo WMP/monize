@@ -8,6 +8,7 @@ import type { RuleOptions } from '@/components/rules/use-rule-options';
 import { useCardActions } from '@/components/rules/use-rule-card-actions';
 import { Button } from '@/components/ui/Button';
 import type { RowAction } from '@/components/ui/row-actions/rowAction';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
 import { scanCaptures } from '@/lib/rule-captures';
@@ -91,10 +92,11 @@ export function RuleConditionGroup({ group, path, env, actions }: RuleConditionG
         <ToggleSwitch
           size="sm"
           checked={group.not}
-          label={t('group.notLabel')}
+          label={t('group.not')}
           onChange={(not) => handlers.replace(path, { ...group, not })}
         />
         <span className="text-sm text-gray-700 dark:text-gray-300">{t('group.not')}</span>
+        <InfoTooltip text={t('group.notHelp')} placement="top" usePortal />
       </div>
     </div>
   );

@@ -9,12 +9,17 @@ import { SendPendingToAssistantButton } from '@/components/ai-review/SendPending
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { DensityToggleBar } from '@/components/ui/DensityToggle';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
 import { TABLE_BODY_CLASS, TABLE_CLASS, Th } from '@/components/ui/Table';
 import { TOUR_ANCHORS, tourAnchor } from '@/lib/tours/anchors';
-import { useAiReviewInbox } from '@/hooks/useAiReviewInbox';
+import { itemsOfKind, useAiReviewInbox } from '@/hooks/useAiReviewInbox';
+import { useIsMobile } from '@/hooks/useIsMobile';
+import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { useTableDensity } from '@/hooks/useTableDensity';
+import { useDensityPreference } from '@/store/densityStore';
 import {
   AI_REVIEW_KIND_FILTERS,
   AI_REVIEW_STATUSES,
@@ -31,6 +36,13 @@ const FILTERS: readonly AiReviewFilter[] = ['open', ...AI_REVIEW_STATUSES];
  * The review inbox: the requests rules (and, later, the user) have queued for
  * an AI, filtered by status. `items === null` is loading or failed, never an
  * empty list; only a loaded, empty answer shows the explanation.
+ *
+ * The kind segments count the loaded list (each says how many rows it shows);
+ * the status segments carry no count, since the server answers one status per
+ * request. No column sorts: the server answers the newest requests first, a
+ * bounded number of them, so a sort of that answer would rank a partial list.
+ * Density is the inbox's own (`aiReviews`); on a phone at Normal density each
+ * request is one card cell, as the reference lists do.
  */
 export function AiReviewInbox() {
   const t = useTranslations('aiReview');
@@ -61,6 +73,11 @@ export function AiReviewInbox() {
     approve,
     dismiss,
   } = useAiReviewInbox(parseKindFilter(searchParams.get('kind')));
+  const { formatNumber } = useNumberFormat();
+  const { density } = useDensityPreference('aiReviews');
+  const { headerPadding } = useTableDensity(density);
+  const isMobile = useIsMobile();
+  const wrapped = isMobile && density === 'normal';
   const [dismissTarget, setDismissTarget] = useState<AiReviewItem | null>(null);
   const [bulkTarget, setBulkTarget] = useState<readonly AiReviewItem[] | null>(null);
 
@@ -94,6 +111,13 @@ export function AiReviewInbox() {
     return (item ? reviewItemLabel(item) : null) ?? t('bulk.unknownRequest');
   };
 
+  // How many loaded rows each kind segment shows; no number while the list is loading or failed.
+  const kindLabel = (option: AiReviewKindFilter) => {
+    const label = t(`kindFilter.${option}`);
+    if (items === null) return label;
+    return t('kindFilter.option', { label, count: formatNumber(itemsOfKind(items, option).length, 0) });
+  };
+
   const confirmDismiss = () => {
     const target = dismissTarget;
     setDismissTarget(null);
@@ -124,46 +148,56 @@ export function AiReviewInbox() {
       />
     );
   } else {
+    const selectAllBox = (
+      <input
+        type="checkbox"
+        checked={allSelected}
+        onChange={toggleAll}
+        aria-label={t('bulk.selectAll')}
+        className="h-4 w-4 cursor-pointer rounded border-gray-300 text-blue-600 focus-visible:ring-blue-500 dark:border-gray-600"
+      />
+    );
     body = (
-      <div className="overflow-x-auto">
-        <table className={TABLE_CLASS}>
-          <thead>
-            <tr>
-              {selectable && (
-                <Th className="w-10 px-2 sm:px-4">
-                  <input
-                    type="checkbox"
-                    checked={allSelected}
-                    onChange={toggleAll}
-                    aria-label={t('bulk.selectAll')}
-                    className="h-4 w-4 cursor-pointer rounded border-gray-300 text-blue-600 focus-visible:ring-blue-500 dark:border-gray-600"
-                  />
-                </Th>
-              )}
-              <Th className="px-2 sm:px-4">{t('columns.date')}</Th>
-              <Th className="px-2 sm:px-4">{t('columns.request')}</Th>
-              <Th align="right" className="px-2 sm:px-4">
-                {t('columns.amount')}
-              </Th>
-              <Th className="px-2 sm:px-4">{t('columns.status')}</Th>
-            </tr>
-          </thead>
-          <tbody className={TABLE_BODY_CLASS}>
-            {shownItems.map((item) => (
-              <AiReviewRow
-                key={item.id}
-                item={item}
-                card={cards[item.id]}
-                dismissing={dismissing.has(item.id)}
-                selectable={selectable}
-                selected={checked.includes(item)}
-                onToggleSelected={(row) => toggleSelected(row.id)}
-                onApprove={approve}
-                onDismiss={setDismissTarget}
-              />
-            ))}
-          </tbody>
-        </table>
+      <div>
+        <DensityToggleBar view="aiReviews" />
+        <div className="overflow-x-auto">
+          <table className={TABLE_CLASS}>
+            <thead>
+              <tr>
+                {selectable && <Th className={`${headerPadding} w-10`}>{selectAllBox}</Th>}
+                {wrapped ? (
+                  <Th className={headerPadding}>{t('columns.request')}</Th>
+                ) : (
+                  <>
+                    <Th className={headerPadding}>{t('columns.date')}</Th>
+                    <Th className={headerPadding}>{t('columns.request')}</Th>
+                    <Th align="right" className={headerPadding}>
+                      {t('columns.amount')}
+                    </Th>
+                    <Th className={headerPadding}>{t('columns.status')}</Th>
+                  </>
+                )}
+              </tr>
+            </thead>
+            <tbody className={TABLE_BODY_CLASS}>
+              {shownItems.map((item) => (
+                <AiReviewRow
+                  key={item.id}
+                  item={item}
+                  card={cards[item.id]}
+                  dismissing={dismissing.has(item.id)}
+                  selectable={selectable}
+                  selected={checked.includes(item)}
+                  onToggleSelected={(row) => toggleSelected(row.id)}
+                  onApprove={approve}
+                  onDismiss={setDismissTarget}
+                  density={density}
+                  wrapped={wrapped}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   }
@@ -193,7 +227,7 @@ export function AiReviewInbox() {
               onClick={() => chooseKind(option)}
               className={segmentClass(kind === option)}
             >
-              {t(`kindFilter.${option}`)}
+              {kindLabel(option)}
             </button>
           ))}
         </div>

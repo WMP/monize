@@ -16,12 +16,13 @@
     "chartUnavailable": "चार्ट अस्थायी रूप से अनुपलब्ध"
   },
   "viewTabs": {
-    "list": "सूची",
-    "calendar": "कैलेंडर",
+    "filterLabel": "शेड्यूल प्रकार",
     "filterAll": "सभी ({count})",
     "filterBills": "बिल ({count})",
     "filterDeposits": "जमा ({count})",
-    "todayButton": "आज"
+    "todayButton": "आज",
+    "previousMonth": "पिछला महीना",
+    "nextMonth": "अगला महीना"
   },
   "form": {
     "titleNew": "नया निर्धारित लेनदेन",

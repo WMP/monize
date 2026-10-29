@@ -31,9 +31,15 @@
     },
     "accountCount": "{count, plural, =0 {勘定科目なし} one {# 件の勘定科目} other {# 件の勘定科目}}",
     "statusFilter": {
+      "label": "勘定科目のステータス",
       "all": "すべて",
       "active": "有効",
-      "closed": "閉鎖済み"
+      "closed": "閉鎖済み",
+      "counted": {
+        "all": "すべて（{count}）",
+        "active": "有効（{count}）",
+        "closed": "閉鎖済み（{count}）"
+      }
     },
     "actions": {
       "manageAccounts": "勘定科目"
