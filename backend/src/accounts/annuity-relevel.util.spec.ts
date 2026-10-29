@@ -5,9 +5,19 @@ import { recalculateMortgageAfterRateChange } from "./mortgage-amortization.util
 
 describe("datedAnnuityInstallment remaining term", () => {
   const DEBT = 200000;
+  let posted = true;
   const manager = {
-    query: jest.fn().mockResolvedValue([{ balance: String(-DEBT) }]),
+    query: jest.fn(async (sql: string) =>
+      sql.includes("scheduled_transaction_postings")
+        ? posted
+          ? [{ "?column?": 1 }]
+          : []
+        : [{ balance: String(-DEBT) }],
+    ),
   } as unknown as EntityManager;
+  beforeEach(() => {
+    posted = true;
+  });
 
   const account = (overrides: Partial<Account>): Account =>
     ({
@@ -16,6 +26,7 @@ describe("datedAnnuityInstallment remaining term", () => {
       mortgageType: "ANNUITY",
       paymentFrequency: "MONTHLY",
       paymentStartDate: "2024-01-01",
+      scheduledTransactionId: "st-1",
       amortizationMonths: 300,
       ...overrides,
     }) as unknown as Account;
@@ -34,6 +45,19 @@ describe("datedAnnuityInstallment remaining term", () => {
     );
     expect(payment).toBe(expected(297));
     expect(payment).not.toBe(expected(298));
+  });
+
+  it("counts the payment due on the date as remaining when it is not posted yet", async () => {
+    // Rate change recorded in advance: payment 3 (03-01) is not in the debt.
+    posted = false;
+    const payment = await datedAnnuityInstallment(
+      manager,
+      account({}),
+      5,
+      "2024-03-01",
+    );
+    expect(payment).toBe(expected(298));
+    expect(payment).not.toBe(expected(297));
   });
 
   it("does not re-amortize 5 remaining months over a 12-month floor", async () => {

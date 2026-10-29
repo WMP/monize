@@ -7,7 +7,10 @@ import {
   getPeriodicRate,
   recalculateMortgageAfterRateChange,
 } from "./mortgage-amortization.util";
-import { calendarPaymentNumber } from "./mortgage-installment.util";
+import {
+  calendarPaymentNumber,
+  scheduledPaymentDate,
+} from "./mortgage-installment.util";
 import { mortgageTypeOf } from "./mortgage-type.util";
 import {
   DEFAULT_PERIODS_PER_YEAR,
@@ -29,6 +32,22 @@ function monthsBetweenYmd(fromYmd: string, toYmdStr: string): number {
   const [fromYear, fromMonth] = fromYmd.split("-").map(Number);
   const [toYear, toMonth] = toYmdStr.split("-").map(Number);
   return Math.max(0, (toYear - fromYear) * 12 + (toMonth - fromMonth));
+}
+
+/** Whether the occurrence due on `dueDate` of the loan's schedule is posted. */
+async function isInstallmentPosted(
+  m: EntityManager,
+  account: Account,
+  dueDate: string | null,
+): Promise<boolean> {
+  if (!account.scheduledTransactionId || !dueDate) return false;
+  const rows: unknown[] = await m.query(
+    `SELECT 1 FROM scheduled_transaction_postings
+      WHERE scheduled_transaction_id = $1 AND original_due_date = $2
+      LIMIT 1`,
+    [account.scheduledTransactionId, dueDate],
+  );
+  return rows.length > 0;
 }
 
 /**
@@ -67,10 +86,21 @@ export async function datedAnnuityInstallment(
   // is already reflected in it: count those payments (INV-LOAN-005 calendar),
   // not calendar months, or one period too many is left to amortize. No
   // 12-month floor: 5 remaining months are not re-amortized over 12.
-  const paymentsReflected = calendarPaymentNumber(
-    { ...account, amortizationMonths: totalMonths },
-    asOfDate,
-  );
+  const terms = { ...account, amortizationMonths: totalMonths };
+  const dueNumber = calendarPaymentNumber(terms, asOfDate);
+  // A rate change recorded in advance (before the payment due on `asOfDate`
+  // posts) reads a debt that does not hold that payment yet: count it only
+  // once its occurrence is claimed in the ledger.
+  const paymentsReflected =
+    dueNumber !== null &&
+    dueNumber > 0 &&
+    !(await isInstallmentPosted(
+      m,
+      account,
+      scheduledPaymentDate(terms, dueNumber),
+    ))
+      ? dueNumber - 1
+      : dueNumber;
   const monthsPerPayment =
     12 /
     (periodsPerYearForStoredFrequency(account.paymentFrequency) ??

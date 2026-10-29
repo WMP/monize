@@ -288,7 +288,7 @@ export class LoanMortgageAccountService {
     // One transaction for the account, its schedule and the link between them:
     // a schedule the splits check refuses rolls the account back too, so a
     // retry cannot duplicate it. The schedule service's own withScopedDb joins.
-    const savedAccount = await withScopedDb(this.dataSource, async (m) => {
+    const createdLoan = await withScopedDb(this.dataSource, async (m) => {
       const repo = m.getRepository(Account);
       const account = repo.create({
         ...accountData,
@@ -309,7 +309,7 @@ export class LoanMortgageAccountService {
       const saved = await repo.save(account);
 
       const scheduledTransaction =
-        await this.scheduledTransactionsService.create(userId, {
+        await this.scheduledTransactionsService.createWithoutHistory(userId, {
           accountId: sourceAccountId,
           name: `Loan Payment - ${saved.name}`,
           payeeName: institutionName,
@@ -344,8 +344,15 @@ export class LoanMortgageAccountService {
         });
 
       saved.scheduledTransactionId = scheduledTransaction.id;
-      return repo.save(saved);
+      return { savedAccount: await repo.save(saved), scheduledTransaction };
     });
+
+    // After the commit, so a rolled-back schedule leaves no history entry.
+    this.scheduledTransactionsService.recordCreated(
+      userId,
+      createdLoan.scheduledTransaction,
+    );
+    const savedAccount = createdLoan.savedAccount;
 
     return this.withPaymentMatching(userId, savedAccount, paymentMatching);
   }

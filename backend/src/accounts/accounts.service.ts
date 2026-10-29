@@ -1142,15 +1142,25 @@ export class AccountsService {
         const sourceAccountChanged =
           updateAccountDto.sourceAccountId !== undefined &&
           updateAccountDto.sourceAccountId !== account.sourceAccountId;
-        if (sourceAccountChanged) {
+        // The loan's own currency changing is checked against the unchanged
+        // source too: a currency change alone would strand its bill.
+        const loanCurrencyChanged =
+          account.currencyCode !== before.currencyCode;
+        if (
+          sourceAccountChanged ||
+          (loanCurrencyChanged && account.sourceAccountId)
+        ) {
+          const nextSourceId = sourceAccountChanged
+            ? updateAccountDto.sourceAccountId!
+            : account.sourceAccountId!;
           await assertLoanSourceAccount(
             m,
             userId,
             id,
-            updateAccountDto.sourceAccountId!,
-            updateAccountDto.currencyCode ?? account.currencyCode,
+            nextSourceId,
+            account.currencyCode,
           );
-          account.sourceAccountId = updateAccountDto.sourceAccountId!;
+          account.sourceAccountId = nextSourceId;
         }
         if (updateAccountDto.principalCategoryId !== undefined)
           account.principalCategoryId = updateAccountDto.principalCategoryId;

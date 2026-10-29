@@ -173,7 +173,9 @@ describe("AccountsService", () => {
 
     scheduledTransactionsService = {
       create: jest.fn().mockResolvedValue({ id: "sched-tx-1" }),
+      createWithoutHistory: jest.fn().mockResolvedValue({ id: "sched-tx-1" }),
       update: jest.fn().mockResolvedValue({}),
+      recordCreated: jest.fn(),
       remove: jest.fn(),
       repriceLoanTemplate: jest.fn().mockResolvedValue(undefined),
     };
@@ -1005,6 +1007,22 @@ describe("AccountsService", () => {
         ).rejects.toThrow(BadRequestException);
         expect(mockQueryRunner.manager.save).not.toHaveBeenCalled();
         expect(mockQueryRunner.manager.update).not.toHaveBeenCalled();
+      });
+
+      it("refuses a currency change that strands the unchanged source before writing", async () => {
+        mockQueryRunner.manager.count.mockResolvedValue(0);
+        mockQueryRunner.manager.findOne
+          .mockResolvedValueOnce({ ...mortgage, currencyCode: "CAD" })
+          .mockResolvedValueOnce({
+            id: "chequing-old",
+            isClosed: false,
+            currencyCode: "CAD",
+          });
+
+        await expect(
+          service.update("user-1", "mortgage-1", { currencyCode: "EUR" }),
+        ).rejects.toThrow(BadRequestException);
+        expect(mockQueryRunner.manager.save).not.toHaveBeenCalled();
       });
 
       it("touches nothing when the form resends the stored source", async () => {
@@ -2417,7 +2435,9 @@ describe("AccountsService", () => {
     it("creates a scheduled transaction for loan payments", async () => {
       await service.createLoanAccount("user-1", baseLoanDto as any);
 
-      expect(scheduledTransactionsService.create).toHaveBeenCalledWith(
+      expect(
+        scheduledTransactionsService.createWithoutHistory,
+      ).toHaveBeenCalledWith(
         "user-1",
         expect.objectContaining({
           accountId: "source-1",

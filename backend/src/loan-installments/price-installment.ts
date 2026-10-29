@@ -324,10 +324,10 @@ export function declineReason(
  * dated for the same reason the balance is: a change recorded for next month
  * belongs to next month's installment, not this one.
  *
- * `null` is "no rate is recorded", not 0 %. The template and posting purposes
- * keep their historical `?? 0` fallback in `resolveInstallmentCore`
- * (`docs/specs/loan-installment-settlement.md` section 15 item 5); the
- * settlement refuses instead (decision 16).
+ * `null` is "no rate is recorded", not 0 %. `resolveInstallmentCore` declines
+ * the installment for every purpose (template, posting and settlement) rather
+ * than price it at a 0 % fallback (`docs/specs/loan-installment-settlement.md`
+ * decision 16).
  */
 export async function datedAnnualRate(
   m: EntityManager,

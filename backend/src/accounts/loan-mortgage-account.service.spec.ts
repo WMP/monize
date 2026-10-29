@@ -73,6 +73,10 @@ describe("LoanMortgageAccountService", () => {
     };
 
     scheduledTransactionsService = {
+      createWithoutHistory: jest.fn().mockResolvedValue({
+        id: "sched-tx-1",
+      }),
+      recordCreated: jest.fn(),
       create: jest.fn().mockResolvedValue({
         id: "sched-tx-1",
       }),
@@ -167,7 +171,9 @@ describe("LoanMortgageAccountService", () => {
       const dto = makeValidLoanDto();
       await service.createLoanAccount(userId, dto);
 
-      expect(scheduledTransactionsService.create).toHaveBeenCalledWith(
+      expect(
+        scheduledTransactionsService.createWithoutHistory,
+      ).toHaveBeenCalledWith(
         userId,
         expect.objectContaining({
           accountId: "acc-chequing",
@@ -312,7 +318,9 @@ describe("LoanMortgageAccountService", () => {
       expect(institutionsRepository.findOne).toHaveBeenCalledWith({
         where: { id: "inst-1", userId },
       });
-      expect(scheduledTransactionsService.create).toHaveBeenCalledWith(
+      expect(
+        scheduledTransactionsService.createWithoutHistory,
+      ).toHaveBeenCalledWith(
         userId,
         expect.objectContaining({ payeeName: "PKO BP" }),
       );
@@ -341,7 +349,8 @@ describe("LoanMortgageAccountService", () => {
       expect(accountsRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({ interestCategoryId: "custom-cat-id" }),
       );
-      const scheduleDto = scheduledTransactionsService.create.mock.calls[0][1];
+      const scheduleDto =
+        scheduledTransactionsService.createWithoutHistory.mock.calls[0][1];
       expect(scheduleDto.splits).toContainEqual(
         expect.objectContaining({
           memo: "Interest",
@@ -359,7 +368,9 @@ describe("LoanMortgageAccountService", () => {
       );
       expect(accountsRepository.create).not.toHaveBeenCalled();
       expect(accountsRepository.save).not.toHaveBeenCalled();
-      expect(scheduledTransactionsService.create).not.toHaveBeenCalled();
+      expect(
+        scheduledTransactionsService.createWithoutHistory,
+      ).not.toHaveBeenCalled();
     });
 
     it("refuses an interest category the caller does not own before writing anything", async () => {
@@ -370,7 +381,9 @@ describe("LoanMortgageAccountService", () => {
       ).rejects.toThrow(BadRequestException);
       expect(accountsRepository.create).not.toHaveBeenCalled();
       expect(accountsRepository.save).not.toHaveBeenCalled();
-      expect(scheduledTransactionsService.create).not.toHaveBeenCalled();
+      expect(
+        scheduledTransactionsService.createWithoutHistory,
+      ).not.toHaveBeenCalled();
     });
 
     it("refuses a payment account in another currency before saving the loan (A26-S15-10)", async () => {
@@ -390,7 +403,9 @@ describe("LoanMortgageAccountService", () => {
       });
       expect(accountsRepository.create).not.toHaveBeenCalled();
       expect(accountsRepository.save).not.toHaveBeenCalled();
-      expect(scheduledTransactionsService.create).not.toHaveBeenCalled();
+      expect(
+        scheduledTransactionsService.createWithoutHistory,
+      ).not.toHaveBeenCalled();
     });
 
     it("saves the account, creates the schedule and relinks in ONE transaction", async () => {
@@ -409,10 +424,12 @@ describe("LoanMortgageAccountService", () => {
         return { id: "loan-1", ...a };
       });
       let scheduleTxId = -1;
-      scheduledTransactionsService.create.mockImplementation(async () => {
-        scheduleTxId = current;
-        return { id: "sched-tx-1" };
-      });
+      scheduledTransactionsService.createWithoutHistory.mockImplementation(
+        async () => {
+          scheduleTxId = current;
+          return { id: "sched-tx-1" };
+        },
+      );
 
       await service.createLoanAccount(userId, makeValidLoanDto());
 
@@ -429,7 +446,7 @@ describe("LoanMortgageAccountService", () => {
         results.push(p);
         return p;
       });
-      scheduledTransactionsService.create.mockRejectedValue(
+      scheduledTransactionsService.createWithoutHistory.mockRejectedValue(
         new BadRequestException("splits"),
       );
 
@@ -443,6 +460,41 @@ describe("LoanMortgageAccountService", () => {
       expect(settled.some((s) => s.status === "rejected")).toBe(true);
     });
 
+    it("records the schedule history only after the loan transaction commits", async () => {
+      const ds = (service as any).dataSource as { transaction: jest.Mock };
+      const original = ds.transaction.getMockImplementation()!;
+      let committed = false;
+      ds.transaction.mockImplementation(async (...args: unknown[]) => {
+        const out = await (original as any)(...args);
+        committed = true;
+        return out;
+      });
+      let committedAtRecord: boolean | undefined;
+      scheduledTransactionsService.recordCreated.mockImplementation(() => {
+        committedAtRecord = committed;
+      });
+
+      await service.createLoanAccount(userId, makeValidLoanDto());
+
+      expect(committedAtRecord).toBe(true);
+      expect(scheduledTransactionsService.create).not.toHaveBeenCalled();
+    });
+
+    it("records no schedule history when the loan transaction rolls back", async () => {
+      scheduledTransactionsService.createWithoutHistory.mockResolvedValue({
+        id: "sched-tx-1",
+      });
+      // The first save is the account, the second the schedule link.
+      accountsRepository.save
+        .mockImplementationOnce(async (a: any) => ({ id: "loan-1", ...a }))
+        .mockRejectedValueOnce(new Error("boom"));
+
+      await expect(
+        service.createLoanAccount(userId, makeValidLoanDto()),
+      ).rejects.toThrow("boom");
+      expect(scheduledTransactionsService.recordCreated).not.toHaveBeenCalled();
+    });
+
     it("creates the loan when the payment account is in its currency", async () => {
       accountsRepository.findOne.mockResolvedValue({
         id: "acc-chequing",
@@ -452,7 +504,9 @@ describe("LoanMortgageAccountService", () => {
 
       await service.createLoanAccount(userId, makeValidLoanDto());
 
-      expect(scheduledTransactionsService.create).toHaveBeenCalledTimes(1);
+      expect(
+        scheduledTransactionsService.createWithoutHistory,
+      ).toHaveBeenCalledTimes(1);
     });
   });
 

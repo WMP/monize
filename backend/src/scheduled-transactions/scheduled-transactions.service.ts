@@ -896,6 +896,33 @@ export class ScheduledTransactionsService {
     userId: string,
     createDto: CreateScheduledTransactionDto,
   ): Promise<ScheduledTransaction> {
+    const result = await this.createWithoutHistory(userId, createDto);
+    this.recordCreated(userId, result);
+    return result;
+  }
+
+  /**
+   * Record the "create" history entry of a schedule. A caller that creates one
+   * inside its own transaction uses `createWithoutHistory` and calls this after
+   * that transaction commits: an un-awaited record issued inside it would join
+   * the ambient transaction and race its callback.
+   */
+  recordCreated(userId: string, result: ScheduledTransaction): void {
+    this.actionHistoryService.record(userId, {
+      entityType: "scheduled_transaction",
+      entityId: result.id,
+      action: "create",
+      afterData: { ...result },
+      description: `Created scheduled transaction "${result.name}"`,
+      descriptionKey: "createdScheduledTransaction",
+      descriptionParams: { name: result.name },
+    });
+  }
+
+  async createWithoutHistory(
+    userId: string,
+    createDto: CreateScheduledTransactionDto,
+  ): Promise<ScheduledTransaction> {
     if (createDto.isInvestment && createDto.isTransfer) {
       throw new BadRequestException(
         tr(
@@ -1070,19 +1097,7 @@ export class ScheduledTransactionsService {
       return savedRow;
     });
 
-    const result = await this.findOne(userId, saved.id);
-
-    this.actionHistoryService.record(userId, {
-      entityType: "scheduled_transaction",
-      entityId: result.id,
-      action: "create",
-      afterData: { ...result },
-      description: `Created scheduled transaction "${result.name}"`,
-      descriptionKey: "createdScheduledTransaction",
-      descriptionParams: { name: result.name },
-    });
-
-    return result;
+    return this.findOne(userId, saved.id);
   }
 
   /**
