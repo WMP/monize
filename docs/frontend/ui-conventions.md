@@ -398,6 +398,29 @@ phone by default, and `phoneColumns={2}` halves the scroll for a legend of short
 names (the spending-by-category legend). A name that has to truncate at half
 width loses its end silently, so check the longest one before asking for two.
 
+## A control alone on a phone line fills it
+
+On a phone a list page's toolbar wraps: the search takes the first line and
+each filter after it lands on a line of its own. A control that keeps its
+desktop width there leaves most of its line empty and reads as left-aligned
+debris, so **whatever ends up alone on a line below `sm` is `w-full sm:w-auto`**:
+the search input, a `Select`, a filter's segmented control (Payees, Categories,
+Securities, Currencies, Warranties, Insights) and a disclosure button standing
+alone under a list (Payroll Deductions' "Show year-to-date" and "Show previous
+periods").
+
+- **A segmented control in a list toolbar is `SEGMENTED_TOOLBAR_GROUP_CLASS`
+  with `toolbarSegmentClass`** (`components/ui/segmented-control.ts`), not
+  `w-full` appended to `SEGMENTED_GROUP_CLASS` at the call site. The pill alone
+  stretching leaves its segments bunched at the left of a wide grey bar; the
+  segments `grow` to share the line and stop growing from `sm` up, where the
+  pill is its own width again. The pill is a flex item of the toolbar's
+  `flex-wrap` row, which is what lets `w-full` take the line.
+- **Not a control that shares its line.** The plain `SEGMENTED_GROUP_CLASS`
+  stays for a switch beside other controls on one row (the Investments toolbar's
+  view switches, a report's view toggle, a dialog's mode switch): stretching it
+  there pushes its neighbour onto a new line.
+
 ## A `<details>` disclosure is controlled, because jsdom half-implements it
 
 `<details>`/`<summary>` is the disclosure this codebase uses (`PushDiagnostics`, and the foldable Browser push block beside it): native keyboard operation, and the expanded state announced without an `aria-expanded` of our own. But React does not manage `open` the way it manages an input's `value` -- it writes the attribute and stops -- so a component that renders anything off "is this open" must hold that in state, pass `open={state}`, and move it itself. **`onToggle` cannot be the only mover**: jsdom flips `open` on a summary click and fires no `toggle` event at all, so the behaviour is untestable through it and a browser that misses the event leaves the summary describing the wrong state. Handle the summary's `onClick`, `preventDefault()` to cancel the element's own activation behaviour, and toggle state there (Enter and Space on a focused summary dispatch a click, so the keyboard comes with it); keep `onToggle` wired for the toggles no click produces, such as Chrome expanding a `<details>` to reveal a find-in-page match.
