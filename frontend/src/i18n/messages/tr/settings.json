@@ -980,8 +980,35 @@
       "sections": "Bölümler",
       "shared": "Paylaşılan veri"
     },
+    "ops": {
+      "read": "Okuma",
+      "create": "Oluşturma",
+      "edit": "Düzenle",
+      "delete": "Sil",
+      "joint": "Ortak"
+    },
     "sections": {
       "description": "Uygulama bölümlerine salt okunur erişim verin. Hesap kapsamlı veriler yine de hesap başına erişim gerektirir.",
+      "bills": {
+        "label": "Faturalar ve Mevduatlar",
+        "description": "Verilen hesapların planlanmış işlemleri"
+      },
+      "investments": {
+        "label": "Yatırımlar",
+        "description": "Verilen hesapların varlıkları ve yatırım işlemleri"
+      },
+      "budgets": {
+        "label": "Bütçeler",
+        "description": "Salt okunur bütçe rakamları"
+      },
+      "reports": {
+        "label": "Raporlar",
+        "description": "Salt okunur raporlar"
+      },
+      "ai": {
+        "label": "Yapay Zeka Asistanı",
+        "description": "Sahibin yapılandırdığı yapay zekâ sağlayıcısını kullanır"
+      },
       "aiRequiresFullAccess": "Yapay Zeka Asistanı tüm hesapları ve bölümleri okur; bu nedenle bu temsilci için yalnızca tüm hesaplarınızı ve diğer tüm bölümleri okuyabildiğinde yanıt verir.",
       "warranties": {
         "label": "Garantiler",
@@ -998,7 +1025,12 @@
     },
     "shared": {
       "description": "Alacaklılar, kategoriler ve etiketlerin OKUNMASI her zaman izin verilir. Bunlar oluşturma/düzenleme/silmeyi kontrol eder.",
-      "toggleLabel": "{op} {resource}"
+      "toggleLabel": "{op} {resource}",
+      "resources": {
+        "payees": "Alacaklılar",
+        "categories": "Kategoriler",
+        "tags": "Etiketler"
+      }
     },
     "saveButton": "Kaydet",
     "toasts": {

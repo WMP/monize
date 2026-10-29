@@ -980,8 +980,35 @@
       "sections": "Sezioni",
       "shared": "Dati condivisi"
     },
+    "ops": {
+      "read": "Lettura",
+      "create": "Creazione",
+      "edit": "Modifica",
+      "delete": "Elimina",
+      "joint": "Cointestato"
+    },
     "sections": {
       "description": "Concedi accesso in sola lettura a intere sezioni dell'app. I dati limitati per conto richiedono comunque l'accesso per singolo conto.",
+      "bills": {
+        "label": "Fatture & Versamenti",
+        "description": "Transazioni pianificate dei conti concessi"
+      },
+      "investments": {
+        "label": "Investimenti",
+        "description": "Posizioni e transazioni di investimento dei conti concessi"
+      },
+      "budgets": {
+        "label": "Budget",
+        "description": "Dati di budget in sola lettura"
+      },
+      "reports": {
+        "label": "Report",
+        "description": "Report in sola lettura"
+      },
+      "ai": {
+        "label": "Assistente AI",
+        "description": "Usa il provider IA configurato dal titolare"
+      },
       "aiRequiresFullAccess": "L'Assistente AI legge tutti i conti e le sezioni, quindi risponde per questo delegato solo quando può leggere tutti i tuoi conti e ogni altra sezione.",
       "warranties": {
         "label": "Garanzie",
@@ -998,7 +1025,12 @@
     },
     "shared": {
       "description": "La LETTURA di beneficiari, categorie ed etichette è sempre consentita. Questi controlli riguardano creazione/modifica/eliminazione.",
-      "toggleLabel": "{op} {resource}"
+      "toggleLabel": "{op} {resource}",
+      "resources": {
+        "payees": "Beneficiari",
+        "categories": "Categorie",
+        "tags": "Etichette"
+      }
     },
     "saveButton": "Salva",
     "toasts": {

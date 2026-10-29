@@ -980,8 +980,35 @@
       "sections": "功能区域",
       "shared": "共享数据"
     },
+    "ops": {
+      "read": "读取",
+      "create": "创建",
+      "edit": "编辑",
+      "delete": "删除",
+      "joint": "联名"
+    },
     "sections": {
       "description": "授予对整个应用功能区域的只读访问权限。账户范围的数据还需要逐账户访问权限。",
+      "bills": {
+        "label": "账单与存款",
+        "description": "已授权账户的计划交易"
+      },
+      "investments": {
+        "label": "投资",
+        "description": "已授权账户的持仓和投资交易"
+      },
+      "budgets": {
+        "label": "预算",
+        "description": "只读预算数据"
+      },
+      "reports": {
+        "label": "报表",
+        "description": "只读报表"
+      },
+      "ai": {
+        "label": "AI 助手",
+        "description": "使用所有者配置的 AI 提供商"
+      },
       "aiRequiresFullAccess": "AI 助手会读取所有账户和功能区域，因此只有当该委托人能够读取您的所有账户和其他所有功能区域时，它才会为其回答。",
       "warranties": {
         "label": "保修",
@@ -998,7 +1025,12 @@
     },
     "shared": {
       "description": "收款人、分类和标签的读取权限始终允许。这些控制创建/编辑/删除权限。",
-      "toggleLabel": "{op}{resource}"
+      "toggleLabel": "{op}{resource}",
+      "resources": {
+        "payees": "收款人",
+        "categories": "分类",
+        "tags": "标签"
+      }
     },
     "saveButton": "保存",
     "toasts": {

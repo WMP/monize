@@ -980,8 +980,35 @@
       "sections": "セクション",
       "shared": "共有データ"
     },
+    "ops": {
+      "read": "閲覧",
+      "create": "作成",
+      "edit": "編集",
+      "delete": "削除",
+      "joint": "共同"
+    },
     "sections": {
       "description": "アプリセクション全体への読み取り専用アクセスを付与します。口座スコープのデータには口座ごとのアクセスも必要です。",
+      "bills": {
+        "label": "請求書・入金",
+        "description": "付与した口座の予定取引"
+      },
+      "investments": {
+        "label": "投資",
+        "description": "付与した口座の保有資産と投資取引"
+      },
+      "budgets": {
+        "label": "予算",
+        "description": "予算の数値（閲覧のみ）"
+      },
+      "reports": {
+        "label": "レポート",
+        "description": "レポート（閲覧のみ）"
+      },
+      "ai": {
+        "label": "AI アシスタント",
+        "description": "所有者が設定した AI プロバイダーを使用します"
+      },
       "aiRequiresFullAccess": "AI アシスタントはすべての口座とセクションを横断して読み取るため、このデリゲートがすべての口座と他のすべてのセクションを閲覧できる場合にのみ回答します。",
       "warranties": {
         "label": "保証",
@@ -998,7 +1025,12 @@
     },
     "shared": {
       "description": "支払先、カテゴリ、タグの読み取りは常に許可されています。これは作成/編集/削除を制御します。",
-      "toggleLabel": "{op} {resource}"
+      "toggleLabel": "{op} {resource}",
+      "resources": {
+        "payees": "支払先",
+        "categories": "カテゴリ",
+        "tags": "タグ"
+      }
     },
     "saveButton": "保存",
     "toasts": {

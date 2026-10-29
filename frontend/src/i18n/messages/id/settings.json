@@ -980,8 +980,35 @@
       "sections": "Bagian",
       "shared": "Data bersama"
     },
+    "ops": {
+      "read": "Baca",
+      "create": "Buat",
+      "edit": "Ubah",
+      "delete": "Hapus",
+      "joint": "Bersama"
+    },
     "sections": {
       "description": "Berikan akses hanya-baca ke seluruh bagian aplikasi. Data yang dicakup akun juga masih memerlukan akses per-akun.",
+      "bills": {
+        "label": "Tagihan & Setoran",
+        "description": "Transaksi terjadwal untuk akun yang diberikan"
+      },
+      "investments": {
+        "label": "Investasi",
+        "description": "Kepemilikan dan transaksi investasi untuk akun yang diberikan"
+      },
+      "budgets": {
+        "label": "Anggaran",
+        "description": "Angka anggaran hanya-baca"
+      },
+      "reports": {
+        "label": "Laporan",
+        "description": "Laporan hanya-baca"
+      },
+      "ai": {
+        "label": "Asisten AI",
+        "description": "Menggunakan penyedia AI yang dikonfigurasi pemilik"
+      },
       "aiRequiresFullAccess": "Asisten AI membaca seluruh akun dan bagian, sehingga hanya menjawab untuk delegasi ini setelah ia dapat membaca semua akun Anda dan setiap bagian lainnya.",
       "warranties": {
         "label": "Garansi",
@@ -998,7 +1025,12 @@
     },
     "shared": {
       "description": "BACA penerima, kategori dan tag selalu diizinkan. Ini mengendalikan buat/edit/hapus.",
-      "toggleLabel": "{op} {resource}"
+      "toggleLabel": "{op} {resource}",
+      "resources": {
+        "payees": "Penerima",
+        "categories": "Kategori",
+        "tags": "Tag"
+      }
     },
     "saveButton": "Simpan",
     "toasts": {

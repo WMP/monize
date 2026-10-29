@@ -980,8 +980,35 @@
       "sections": "Secties",
       "shared": "Gedeelde gegevens"
     },
+    "ops": {
+      "read": "Lezen",
+      "create": "Aanmaken",
+      "edit": "Bewerken",
+      "delete": "Verwijderen",
+      "joint": "Gezamenlijk"
+    },
     "sections": {
       "description": "Verleen alleen-lezentoegang tot hele appsecties. Rekeninggebonden gegevens vereisen ook per-rekeningtoegang.",
+      "bills": {
+        "label": "Facturen & stortingen",
+        "description": "Geplande transacties voor verleende rekeningen"
+      },
+      "investments": {
+        "label": "Beleggingen",
+        "description": "Posities en beleggingstransacties voor verleende rekeningen"
+      },
+      "budgets": {
+        "label": "Budget",
+        "description": "Budgetcijfers, alleen-lezen"
+      },
+      "reports": {
+        "label": "Rapporten",
+        "description": "Rapporten, alleen-lezen"
+      },
+      "ai": {
+        "label": "AI-assistent",
+        "description": "Gebruikt de AI-provider die de eigenaar heeft ingesteld"
+      },
       "aiRequiresFullAccess": "De AI-assistent leest alle rekeningen en secties en antwoordt daarom pas voor deze gedelegeerde zodra die al je rekeningen en elke andere sectie kan lezen.",
       "warranties": {
         "label": "Garanties",
@@ -998,7 +1025,12 @@
     },
     "shared": {
       "description": "LEZEN van begunstigden, categorieën en labels is altijd toegestaan. Dit regelt aanmaken/bewerken/verwijderen.",
-      "toggleLabel": "{op} {resource}"
+      "toggleLabel": "{op} {resource}",
+      "resources": {
+        "payees": "Begunstigden",
+        "categories": "Categorieën",
+        "tags": "Labels"
+      }
     },
     "saveButton": "Opslaan",
     "toasts": {

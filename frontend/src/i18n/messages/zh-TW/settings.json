@@ -980,8 +980,35 @@
       "sections": "區段",
       "shared": "共用資料"
     },
+    "ops": {
+      "read": "讀取",
+      "create": "建立",
+      "edit": "編輯",
+      "delete": "刪除",
+      "joint": "聯名"
+    },
     "sections": {
       "description": "授予整個應用程式區段的唯讀存取。以科目為範圍的資料仍需要個別科目存取。",
+      "bills": {
+        "label": "帳單與存款",
+        "description": "已授權科目的排程交易"
+      },
+      "investments": {
+        "label": "投資",
+        "description": "已授權科目的持股與投資交易"
+      },
+      "budgets": {
+        "label": "預算",
+        "description": "唯讀預算數據"
+      },
+      "reports": {
+        "label": "報表",
+        "description": "唯讀報表"
+      },
+      "ai": {
+        "label": "AI 助理",
+        "description": "使用擁有者設定的 AI 供應商"
+      },
       "aiRequiresFullAccess": "AI 助理會讀取所有科目與區段，因此只有當此委派人能讀取您的所有科目及其他所有區段時，它才會為其回答。",
       "warranties": {
         "label": "保固",
@@ -998,7 +1025,12 @@
     },
     "shared": {
       "description": "收款人、類別和標籤的讀取始終允許。這些控制建立/編輯/刪除。",
-      "toggleLabel": "{op}{resource}"
+      "toggleLabel": "{op}{resource}",
+      "resources": {
+        "payees": "收款人",
+        "categories": "類別",
+        "tags": "標籤"
+      }
     },
     "saveButton": "儲存",
     "toasts": {

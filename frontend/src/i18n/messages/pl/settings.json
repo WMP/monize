@@ -980,8 +980,35 @@
       "sections": "Sekcje",
       "shared": "Dane współdzielone"
     },
+    "ops": {
+      "read": "Odczyt",
+      "create": "Tworzenie",
+      "edit": "Edytuj",
+      "delete": "Usuń",
+      "joint": "Wspólne"
+    },
     "sections": {
       "description": "Przyznaj dostęp tylko do odczytu do całych sekcji aplikacji. Dane przypisane do kont nadal wymagają dostępu na poziomie poszczególnych kont.",
+      "bills": {
+        "label": "Rachunki i wpłaty",
+        "description": "Zaplanowane transakcje udostępnionych kont"
+      },
+      "investments": {
+        "label": "Inwestycje",
+        "description": "Pozycje i transakcje inwestycyjne udostępnionych kont"
+      },
+      "budgets": {
+        "label": "Budżety",
+        "description": "Dane budżetu tylko do odczytu"
+      },
+      "reports": {
+        "label": "Raporty",
+        "description": "Raporty tylko do odczytu"
+      },
+      "ai": {
+        "label": "Asystent AI",
+        "description": "Korzysta z dostawcy AI skonfigurowanego przez właściciela"
+      },
       "aiRequiresFullAccess": "Asystent AI odczytuje wszystkie konta i sekcje, dlatego odpowiada temu pełnomocnikowi dopiero wtedy, gdy może on odczytać wszystkie Twoje konta i każdą pozostałą sekcję.",
       "warranties": {
         "label": "Gwarancje",
@@ -998,7 +1025,12 @@
     },
     "shared": {
       "description": "ODCZYT odbiorców, kategorii i tagów jest zawsze dozwolony. To steruje tworzeniem/edycją/usuwaniem.",
-      "toggleLabel": "{op} {resource}"
+      "toggleLabel": "{op} {resource}",
+      "resources": {
+        "payees": "Odbiorcy",
+        "categories": "Kategorie",
+        "tags": "Tagi"
+      }
     },
     "saveButton": "Zapisz",
     "toasts": {

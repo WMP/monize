@@ -980,8 +980,35 @@
       "sections": "Bereiche",
       "shared": "Gemeinsame Daten"
     },
+    "ops": {
+      "read": "Lesen",
+      "create": "Erstellen",
+      "edit": "Bearbeiten",
+      "delete": "Löschen",
+      "joint": "Gemeinsam"
+    },
     "sections": {
       "description": "Schreibgeschützten Zugriff auf ganze App-Bereiche gewähren. Kontobezogene Daten benötigen zusätzlich Zugriff pro Konto.",
+      "bills": {
+        "label": "Rechnungen & Einzahlungen",
+        "description": "Geplante Buchungen für freigegebene Konten"
+      },
+      "investments": {
+        "label": "Investitionen",
+        "description": "Bestände und Investitionsbuchungen für freigegebene Konten"
+      },
+      "budgets": {
+        "label": "Budgets",
+        "description": "Budgetzahlen, nur lesend"
+      },
+      "reports": {
+        "label": "Berichte",
+        "description": "Berichte, nur lesend"
+      },
+      "ai": {
+        "label": "KI-Assistent",
+        "description": "Verwendet den vom Inhaber eingerichteten KI-Anbieter"
+      },
       "aiRequiresFullAccess": "Der KI-Assistent liest alle Konten und Bereiche und antwortet für diesen Delegierten daher erst, wenn er alle Ihre Konten und jeden anderen Bereich lesen darf.",
       "warranties": {
         "label": "Garantien",
@@ -998,7 +1025,12 @@
     },
     "shared": {
       "description": "LESEN von Zahlungsempfängern, Kategorien und Tags ist immer erlaubt. Diese steuern Erstellen/Bearbeiten/Löschen.",
-      "toggleLabel": "{op} {resource}"
+      "toggleLabel": "{op} {resource}",
+      "resources": {
+        "payees": "Zahlungsempfänger",
+        "categories": "Kategorien",
+        "tags": "Etiketten"
+      }
     },
     "saveButton": "Speichern",
     "toasts": {

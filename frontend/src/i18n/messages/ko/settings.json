@@ -980,8 +980,35 @@
       "sections": "섹션",
       "shared": "공유 데이터"
     },
+    "ops": {
+      "read": "읽기",
+      "create": "생성",
+      "edit": "편집",
+      "delete": "삭제",
+      "joint": "공동"
+    },
     "sections": {
       "description": "전체 앱 섹션에 대한 읽기 전용 접근 권한을 부여합니다. 계정 범위 데이터는 여전히 계정별 접근 권한도 필요합니다.",
+      "bills": {
+        "label": "청구서 및 입금",
+        "description": "부여된 계정의 예약 거래"
+      },
+      "investments": {
+        "label": "투자",
+        "description": "부여된 계정의 보유 자산 및 투자 거래"
+      },
+      "budgets": {
+        "label": "예산",
+        "description": "읽기 전용 예산 수치"
+      },
+      "reports": {
+        "label": "보고서",
+        "description": "읽기 전용 보고서"
+      },
+      "ai": {
+        "label": "AI 어시스턴트",
+        "description": "소유자가 구성한 AI 공급자를 사용합니다"
+      },
       "aiRequiresFullAccess": "AI 어시스턴트는 모든 계정과 섹션을 읽으므로, 이 위임자가 모든 계정과 다른 모든 섹션을 읽을 수 있을 때만 응답합니다.",
       "warranties": {
         "label": "보증",
@@ -998,7 +1025,12 @@
     },
     "shared": {
       "description": "수취인, 카테고리 및 태그의 읽기는 항상 허용됩니다. 생성/편집/삭제를 제어합니다.",
-      "toggleLabel": "{op} {resource}"
+      "toggleLabel": "{op} {resource}",
+      "resources": {
+        "payees": "수취인",
+        "categories": "카테고리",
+        "tags": "태그"
+      }
     },
     "saveButton": "저장",
     "toasts": {

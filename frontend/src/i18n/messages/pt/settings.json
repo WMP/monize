@@ -980,8 +980,35 @@
       "sections": "Secções",
       "shared": "Dados partilhados"
     },
+    "ops": {
+      "read": "Ler",
+      "create": "Criar",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "joint": "Conjunta"
+    },
     "sections": {
       "description": "Conceda acesso só de leitura a secções inteiras da aplicação. Os dados no âmbito de conta ainda necessitam de acesso por conta.",
+      "bills": {
+        "label": "Faturas e depósitos",
+        "description": "Transações agendadas das contas concedidas"
+      },
+      "investments": {
+        "label": "Investimentos",
+        "description": "Posições e transações de investimento das contas concedidas"
+      },
+      "budgets": {
+        "label": "Orçamentos",
+        "description": "Valores de orçamento só de leitura"
+      },
+      "reports": {
+        "label": "Relatórios",
+        "description": "Relatórios só de leitura"
+      },
+      "ai": {
+        "label": "Assistente de IA",
+        "description": "Usa o fornecedor de IA configurado pelo titular"
+      },
       "aiRequiresFullAccess": "O Assistente de IA lê todas as contas e secções, pelo que só responde a este delegado quando este puder ler todas as suas contas e todas as outras secções.",
       "warranties": {
         "label": "Garantias",
@@ -998,7 +1025,12 @@
     },
     "shared": {
       "description": "A LEITURA de beneficiários, categorias e etiquetas é sempre permitida. Estes controlam criar/editar/eliminar.",
-      "toggleLabel": "{op} {resource}"
+      "toggleLabel": "{op} {resource}",
+      "resources": {
+        "payees": "Beneficiários",
+        "categories": "Categorias",
+        "tags": "Etiquetas"
+      }
     },
     "saveButton": "Guardar",
     "toasts": {

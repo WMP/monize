@@ -980,8 +980,35 @@
       "sections": "[XX-Sections-XX]",
       "shared": "[XX-Shared data-XX]"
     },
+    "ops": {
+      "read": "[XX-Read-XX]",
+      "create": "[XX-Create-XX]",
+      "edit": "[XX-Edit-XX]",
+      "delete": "[XX-Delete-XX]",
+      "joint": "[XX-Joint-XX]"
+    },
     "sections": {
       "description": "[XX-Grant read-only access to whole app sections. Account-scoped data still also needs per-account access.-XX]",
+      "bills": {
+        "label": "[XX-Bills & Deposits-XX]",
+        "description": "[XX-Scheduled transactions for granted accounts-XX]"
+      },
+      "investments": {
+        "label": "[XX-Investments-XX]",
+        "description": "[XX-Holdings and investment transactions for granted accounts-XX]"
+      },
+      "budgets": {
+        "label": "[XX-Budgets-XX]",
+        "description": "[XX-Read-only budget figures-XX]"
+      },
+      "reports": {
+        "label": "[XX-Reports-XX]",
+        "description": "[XX-Read-only reports-XX]"
+      },
+      "ai": {
+        "label": "[XX-AI Assistant-XX]",
+        "description": "[XX-Uses the owner's configured AI provider-XX]"
+      },
       "aiRequiresFullAccess": "[XX-The AI Assistant reads across every account and section, so it only answers for this delegate once they can read all of your accounts and every other section.-XX]",
       "warranties": {
         "label": "[XX-Warranties-XX]",
@@ -998,7 +1025,12 @@
     },
     "shared": {
       "description": "[XX-READ of payees, categories and tags is always allowed. These control create/edit/delete.-XX]",
-      "toggleLabel": "[XX-{op} {resource}-XX]"
+      "toggleLabel": "[XX-{op} {resource}-XX]",
+      "resources": {
+        "payees": "[XX-Payees-XX]",
+        "categories": "[XX-Categories-XX]",
+        "tags": "[XX-Tags-XX]"
+      }
     },
     "saveButton": "[XX-Save-XX]",
     "toasts": {

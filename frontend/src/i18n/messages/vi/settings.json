@@ -980,8 +980,35 @@
       "sections": "Phần",
       "shared": "Dữ liệu chia sẻ"
     },
+    "ops": {
+      "read": "Đọc",
+      "create": "Tạo",
+      "edit": "Chỉnh sửa",
+      "delete": "Xóa",
+      "joint": "Chung"
+    },
     "sections": {
       "description": "Cấp quyền truy cập chỉ đọc vào toàn bộ các phần ứng dụng. Dữ liệu phạm vi tài khoản vẫn cần quyền truy cập từng tài khoản.",
+      "bills": {
+        "label": "Hóa đơn & Tiền gửi",
+        "description": "Giao dịch định kỳ của các tài khoản được cấp"
+      },
+      "investments": {
+        "label": "Đầu tư",
+        "description": "Danh mục nắm giữ và giao dịch đầu tư của các tài khoản được cấp"
+      },
+      "budgets": {
+        "label": "Ngân sách",
+        "description": "Số liệu ngân sách chỉ đọc"
+      },
+      "reports": {
+        "label": "Báo cáo",
+        "description": "Báo cáo chỉ đọc"
+      },
+      "ai": {
+        "label": "Trợ lý AI",
+        "description": "Dùng nhà cung cấp AI do chủ sở hữu cấu hình"
+      },
       "aiRequiresFullAccess": "Trợ lý AI đọc toàn bộ tài khoản và các phần, vì vậy chỉ trả lời cho người đại diện này khi họ có thể đọc tất cả tài khoản của bạn và mọi phần khác.",
       "warranties": {
         "label": "Bảo hành",
@@ -998,7 +1025,12 @@
     },
     "shared": {
       "description": "Đọc người nhận, danh mục và thẻ luôn được phép. Đây là các điều khiển tạo/chỉnh sửa/xóa.",
-      "toggleLabel": "{op} {resource}"
+      "toggleLabel": "{op} {resource}",
+      "resources": {
+        "payees": "Người nhận thanh toán",
+        "categories": "Danh mục",
+        "tags": "Thẻ nhãn"
+      }
     },
     "saveButton": "Lưu",
     "toasts": {

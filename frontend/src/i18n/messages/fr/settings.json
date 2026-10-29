@@ -980,8 +980,35 @@
       "sections": "Sections",
       "shared": "Données partagées"
     },
+    "ops": {
+      "read": "Lecture",
+      "create": "Création",
+      "edit": "Modifier",
+      "delete": "Supprimer",
+      "joint": "Joint"
+    },
     "sections": {
       "description": "Accordez un accès en lecture seule à des sections entières de l'application. Les données liées à un compte nécessitent également un accès par compte.",
+      "bills": {
+        "label": "Factures et dépôts",
+        "description": "Opérations planifiées des comptes accordés"
+      },
+      "investments": {
+        "label": "Investissements",
+        "description": "Positions et opérations d’investissement des comptes accordés"
+      },
+      "budgets": {
+        "label": "Budgets",
+        "description": "Chiffres budgétaires en lecture seule"
+      },
+      "reports": {
+        "label": "Rapports",
+        "description": "Rapports en lecture seule"
+      },
+      "ai": {
+        "label": "Assistant IA",
+        "description": "Utilise le fournisseur d’IA configuré par le titulaire"
+      },
       "aiRequiresFullAccess": "L'Assistant IA consulte l'ensemble des comptes et des sections ; il ne répond donc pour ce délégué qu'une fois que celui-ci peut lire tous vos comptes et toutes les autres sections.",
       "warranties": {
         "label": "Garanties",
@@ -998,7 +1025,12 @@
     },
     "shared": {
       "description": "La lecture des bénéficiaires, des catégories et des étiquettes est toujours autorisée. Ces options contrôlent la création/modification/suppression.",
-      "toggleLabel": "{op} {resource}"
+      "toggleLabel": "{op} {resource}",
+      "resources": {
+        "payees": "Bénéficiaires",
+        "categories": "Catégories",
+        "tags": "Étiquettes"
+      }
     },
     "saveButton": "Enregistrer",
     "toasts": {

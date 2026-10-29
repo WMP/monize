@@ -46,62 +46,32 @@ interface Draft {
   sections: Record<SectionKey, boolean>;
 }
 
-const GRANT_OPS: { key: GrantOp; label: string }[] = [
-  { key: 'canRead', label: 'Read' },
-  { key: 'canCreate', label: 'Create' },
-  { key: 'canEdit', label: 'Edit' },
-  { key: 'canDelete', label: 'Delete' },
+// Every name below is a catalog key under `settings.delegateAccessModal`.
+type OpName = 'read' | 'create' | 'edit' | 'delete' | 'joint';
+
+const GRANT_OPS: { key: GrantOp; labelKey: `ops.${OpName}` }[] = [
+  { key: 'canRead', labelKey: 'ops.read' },
+  { key: 'canCreate', labelKey: 'ops.create' },
+  { key: 'canEdit', labelKey: 'ops.edit' },
+  { key: 'canDelete', labelKey: 'ops.delete' },
   // Joint: with Read, the account appears natively in the delegate's own
   // account list. Only offered for delegates with a full Monize account.
-  { key: 'isJoint', label: 'Joint' },
+  { key: 'isJoint', labelKey: 'ops.joint' },
 ];
 
-const CAP_RESOURCES: { key: CapResource; label: string }[] = [
-  { key: 'payees', label: 'Payees' },
-  { key: 'categories', label: 'Categories' },
-  { key: 'tags', label: 'Tags' },
+const CAP_RESOURCES: { key: CapResource; labelKey: `shared.resources.${CapResource}` }[] = [
+  { key: 'payees', labelKey: 'shared.resources.payees' },
+  { key: 'categories', labelKey: 'shared.resources.categories' },
+  { key: 'tags', labelKey: 'shared.resources.tags' },
 ];
 
-const CAP_OPS: { op: CapOp; label: string }[] = [
-  { op: 'create', label: 'Create' },
-  { op: 'edit', label: 'Edit' },
-  { op: 'delete', label: 'Delete' },
+const CAP_OPS: { op: CapOp; labelKey: `ops.${CapOp}` }[] = [
+  { op: 'create', labelKey: 'ops.create' },
+  { op: 'edit', labelKey: 'ops.edit' },
+  { op: 'delete', labelKey: 'ops.delete' },
 ];
 
-// Labels for the five original sections predate the settings catalog; the
-// warranties row carries catalog keys (`labelKey`/`descriptionKey`).
-interface SectionDef {
-  key: SectionKey;
-  label?: string;
-  description?: string;
-  labelKey?: 'sections.warranties.label';
-  descriptionKey?: 'sections.warranties.description';
-}
-
-const SECTIONS: SectionDef[] = [
-  {
-    key: 'bills',
-    label: 'Bills & Deposits',
-    description: 'Scheduled transactions for granted accounts',
-  },
-  {
-    key: 'investments',
-    label: 'Investments',
-    description: 'Holdings and investment transactions for granted accounts',
-  },
-  { key: 'budgets', label: 'Budgets', description: 'Read-only budget figures' },
-  { key: 'reports', label: 'Reports', description: 'Read-only reports' },
-  {
-    key: 'ai',
-    label: 'AI Assistant',
-    description: "Uses the owner's configured AI provider",
-  },
-  {
-    key: 'warranties',
-    labelKey: 'sections.warranties.label',
-    descriptionKey: 'sections.warranties.description',
-  },
-];
+const SECTIONS: SectionKey[] = ['bills', 'investments', 'budgets', 'reports', 'ai', 'warranties'];
 
 const SECTION_FIELD: Record<SectionKey, keyof DelegateSectionFlags> = {
   bills: 'billsCanRead',
@@ -264,7 +234,7 @@ export function DelegateAccessModal({
   }
 
   const sectionPatch: DelegateSectionFlags = {};
-  for (const { key } of SECTIONS) {
+  for (const key of SECTIONS) {
     if (draft.sections[key] !== baseline.sections[key]) {
       sectionPatch[SECTION_FIELD[key]] = draft.sections[key];
     }
@@ -405,14 +375,12 @@ export function DelegateAccessModal({
             <p className="text-xs text-gray-500 dark:text-gray-400">
               {t('sections.description')}
             </p>
-            {SECTIONS.map((s) => {
-              const label = s.labelKey ? t(s.labelKey) : s.label;
-              const description = s.descriptionKey
-                ? t(s.descriptionKey)
-                : s.description;
+            {SECTIONS.map((key) => {
+              const label = t(`sections.${key}.label`);
+              const description = t(`sections.${key}.description`);
               return (
                 <div
-                  key={s.key}
+                  key={key}
                   className="flex items-center justify-between gap-4 border-b border-gray-100 dark:border-gray-700/50 pb-2"
                 >
                   <div>
@@ -422,15 +390,15 @@ export function DelegateAccessModal({
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       {description}
                     </p>
-                    {s.key === 'ai' && (
+                    {key === 'ai' && (
                       <p className="text-xs text-gray-500 dark:text-gray-400">
                         {t('sections.aiRequiresFullAccess')}
                       </p>
                     )}
                   </div>
                   <ToggleSwitch
-                    checked={draft.sections[s.key]}
-                    onChange={(v) => setSection(s.key, v)}
+                    checked={draft.sections[key]}
+                    onChange={(v) => setSection(key, v)}
                     label={t('sections.toggleLabel', { section: label })}
                   />
                 </div>
@@ -488,9 +456,9 @@ export function DelegateAccessModal({
                               onChange={(v) =>
                                 setColumnForAccounts(ids, o.key, v)
                               }
-                              label={t('accounts.grantAllLabel', { op: o.label, type: typeLabel })}
+                              label={t('accounts.grantAllLabel', { op: t(o.labelKey), type: typeLabel })}
                             />
-                            <span className="text-xs">{o.label}</span>
+                            <span className="text-xs">{t(o.labelKey)}</span>
                           </label>
                         ))}
                       </div>
@@ -525,9 +493,9 @@ export function DelegateAccessModal({
                                     onChange={(v) =>
                                       setGrant(a.id, o.key, v)
                                     }
-                                    label={t('accounts.grantLabel', { op: o.label, account: a.name })}
+                                    label={t('accounts.grantLabel', { op: t(o.labelKey), account: a.name })}
                                   />
-                                  <span className="text-xs">{o.label}</span>
+                                  <span className="text-xs">{t(o.labelKey)}</span>
                                 </label>
                               ))}
                             </div>
@@ -553,7 +521,7 @@ export function DelegateAccessModal({
                 className="flex items-center gap-x-3 text-sm text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-700/50 pb-2"
               >
                 <span className="w-24 shrink-0 truncate font-medium">
-                  {res.label}
+                  {t(res.labelKey)}
                 </span>
                 {CAP_OPS.map((o) => (
                   <label key={o.op} className="flex items-center gap-1.5">
@@ -561,9 +529,9 @@ export function DelegateAccessModal({
                       size="sm"
                       checked={draft.capabilities[res.key][o.op]}
                       onChange={(v) => setCapability(res.key, o.op, v)}
-                      label={t('shared.toggleLabel', { op: o.label, resource: res.label })}
+                      label={t('shared.toggleLabel', { op: t(o.labelKey), resource: t(res.labelKey) })}
                     />
-                    <span className="text-xs">{o.label}</span>
+                    <span className="text-xs">{t(o.labelKey)}</span>
                   </label>
                 ))}
               </div>
