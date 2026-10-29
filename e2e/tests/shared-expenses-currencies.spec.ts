@@ -49,7 +49,7 @@ test("records USD and CAD group bills while leaving a tagged bank payment untouc
   await page.getByRole("button", { name: "Add Expense", exact: true }).click();
   await page.getByRole("button", { name: "Expense", exact: true }).click();
   const editor = page.getByRole("dialog", { name: "Add Expense", exact: true });
-  await editor.getByLabel("What was it for?").fill("Lakeview cabin");
+  await editor.getByLabel("Description").fill("Lakeview cabin");
   await editor
     .getByRole("button", { name: "Change entry currency", exact: true })
     .first()
@@ -58,12 +58,12 @@ test("records USD and CAD group bills while leaving a tagged bank payment untouc
   await editor.getByLabel("Amount", { exact: true }).fill("900");
   const more = editor
     .locator("details")
-    .filter({ has: page.getByText("More options", { exact: true }) });
+    .filter({ has: page.getByText("More Options", { exact: true }) });
   if ((await more.getAttribute("open")) === null) {
     await more.locator("summary").first().click();
   }
-  await editor.getByLabel("Agreed exchange rate", { exact: true }).fill("1.35");
-  await editor.getByLabel("What was it for?").click();
+  await editor.getByLabel("Agreed Exchange Rate", { exact: true }).fill("1.35");
+  await editor.getByLabel("Description").click();
   const conversion = editor.getByRole("region", {
     name: "Currency conversion",
   });
@@ -77,9 +77,7 @@ test("records USD and CAD group bills while leaving a tagged bank payment untouc
     animations: "disabled",
   });
 
-  await editor
-    .getByRole("button", { name: "Save Expense", exact: true })
-    .click();
+  await editor.getByRole("button", { name: "Save", exact: true }).click();
   await expect(editor).toHaveCount(0);
   await expect(
     page.getByRole("heading", { name: "Canada to US road trip", exact: true }),
@@ -117,7 +115,7 @@ test("records USD and CAD group bills while leaving a tagged bank payment untouc
 
   await page.getByRole("button", { name: "Add Expense", exact: true }).click();
   await page.getByRole("button", { name: "Expense", exact: true }).click();
-  await editor.getByLabel("What was it for?").fill("Fuel before the border");
+  await editor.getByLabel("Description").fill("Fuel before the border");
   await expect(
     editor
       .getByRole("button", { name: "Change entry currency", exact: true })
@@ -125,18 +123,16 @@ test("records USD and CAD group bills while leaving a tagged bank payment untouc
   ).toBeEnabled();
   await editor.getByLabel("Amount", { exact: true }).fill("100+35");
   await editor.getByLabel("Amount", { exact: true }).press("Enter");
-  await editor.getByLabel("Paid by", { exact: true }).selectOption(anna.id);
+  await editor.getByLabel("Paid By", { exact: true }).selectOption(anna.id);
   await expect(editor.getByLabel("Amount", { exact: true })).toHaveValue(
     "135.00",
   );
-  await expect(editor.getByText("Your cost", { exact: false })).toContainText(
+  await expect(editor.getByText("Your Cost", { exact: false })).toContainText(
     "45.00",
   );
-  await editor
-    .getByRole("button", { name: "Save Expense", exact: true })
-    .click();
+  await editor.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await page.getByRole("button", { name: "Balances", exact: true }).click();
+  await page.getByRole("tab", { name: "Balances", exact: true }).click();
   const suggestion = page
     .getByRole("listitem")
     .filter({ hasText: "Anna → Robert" });
@@ -149,12 +145,10 @@ test("records USD and CAD group bills while leaving a tagged bank payment untouc
     exact: true,
   });
   await repayment.getByLabel("Amount", { exact: true }).fill("100");
-  await repayment
-    .getByRole("button", { name: "Record Repayment", exact: true })
-    .click();
+  await repayment.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await page.reload();
-  await page.getByRole("button", { name: "Balances", exact: true }).click();
+  await page.getByRole("tab", { name: "Balances", exact: true }).click();
   await expect(
     page.getByRole("listitem").filter({ hasText: "Anna → Robert" }),
   ).toContainText("215.00");

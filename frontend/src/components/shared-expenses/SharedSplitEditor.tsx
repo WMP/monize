@@ -1,32 +1,33 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { useLocale, useTranslations } from "next-intl";
+import { useId, useState } from "react";
+import { useTranslations } from "next-intl";
 import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
+import { FormActions } from "@/components/ui/FormActions";
+import { InfoTooltip } from "@/components/ui/InfoTooltip";
 import { NumericInput } from "@/components/ui/NumericInput";
 import type {
   SharedEntryInput,
   SharedParticipant,
   SharedSplitMode,
 } from "@/types/shared-expense";
+import { extrasThenEqual, splitDraftStatus } from "@/lib/shared-split-draft";
 import {
-  assignRemainder,
-  extrasThenEqual,
-  splitDraftStatus,
-  splitRemainderEqually,
-} from "@/lib/shared-split-draft";
-import { formatNameList } from "@/lib/helpers/format-name-list";
+  editSplitDraft,
+  initialSplitDraft,
+  resolveSplitDraft,
+  splitRatios,
+} from "@/lib/shared-split-editor";
+import { clamp } from "@/lib/clamp";
 import { useNumberFormat } from "@/hooks/useNumberFormat";
-import {
-  SharedError,
-  SharedMoneyInput,
-  SharedNotice,
-  SharedTabs,
-} from "./SharedPrimitives";
+import { useSharedEntryPreview } from "./useSharedEntryPreview";
+import { SharedError, SharedMoneyInput } from "./SharedPrimitives";
 
 export function SharedSplitEditor({
+  groupId,
+  entryId,
   input,
   participants,
   places,
@@ -36,6 +37,8 @@ export function SharedSplitEditor({
   saveError,
   isSaving = false,
 }: {
+  groupId: string;
+  entryId?: string;
   template?: boolean;
   saveError?: unknown;
   isSaving?: boolean;
@@ -46,240 +49,310 @@ export function SharedSplitEditor({
   onClose: () => void;
 }) {
   const t = useTranslations("sharedExpenses");
-  const locale = useLocale();
   const { formatCurrency, formatPercent } = useNumberFormat();
-  const [mode, setMode] = useState(input.splitMode);
-  const [selected, setSelected] = useState(
-    input.shares.map((s) => s.participantId),
+  const idPrefix = useId();
+  const [draft, setDraft] = useState(() => initialSplitDraft(input));
+  const [toolsError, setToolsError] = useState(false);
+  const [focusedAmount, setFocusedAmount] = useState<string | null>(null);
+  const resolved = resolveSplitDraft(draft, input.amount, places);
+  const ratios = splitRatios(resolved);
+  const payer = input.contributions[0]?.participantId ?? draft.selected[0];
+  const preview = useSharedEntryPreview(
+    groupId,
+    {
+      ...input,
+      title: input.title.trim() || t("splitMode"),
+      splitMode: resolved.splitMode,
+      shares: resolved.shares,
+      // This read-only preview needs valid payers even before that field is finished.
+      // Its SHARE rows alone are displayed; the parent previews the real payers.
+      contributions: splitDraftStatus(
+        input.amount,
+        "EXACT",
+        input.contributions,
+        places,
+      ).valid
+        ? input.contributions
+        : payer
+          ? [{ participantId: payer, value: input.amount }]
+          : [],
+    },
+    places,
+    entryId,
+    template || !resolved.status.valid,
   );
-  const [drafts, setDrafts] = useState<
-    Partial<Record<SharedSplitMode, Record<string, string>>>
-  >({
-    [input.splitMode]: Object.fromEntries(
-      input.shares.map((s) => [s.participantId, s.value ?? ""]),
-    ),
-  });
-  const [error, setError] = useState(false);
-  const [toolsOpen, setToolsOpen] = useState(false);
-  const statusRef = useRef<HTMLParagraphElement>(null);
-  const values = drafts[mode] ?? {};
-  const shares = selected.map((participantId) => ({
-    participantId,
-    ...(mode === "EQUAL"
-      ? {}
-      : { value: values[participantId] ?? (mode === "WEIGHT" ? "1" : "") }),
-  }));
-  const change = (id: string, value: string) => {
-    setError(false);
-    setDrafts({ ...drafts, [mode]: { ...values, [id]: value } });
-  };
-  const status = splitDraftStatus(input.amount, mode, shares, places);
-  const remaining =
-    status.remaining === null
-      ? null
-      : mode === "PERCENT"
-        ? formatPercent(Math.abs(Number(status.remaining)), 2)
-        : formatCurrency(
-            Math.abs(Number(status.remaining)),
-            input.currencyCode,
-          );
-  const hasRemainder =
-    status.remaining !== null && Number(status.remaining) > 0;
-  const unfilledPeople = participants.filter((p) =>
-    shares.some((share) => share.participantId === p.id && share.value === ""),
+  const amounts = new Map(
+    preview.preview?.allocations
+      .filter((row) => row.kind === "SHARE")
+      .map((row) => [row.participantId, row.originalAmount]),
   );
-  const helper = (resolve: () => SharedEntryInput["shares"]) => {
-    try {
-      const rows = resolve();
-      setDrafts({
-        ...drafts,
-        EXACT: Object.fromEntries(rows.map((r) => [r.participantId, r.value!])),
-      });
-      setMode("EXACT");
-      setError(false);
-      statusRef.current?.focus();
-    } catch {
-      setError(true);
-    }
+  const change = (
+    mode: Exclude<SharedSplitMode, "EQUAL">,
+    id: string,
+    value: string,
+  ) => {
+    setToolsError(false);
+    setDraft(editSplitDraft(draft, input.amount, places, mode, id, value));
   };
+  const remaining = resolved.status.remaining;
+  const status = !draft.selected.length
+    ? t("selectPeople")
+    : resolved.status.valid
+      ? t("splitComplete")
+      : remaining !== null
+        ? t(Number(remaining) < 0 ? "splitOver" : "splitRemaining", {
+            amount:
+              draft.mode === "PERCENT"
+                ? formatPercent(Math.abs(Number(remaining)), 2)
+                : formatCurrency(
+                    Math.abs(Number(remaining)),
+                    input.currencyCode,
+                  ),
+          })
+        : t("splitInvalid");
   return (
     <Modal
       pushHistory
       isOpen
-      fixedHeight
       fullScreenOnPhone
       title={t("splitMode")}
-      description={t("splitHelp")}
-      padding="md"
-      maxWidth="lg"
+      padding="none"
+      className="p-6"
+      maxWidth="2xl"
       onClose={onClose}
-      footer={
-        <>
-          <Button variant="outline" onClick={onClose}>
-            {t("cancel")}
-          </Button>
-          <Button
-            disabled={!status.valid || isSaving}
-            onClick={() => onApply({ splitMode: mode, shares })}
-          >
-            {t("apply")}
-          </Button>
-        </>
-      }
+      onBeforeClose={() => (isSaving ? false : undefined)}
     >
-      <div className="space-y-4">
+      <form
+        className="space-y-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (resolved.status.valid && !isSaving)
+            onApply({ splitMode: resolved.splitMode, shares: resolved.shares });
+        }}
+      >
         <SharedError error={saveError} />
-        <p
-          ref={statusRef}
-          tabIndex={-1}
-          role="status"
-          className="text-sm font-medium"
-        >
-          {selected.length === 0
-            ? t("selectPeople")
-            : remaining !== null
-              ? status.valid
-                ? t("splitComplete")
-                : t(
-                    Number(status.remaining) < 0
-                      ? "splitOver"
-                      : "splitRemaining",
-                    { amount: remaining },
-                  )
-              : mode === "EQUAL"
-                ? t("equalSummary", { count: selected.length })
-                : !status.valid
-                  ? t("splitInvalid")
-                  : t("splitComplete")}
-        </p>
-        {mode === "WEIGHT" && <SharedNotice>{t("weightsHelp")}</SharedNotice>}
-        {mode === "EXACT" && (
-          <SharedNotice>{t("splitRemainderHelp")}</SharedNotice>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <p role="status" className="text-sm font-medium">
+              {status}
+            </p>
+            <InfoTooltip text={t("unifiedSplitHelp")} usePortal />
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={isSaving}
+            onClick={() => {
+              setDraft({ ...draft, mode: "EQUAL", values: {} });
+              setToolsError(false);
+            }}
+          >
+            {t("resetEqual")}
+          </Button>
+        </div>
+        <fieldset disabled={isSaving} className="space-y-4">
+          {participants
+            .filter(
+              (person) => person.isActive || draft.selected.includes(person.id),
+            )
+            .map((person) => {
+              const selected = draft.selected.includes(person.id);
+              const ratio = ratios[person.id];
+              const percent =
+                draft.mode === "PERCENT" &&
+                draft.values[person.id] !== undefined &&
+                draft.values[person.id] !== ""
+                  ? Number(draft.values[person.id])
+                  : ratio?.percent;
+              const sliderPercent = clamp(percent ?? 0, 0, 100);
+              const pinned =
+                (draft.mode === "EXACT" || draft.mode === "PERCENT") &&
+                !!draft.values[person.id]?.length;
+              const amountPending =
+                preview.pending && !pinned && focusedAmount !== person.id;
+              return (
+                <div
+                  key={person.id}
+                  className="space-y-3 border-b border-gray-100 dark:border-gray-700 pb-4"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <label className="flex items-center gap-3 min-h-11 min-w-0 break-words">
+                      <ToggleSwitch
+                        label={person.name}
+                        checked={selected}
+                        onChange={(checked) => {
+                          setDraft({
+                            ...draft,
+                            selected: checked
+                              ? [...draft.selected, person.id]
+                              : draft.selected.filter((id) => id !== person.id),
+                          });
+                        }}
+                      />
+                      {person.name}
+                    </label>
+                    {selected && pinned && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() =>
+                          change(
+                            draft.mode as "EXACT" | "PERCENT",
+                            person.id,
+                            "",
+                          )
+                        }
+                      >
+                        {t("releaseShare", { name: person.name })}
+                      </Button>
+                    )}
+                  </div>
+                  {selected && (
+                    <div
+                      className={`grid min-w-0 items-start gap-3 ${template ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}
+                    >
+                      {!template && (
+                        <SharedMoneyInput
+                          key={amountPending ? "pending" : "ready"}
+                          label={t("share", { name: person.name })}
+                          value={
+                            draft.mode === "EXACT" && pinned
+                              ? draft.values[person.id]
+                              : (amounts.get(person.id) ?? "")
+                          }
+                          onChange={(value) =>
+                            change("EXACT", person.id, value)
+                          }
+                          currency={input.currencyCode}
+                          places={places}
+                          // Mount the ready field with its automatic amount already
+                          // present; never replace a focused or explicitly edited field.
+                          disabled={amountPending}
+                          onFocus={() => setFocusedAmount(person.id)}
+                          onBlur={() => setFocusedAmount(null)}
+                        />
+                      )}
+                      <div className="min-w-0">
+                        <NumericInput
+                          id={`${idPrefix}-${person.id}-percent`}
+                          label={t("percentFor", { name: person.name })}
+                          value={percent}
+                          decimalPlaces={2}
+                          onChange={(value) =>
+                            change(
+                              "PERCENT",
+                              person.id,
+                              value === undefined ? "" : String(value),
+                            )
+                          }
+                        />
+                        <input
+                          type="range"
+                          min={0}
+                          max={100}
+                          step={0.01}
+                          value={sliderPercent}
+                          aria-label={t("percentSliderFor", {
+                            name: person.name,
+                          })}
+                          aria-valuetext={
+                            percent === undefined
+                              ? t("unknown")
+                              : formatPercent(sliderPercent, 2)
+                          }
+                          onChange={(event) =>
+                            change("PERCENT", person.id, event.target.value)
+                          }
+                          className="w-full h-6 mt-2 accent-blue-600 focus-visible:ring-2 focus-visible:ring-blue-500"
+                        />
+                      </div>
+                      <NumericInput
+                        id={`${idPrefix}-${person.id}-weight`}
+                        label={t("weightFor", { name: person.name })}
+                        value={
+                          ratio?.weight === undefined || ratio.weight === ""
+                            ? undefined
+                            : Number(ratio.weight)
+                        }
+                        decimalPlaces={4}
+                        onChange={(value) =>
+                          change(
+                            "WEIGHT",
+                            person.id,
+                            value === undefined ? "" : String(value),
+                          )
+                        }
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+        </fieldset>
+        {!template && preview.pending && (
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {t("checkingSplit")}
+          </p>
         )}
-        <SharedTabs
-          label={t("splitMode")}
-          value={mode}
-          onChange={setMode}
-          options={(["EQUAL", "EXACT", "PERCENT", "WEIGHT"] as const)
-            .filter((value) => !template || value !== "EXACT")
-            .map((value) => ({ value, label: t(value) }))}
-        />
-        {error && (
+        {!template &&
+          !preview.pending &&
+          !preview.preview &&
+          !preview.error &&
+          resolved.status.valid && (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {t("splitAmountNeeded")}
+            </p>
+          )}
+        <SharedError error={preview.error} retry={preview.retry} />
+        {!template && draft.mode === "EXACT" && (
+          <details>
+            <summary className="cursor-pointer min-h-11 py-2 text-sm font-medium">
+              {t("splitTools")}
+            </summary>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isSaving}
+                onClick={() => {
+                  try {
+                    const rows = extrasThenEqual(
+                      input.amount,
+                      draft.selected.map((participantId) => ({
+                        participantId,
+                        value: draft.values[participantId] ?? "",
+                      })),
+                      places,
+                    );
+                    setDraft(
+                      initialSplitDraft({ splitMode: "EXACT", shares: rows }),
+                    );
+                    setToolsError(false);
+                  } catch {
+                    setToolsError(true);
+                  }
+                }}
+              >
+                {t("extras")}
+              </Button>
+              <InfoTooltip text={t("extrasHelp")} usePortal />
+            </div>
+          </details>
+        )}
+        {toolsError && (
           <p role="alert" className="text-sm text-red-600 dark:text-red-400">
             {t("splitInvalid")}
           </p>
         )}
-        <div className="space-y-3">
-          {participants
-            .filter((p) => p.isActive || selected.includes(p.id))
-            .map((p) => (
-              <div
-                key={p.id}
-                className={`grid ${mode === "EQUAL" ? "grid-cols-1" : "grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"} items-center gap-3 border-b border-gray-100 dark:border-gray-700 pb-3`}
-              >
-                <label className="flex items-center gap-3 min-h-11 min-w-0 break-words">
-                  <ToggleSwitch
-                    label={p.name}
-                    checked={selected.includes(p.id)}
-                    onChange={(checked) =>
-                      setSelected(
-                        checked
-                          ? [...selected, p.id]
-                          : selected.filter((id) => id !== p.id),
-                      )
-                    }
-                  />
-                  {p.name}
-                </label>
-                {mode !== "EQUAL" && selected.includes(p.id) && (
-                  <div>
-                    {mode === "EXACT" ? (
-                      <SharedMoneyInput
-                        label={t("share", { name: p.name })}
-                        value={values[p.id] ?? ""}
-                        onChange={(value) => change(p.id, value)}
-                        currency={input.currencyCode}
-                        places={places}
-                      />
-                    ) : (
-                      <NumericInput
-                        label={t("share", { name: p.name })}
-                        value={
-                          values[p.id]
-                            ? Number(values[p.id])
-                            : mode === "WEIGHT"
-                              ? 1
-                              : undefined
-                        }
-                        decimalPlaces={mode === "PERCENT" ? 2 : 4}
-                        onChange={(v) =>
-                          change(p.id, v === undefined ? "" : String(v))
-                        }
-                      />
-                    )}
-                    {mode === "EXACT" && hasRemainder && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="mt-1 text-left"
-                        onClick={() =>
-                          helper(() =>
-                            assignRemainder(input.amount, shares, p.id, places),
-                          )
-                        }
-                      >
-                        {t("remainder", { name: p.name })}
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
-        </div>
-        {mode === "EXACT" && hasRemainder && unfilledPeople.length > 1 && (
-          <Button
-            variant="outline"
-            className="text-left break-words"
-            onClick={() =>
-              helper(() => splitRemainderEqually(input.amount, shares, places))
-            }
-          >
-            {t("splitRemainderEqually", {
-              names: formatNameList(
-                locale,
-                unfilledPeople.map((p) => p.name),
-              ),
-            })}
-          </Button>
-        )}
-        {mode === "EXACT" && hasRemainder && selected.length > 0 && (
-          <details
-            open={toolsOpen}
-            onToggle={(event) => setToolsOpen(event.currentTarget.open)}
-          >
-            <summary
-              className="cursor-pointer min-h-11 py-2 text-sm font-medium"
-              onClick={(event) => {
-                event.preventDefault();
-                setToolsOpen(!toolsOpen);
-              }}
-            >
-              {t("splitTools")}
-            </summary>
-            <div className="space-y-3 pt-2">
-              <SharedNotice>{t("extrasHelp")}</SharedNotice>
-              <Button
-                variant="outline"
-                onClick={() =>
-                  helper(() => extrasThenEqual(input.amount, shares, places))
-                }
-              >
-                {t("extras")}
-              </Button>
-            </div>
-          </details>
-        )}
-      </div>
+        <FormActions
+          onCancel={onClose}
+          submitLabel={t("apply")}
+          isSubmitting={isSaving}
+          submitDisabled={!resolved.status.valid}
+        />
+      </form>
     </Modal>
   );
 }

@@ -15,7 +15,7 @@ import { syntheticDocumentPng } from "../helpers/document-fixture";
 import { dismissNotificationPrompt } from "../readme/session";
 import { VIDEO_VIEWPORT } from "../readme/settings";
 
-test.describe("Shared expenses", () => {
+test.describe("Shared Expenses", () => {
   test.use({ viewport: VIDEO_VIEWPORT });
 
   test.beforeEach(async ({ authedPage }) => {
@@ -37,14 +37,14 @@ test.describe("Shared expenses", () => {
       name: "Add Expense",
       exact: true,
     });
-    await editor.getByLabel("What was it for?").fill("Friday dinner");
+    await editor.getByLabel("Description").fill("Friday dinner");
     await editor.getByLabel("Amount", { exact: true }).fill("300");
     const save = editor.getByRole("button", {
-      name: "Save Expense",
+      name: "Save",
       exact: true,
     });
     await expect(save).toBeEnabled();
-    await expect(editor.getByText("Your cost", { exact: false })).toContainText(
+    await expect(editor.getByText("Your Cost", { exact: false })).toContainText(
       "100.00",
     );
     await expect(
@@ -55,7 +55,7 @@ test.describe("Shared expenses", () => {
         .entries,
     ).toHaveLength(0);
     await editor
-      .getByText("Your cost", { exact: false })
+      .getByText("Your Cost", { exact: false })
       .scrollIntoViewIfNeeded();
     await expect(
       editor.getByRole("heading", { name: "Add Expense", exact: true }),
@@ -63,6 +63,8 @@ test.describe("Shared expenses", () => {
     await expect(
       editor.getByText("Friday dinner", { exact: true }),
     ).toHaveCount(0);
+    // Standard form actions scroll with the panel instead of a pinned footer.
+    await save.scrollIntoViewIfNeeded();
     await expect(save).toBeInViewport();
     expect(
       await page.evaluate(
@@ -75,6 +77,9 @@ test.describe("Shared expenses", () => {
       animations: "disabled",
     });
     await page.setViewportSize(VIDEO_VIEWPORT);
+    await editor
+      .getByRole("heading", { name: "Add Expense", exact: true })
+      .scrollIntoViewIfNeeded();
     await page.screenshot({
       path: info.outputPath("expense-preview-desktop.png"),
       fullPage: false,
@@ -96,6 +101,15 @@ test.describe("Shared expenses", () => {
         (person) => person.participantId === group.myParticipantId,
       )?.balance,
     ).toBe("200.0000");
+    await page.goto("/shared-expenses");
+    await expect(
+      page.getByRole("row").filter({ hasText: "Dinner with friends" }),
+    ).toBeVisible();
+    await page.screenshot({
+      path: info.outputPath("groups-overview-desktop.png"),
+      fullPage: true,
+      animations: "disabled",
+    });
   });
 
   test("records an unequal split for people without accounts and keeps a partial repayment after reload", async ({
@@ -113,36 +127,33 @@ test.describe("Shared expenses", () => {
       name: "Add Expense",
       exact: true,
     });
-    await editor.getByLabel("What was it for?").fill("Dinner after the hike");
+    await editor.getByLabel("Description").fill("Dinner after the hike");
     await editor.getByLabel("Amount", { exact: true }).fill("300");
     await editor
       .getByRole("button", { name: "Change Split", exact: true })
       .click();
     const split = page.getByRole("dialog", {
-      name: "How to split",
+      name: "Split Between",
       exact: true,
     });
-    await split
-      .getByRole("button", { name: "Exact amounts", exact: true })
-      .click();
     await split.getByLabel("Share for Robert").fill("80");
     await split.getByLabel("Share for Anna").fill("110");
     await split.getByLabel("Share for Bartek").fill("110");
     await expect(
       split.getByRole("button", { name: "Apply Split" }),
     ).toBeEnabled();
+    await page.setViewportSize({ ...VIDEO_VIEWPORT, height: 1080 });
     await page.screenshot({
       path: info.outputPath("unequal-split-desktop.png"),
       fullPage: false,
       animations: "disabled",
     });
+    await page.setViewportSize(VIDEO_VIEWPORT);
     await split.getByRole("button", { name: "Apply Split" }).click();
     await expect(
-      editor.getByRole("button", { name: "Save Expense", exact: true }),
+      editor.getByRole("button", { name: "Save", exact: true }),
     ).toBeEnabled();
-    await editor
-      .getByRole("button", { name: "Save Expense", exact: true })
-      .click();
+    await editor.getByRole("button", { name: "Save", exact: true }).click();
     await expect(editor).toHaveCount(0);
     await page.reload();
     await expect(
@@ -163,7 +174,7 @@ test.describe("Shared expenses", () => {
       fullPage: true,
       animations: "disabled",
     });
-    await page.getByRole("button", { name: "Balances", exact: true }).click();
+    await page.getByRole("tab", { name: "Balances", exact: true }).click();
     await page
       .getByRole("button", { name: "Record Repayment", exact: true })
       .first()
@@ -173,9 +184,7 @@ test.describe("Shared expenses", () => {
       exact: true,
     });
     await repayment.getByLabel("Amount", { exact: true }).fill("50");
-    await repayment
-      .getByRole("button", { name: "Record Repayment", exact: true })
-      .click();
+    await repayment.getByRole("button", { name: "Save", exact: true }).click();
     await expect(repayment).toHaveCount(0);
     await page.reload();
     const after = await api.get<SharedGroupFixture>(
@@ -188,7 +197,7 @@ test.describe("Shared expenses", () => {
     ).toBe("170.0000");
     expect(after.balances.totalExpenses).toBe("300.0000");
     await page.setViewportSize({ width: 360, height: 800 });
-    await page.getByRole("button", { name: "Balances", exact: true }).click();
+    await page.getByRole("tab", { name: "Balances", exact: true }).click();
     await expect(
       page.getByRole("main").getByText("Anna", { exact: true }).first(),
     ).toBeVisible();
@@ -211,7 +220,7 @@ test.describe("Shared expenses", () => {
   }, info) => {
     const group = await createSharedGroup(api, "Summer apartment");
     await page.goto(`/shared-expenses/${group.id}`);
-    await page.getByRole("button", { name: "Files", exact: true }).click();
+    await page.getByRole("tab", { name: "Files", exact: true }).click();
     await page.getByLabel("Add attachment").setInputFiles({
       name: "Apartment booking.png",
       mimeType: "image/png",
@@ -236,7 +245,7 @@ test.describe("Shared expenses", () => {
       name: "Add Expense",
       exact: true,
     });
-    await expect(editor.getByLabel("What was it for?")).toHaveValue(
+    await expect(editor.getByLabel("Description")).toHaveValue(
       "Apartment booking",
     );
     await editor.getByRole("button", { name: "Cancel", exact: true }).click();
@@ -257,15 +266,13 @@ test.describe("Shared expenses", () => {
       .click();
     await editor.getByLabel("Amount", { exact: true }).fill("240");
     await expect(
-      editor.getByRole("button", { name: "Save Expense", exact: true }),
+      editor.getByRole("button", { name: "Save", exact: true }),
     ).toBeEnabled();
-    await editor
-      .getByRole("button", { name: "Save Expense", exact: true })
-      .click();
+    await editor.getByRole("button", { name: "Save", exact: true }).click();
     await expect(editor).toHaveCount(0);
     await page.waitForFunction(() => !window.history.state?.modal);
     await page.reload();
-    await page.getByRole("button", { name: "Files", exact: true }).click();
+    await page.getByRole("tab", { name: "Files", exact: true }).click();
     await expect(
       page.getByRole("button", { name: "Open Related Entry", exact: true }),
     ).toBeVisible();
@@ -359,9 +366,7 @@ test.describe("Shared expenses", () => {
       name: "Add Expense",
       exact: true,
     });
-    await editor
-      .getByLabel("What was it for?")
-      .fill("Coffee at the mountain hut");
+    await editor.getByLabel("Description").fill("Coffee at the mountain hut");
     await editor.getByLabel("Amount", { exact: true }).fill("60");
     await editor.getByLabel("Add attachment").setInputFiles({
       name: "Coffee receipt.png",
@@ -381,14 +386,12 @@ test.describe("Shared expenses", () => {
         } else await route.continue();
       },
     );
-    await editor
-      .getByRole("button", { name: "Save Expense", exact: true })
-      .click();
+    await editor.getByRole("button", { name: "Save", exact: true }).click();
     const pending = page.getByRole("dialog", { name: "Saved", exact: true });
     await expect(pending.getByRole("alert")).toContainText(
       "Upload interrupted",
     );
-    await expect(pending.getByLabel("What was it for?")).toHaveValue(
+    await expect(pending.getByLabel("Description")).toHaveValue(
       "Coffee at the mountain hut",
     );
     const saved = await api.get<SharedGroupFixture>(

@@ -67,7 +67,7 @@ describe("Shared expense table and filter interactions", () => {
     );
     expect(onOpen).toHaveBeenCalledWith(group.id);
   });
-  it("keeps filter controls mounted while collapsed and separates Clear from toggling", async () => {
+  it("keeps filter controls visible and preserves independent Clear and chip removal", async () => {
     const remove = vi.fn(),
       clear = vi.fn();
     await act(async () =>
@@ -88,10 +88,7 @@ describe("Shared expense table and filter interactions", () => {
       ),
     );
     const field = screen.getByLabelText("Search draft");
-    await act(async () =>
-      fireEvent.click(screen.getByRole("button", { name: /Filters.*Hide/ })),
-    );
-    expect(field).not.toBeVisible();
+    expect(field).toBeVisible();
     await act(async () =>
       fireEvent.click(
         screen.getByRole("button", { name: "Remove search filter" }),
@@ -99,17 +96,9 @@ describe("Shared expense table and filter interactions", () => {
     );
     expect(remove).toHaveBeenCalledOnce();
     await act(async () =>
-      fireEvent.click(
-        screen.getByRole("button", { name: "Clear" }),
-      ),
+      fireEvent.click(screen.getByRole("button", { name: "Clear" })),
     );
     expect(clear).toHaveBeenCalledOnce();
-    expect(
-      screen.getByRole("button", { name: /Filters.*Show/ }),
-    ).toHaveAttribute("aria-expanded", "false");
-    await act(async () =>
-      fireEvent.click(screen.getByRole("button", { name: /Filters.*Show/ })),
-    );
     expect(screen.getByLabelText("Search draft")).toBe(field);
     expect(field).toHaveValue("Coffee");
   });

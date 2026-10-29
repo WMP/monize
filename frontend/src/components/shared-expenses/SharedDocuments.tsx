@@ -4,15 +4,14 @@ import { useEffect, useState } from "react";
 import { SharedNavigationGuard } from "./SharedNavigationGuard";
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
-import { PaperClipIcon } from "@heroicons/react/24/outline";
 import { AttachmentsSection } from "@/components/transactions/AttachmentsSection";
 import {
   AttachmentPreviewDialog,
   type PreviewTarget,
 } from "@/components/transactions/AttachmentPreviewDialog";
-import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { InfoTooltip } from "@/components/ui/InfoTooltip";
+import { FormActions } from "@/components/ui/FormActions";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -159,7 +158,6 @@ export function SharedDocuments({
         message={t("pendingFilesLeave")}
         guardBack={!entryId}
       />
-      {!entryId && <SharedNotice>{t("fileHelp")}</SharedNotice>}
       <SharedError
         error={error || documents.error}
         retry={documents.error ? documents.reload : undefined}
@@ -168,38 +166,58 @@ export function SharedDocuments({
         <SharedNotice>{t("fileFailed")}</SharedNotice>
       )}
       {canWrite && allowUpload && (
-        <Card padding="sm">
-          <fieldset disabled={busy} className="space-y-3">
-            <AttachmentsSection
-              pendingHint={t("uploadHint")}
-              stagedFiles={files}
-              onStagedFilesChange={queue}
-            />
-            <div className="flex flex-wrap gap-2">
-              {files.length > 0 && (
-                <Button isLoading={busy} onClick={upload}>
-                  {t("uploadFiles")}
+        <fieldset disabled={busy} className="space-y-3">
+          <AttachmentsSection
+            pendingHint={t("uploadHint")}
+            hasSavedAttachments={
+              documents.dataKey !== key ||
+              documents.isLoading ||
+              !!documents.error ||
+              !!documents.data?.items.length
+            }
+            headerActions={
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCopy(true)}
+                >
+                  {t("copyPrivate")}
                 </Button>
-              )}
-              <Button variant="outline" onClick={() => setCopy(true)}>
-                {t("copyPrivate")}
+                <InfoTooltip text={t("fileHelp")} usePortal />
+              </>
+            }
+            stagedFiles={files}
+            onStagedFilesChange={queue}
+          />
+          <div className="flex flex-wrap gap-2">
+            {files.length > 0 && (
+              <Button type="button" isLoading={busy} onClick={upload}>
+                {t("uploadFiles")}
               </Button>
-            </div>
-          </fieldset>
-        </Card>
+            )}
+          </div>
+        </fieldset>
       )}
-      {documents.dataKey === key && documents.data?.items.length === 0 && (
-        <EmptyState
-          icon={<PaperClipIcon />}
-          title={t("files")}
-          description={entryId ? t("entryFiles") : t("fileHelp")}
-        />
-      )}
-      <div className="grid gap-3 sm:grid-cols-2">
+      {(!canWrite || !allowUpload) &&
+        documents.dataKey === key &&
+        !documents.isLoading &&
+        !documents.error &&
+        documents.data?.items.length === 0 && (
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {ta("empty")}
+          </p>
+        )}
+      <ul className="space-y-2">
         {documents.dataKey === key &&
           documents.data?.items.map((document) => (
-            <Card key={document.id} padding="sm">
+            <li
+              key={document.id}
+              className="rounded-md border border-gray-200 dark:border-gray-700 p-3"
+            >
               <button
+                type="button"
                 className="block text-left w-full min-w-0 focus-visible:ring-2 focus-visible:ring-blue-500"
                 onClick={() =>
                   setPreview({ kind: "saved", attachment: document })
@@ -223,6 +241,7 @@ export function SharedDocuments({
               </button>
               {document.sharedEntryId && onOpenEntry && (
                 <Button
+                  type="button"
                   variant="ghost"
                   size="sm"
                   onClick={() => onOpenEntry(document.sharedEntryId!)}
@@ -232,6 +251,7 @@ export function SharedDocuments({
               )}
               {!document.sharedEntryId && document.canEdit && onCreateEntry && (
                 <Button
+                  type="button"
                   variant="outline"
                   size="sm"
                   className="mt-3"
@@ -243,6 +263,7 @@ export function SharedDocuments({
               {document.canEdit && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Button
+                    type="button"
                     size="sm"
                     variant="ghost"
                     onClick={() => {
@@ -258,6 +279,7 @@ export function SharedDocuments({
                     {t("edit")}
                   </Button>
                   <Button
+                    type="button"
                     size="sm"
                     variant="ghost"
                     onClick={() => setRemove(document)}
@@ -266,12 +288,13 @@ export function SharedDocuments({
                   </Button>
                 </div>
               )}
-            </Card>
+            </li>
           ))}
-      </div>
+      </ul>
       <div className="flex flex-wrap gap-2">
         {offset > 0 && (
           <Button
+            type="button"
             variant="outline"
             onClick={() => setOffset(Math.max(0, offset - 100))}
           >
@@ -282,6 +305,7 @@ export function SharedDocuments({
           documents.data?.nextOffset !== null &&
           documents.data?.nextOffset !== undefined && (
             <Button
+              type="button"
               variant="outline"
               onClick={() => setOffset(documents.data!.nextOffset!)}
             >
@@ -300,36 +324,46 @@ export function SharedDocuments({
         <Modal
           isOpen
           title={t("renameFile")}
-          padding="md"
+          padding="none"
+          className="p-6"
           onClose={() => setEdit(null)}
-          footer={
-            <Button isLoading={busy} onClick={update}>
-              {t("save")}
-            </Button>
-          }
         >
-          <SharedError error={error} />
-          <Input
-            label={t("filename")}
-            value={filename}
-            maxLength={255}
-            onChange={(e) => setFilename(e.target.value)}
-          />
-          <Select
-            label={t("documentKind")}
-            value={kind}
-            options={DOCUMENT_KINDS.map((value) => ({
-              value,
-              label: tw(`documents.kinds.${value}`),
-            }))}
-            onChange={(e) => setKind(e.target.value as DocumentKind)}
-          />
-          <SharedDocumentDestination
-            groupId={group.id}
-            value={destination.id}
-            label={destination.title}
-            onChange={(id, title) => setDestination({ id, title })}
-          />
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              if (!busy) void update();
+            }}
+          >
+            <SharedError error={error} />
+            <Input
+              label={t("filename")}
+              value={filename}
+              maxLength={255}
+              onChange={(e) => setFilename(e.target.value)}
+            />
+            <Select
+              label={t("documentKind")}
+              value={kind}
+              options={DOCUMENT_KINDS.map((value) => ({
+                value,
+                label: tw(`documents.kinds.${value}`),
+              }))}
+              onChange={(e) => setKind(e.target.value as DocumentKind)}
+            />
+            <SharedDocumentDestination
+              groupId={group.id}
+              value={destination.id}
+              label={destination.title}
+              onChange={(id, title) => setDestination({ id, title })}
+            />
+            <FormActions
+              onCancel={() => setEdit(null)}
+              submitLabel={t("saveChanges")}
+              isSubmitting={busy}
+            />
+          </form>
         </Modal>
       )}
       <ConfirmDialog

@@ -9,31 +9,22 @@ export function SharedPositionValue({
   currency,
   personal = false,
   prominent = false,
+  hideCaption = false,
 }: {
   amount: string | null;
   currency: string;
   personal?: boolean;
   prominent?: boolean;
+  hideCaption?: boolean;
 }) {
   const t = useTranslations("sharedExpenses");
   const number = amount === null ? null : Number(amount);
-  const caption =
-    number === null
-      ? personal
-        ? "yourBalance"
-        : "positions"
-      : number === 0
-        ? "settled"
-        : number > 0
-          ? personal
-            ? "overallReceivable"
-            : "getsBack"
-          : personal
-            ? "overallPayable"
-            : "owes";
+  const caption = sharedPositionCaption(amount, personal);
   return (
     <div>
-      <p className="text-sm text-gray-500 dark:text-gray-400">{t(caption)}</p>
+      {!hideCaption && (
+        <p className="text-sm text-gray-500 dark:text-gray-400">{t(caption)}</p>
+      )}
       <p className={prominent ? "mt-1 text-2xl font-semibold" : "font-medium"}>
         <SharedAmount
           amount={number === null ? null : String(Math.abs(number))}
@@ -42,4 +33,24 @@ export function SharedPositionValue({
       </p>
     </div>
   );
+}
+
+export function sharedPositionCaption(
+  amount: string | null,
+  personal: boolean,
+) {
+  const number = amount === null ? null : Number(amount);
+  return number === null
+    ? personal
+      ? "yourBalance"
+      : "positions"
+    : number === 0
+      ? "settled"
+      : number > 0
+        ? personal
+          ? "overallReceivable"
+          : "getsBack"
+        : personal
+          ? "overallPayable"
+          : "owes";
 }

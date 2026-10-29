@@ -27,9 +27,7 @@ describe("SharedGroupForm", () => {
     await act(async () => {
       render(<SharedGroupForm onClose={onClose} onCreated={vi.fn()} />);
     });
-    expect(screen.getByLabelText("Your name in this group")).toHaveValue(
-      "Test",
-    );
+    expect(screen.getByLabelText("Your Name")).toHaveValue("Test");
     await act(async () =>
       fireEvent.click(screen.getByRole("button", { name: "Cancel" })),
     );
@@ -47,7 +45,9 @@ describe("SharedGroupForm", () => {
     await act(async () =>
       render(<SharedGroupForm onClose={onClose} onCreated={vi.fn()} />),
     );
-    const currency = screen.getByLabelText("Currency") as HTMLSelectElement;
+    const currency = screen.getByLabelText(
+      "Settlement Currency",
+    ) as HTMLSelectElement;
     fireEvent.change(currency, {
       target: { value: currency.value === "CAD" ? "USD" : "CAD" },
     });
@@ -64,17 +64,17 @@ describe("SharedGroupForm", () => {
     const onCreated = vi.fn();
     render(<SharedGroupForm onClose={vi.fn()} onCreated={onCreated} />);
     await screen.findByRole("option", { name: /Canadian dollar/ });
-    expect(screen.getByRole("button", { name: "Create Group" })).toBeDisabled();
-    fireEvent.change(screen.getByLabelText("Group name"), {
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Group Name"), {
       target: { value: " Weekend " },
     });
-    fireEvent.change(screen.getByLabelText("Your name in this group"), {
+    fireEvent.change(screen.getByLabelText("Your Name"), {
       target: { value: " Me " },
     });
     fireEvent.change(screen.getByLabelText("Person’s name"), {
       target: { value: " Anna " },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Create Group" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(onCreated).toHaveBeenCalledWith("new-group"));
     expect(sharedExpensesApi.createGroup).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -91,17 +91,17 @@ describe("SharedGroupForm", () => {
     const onCreated = vi.fn();
     render(<SharedGroupForm onClose={vi.fn()} onCreated={onCreated} />);
     await screen.findByRole("option", { name: /Canadian dollar/ });
-    fireEvent.change(screen.getByLabelText("Group name"), {
+    fireEvent.change(screen.getByLabelText("Group Name"), {
       target: { value: "Weekend" },
     });
-    fireEvent.change(screen.getByLabelText("Your name in this group"), {
+    fireEvent.change(screen.getByLabelText("Your Name"), {
       target: { value: "Me" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Create Group" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Network failed",
     );
-    fireEvent.click(screen.getByRole("button", { name: "Create Group" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(onCreated).toHaveBeenCalledOnce());
     expect(vi.mocked(sharedExpensesApi.createGroup).mock.calls[0]).toEqual(
       vi.mocked(sharedExpensesApi.createGroup).mock.calls[1],
@@ -119,13 +119,13 @@ describe("SharedGroupForm", () => {
       await screen.findByLabelText("Add someone from your people"),
       { target: { value: "contact" } },
     );
-    fireEvent.change(screen.getByLabelText("Group name"), {
+    fireEvent.change(screen.getByLabelText("Group Name"), {
       target: { value: "Weekend" },
     });
-    fireEvent.change(screen.getByLabelText("Your name in this group"), {
+    fireEvent.change(screen.getByLabelText("Your Name"), {
       target: { value: "Me" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Create Group" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() =>
       expect(sharedExpensesApi.createGroup).toHaveBeenCalledWith(
         expect.objectContaining({
