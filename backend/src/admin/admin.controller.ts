@@ -100,6 +100,21 @@ export class AdminController {
     return this.adminService.resetUserPassword(req.user.id, id);
   }
 
+  @Post(":id/unlink-sso")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      "Convert an SSO account to a local account with a temporary password (admin only)",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "SSO unlinked, returns temporary password",
+  })
+  @ApiResponse({ status: 400, description: "The user is not an SSO account" })
+  unlinkSso(@Request() req, @Param("id", ParseUUIDPipe) id: string) {
+    return this.adminService.unlinkUserSso(req.user.id, id);
+  }
+
   @Post(":id/reset-2fa")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({

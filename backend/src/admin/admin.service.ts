@@ -599,15 +599,7 @@ export class AdminService {
       );
     }
 
-    const temporaryPassword = generateReadablePassword();
-    const saltRounds = 12;
-    targetUser.passwordHash = await bcrypt.hash(temporaryPassword, saltRounds);
-    targetUser.mustChangePassword = true;
-    targetUser.resetToken = null;
-    targetUser.resetTokenExpiry = null;
-    // An admin reset is a recovery action: the temporary password must work.
-    targetUser.failedLoginAttempts = 0;
-    targetUser.lockedUntil = null;
+    const temporaryPassword = await this.applyTemporaryPassword(targetUser);
     // The new password, its PATs and its trusted devices are one commit: a
     // reset whose revocation fails leaves the old password in place rather than
     // a new password with the old credentials still live (INV-AUTH-005).
@@ -618,6 +610,80 @@ export class AdminService {
 
     // SECURITY: then every refresh session and OIDC artifact, so the forced
     // password change applies everywhere — web, CLI/API, and MCP.
+    await this.endSessionsAfterCommit(targetUserId);
+
+    return { temporaryPassword };
+  }
+
+  /** Give `user` a fresh readable password, forced change, and no reset token or lockout. */
+  private async applyTemporaryPassword(user: User): Promise<string> {
+    const temporaryPassword = generateReadablePassword();
+    const saltRounds = 12;
+    user.passwordHash = await bcrypt.hash(temporaryPassword, saltRounds);
+    user.mustChangePassword = true;
+    user.resetToken = null;
+    user.resetTokenExpiry = null;
+    // An admin reset is a recovery action: the temporary password must work.
+    user.failedLoginAttempts = 0;
+    user.lockedUntil = null;
+    return temporaryPassword;
+  }
+
+  /**
+   * Convert an SSO account back to a local one with a temporary password, so
+   * the person can sign in while the IdP is down or SSO is not wanted for them.
+   * TOTP fields stay as they are (`resetUserTwoFactor` is the recovery for a
+   * lost device). A backup key wrapped under the old password goes stale as on
+   * an admin reset, and `resolveBackupKey` drops it and re-makes it at the next
+   * login.
+   */
+  async unlinkUserSso(
+    adminId: string,
+    targetUserId: string,
+  ): Promise<{ temporaryPassword: string }> {
+    return withSystemContext(() =>
+      this.unlinkUserSsoWithinContext(adminId, targetUserId),
+    );
+  }
+
+  private async unlinkUserSsoWithinContext(
+    adminId: string,
+    targetUserId: string,
+  ): Promise<{ temporaryPassword: string }> {
+    if (adminId === targetUserId) {
+      throw new ForbiddenException(
+        tr(
+          "errors.admin.cannotUnlinkOwnSso",
+          "You cannot unlink your own SSO account through the admin panel",
+        ),
+      );
+    }
+
+    const targetUser = await withScopedDb(this.dataSource, (manager) =>
+      manager.getRepository(User).findOne({ where: { id: targetUserId } }),
+    );
+    if (!targetUser) {
+      throw new NotFoundException(
+        tr("errors.admin.userNotFound", "User not found"),
+      );
+    }
+    if (targetUser.authProvider !== "oidc") {
+      throw new BadRequestException(
+        tr("errors.admin.notSsoAccount", "This account is not an SSO account"),
+      );
+    }
+
+    targetUser.authProvider = "local";
+    targetUser.oidcSubject = null;
+    targetUser.pendingOidcSubject = null;
+    targetUser.oidcLinkPending = false;
+    targetUser.oidcLinkToken = null;
+    targetUser.oidcLinkExpiresAt = null;
+    const temporaryPassword = await this.applyTemporaryPassword(targetUser);
+    await withScopedDb(this.dataSource, async (manager) => {
+      await manager.getRepository(User).save(targetUser);
+      await this.revokeStandingAccess(manager, targetUserId);
+    });
     await this.endSessionsAfterCommit(targetUserId);
 
     return { temporaryPassword };

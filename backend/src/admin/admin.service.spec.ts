@@ -960,4 +960,69 @@ describe("AdminService", () => {
       ).rejects.toThrow(BadRequestException);
     });
   });
+
+  describe("unlinkUserSso", () => {
+    const ssoUser = () => ({
+      ...mockTargetUser,
+      authProvider: "oidc",
+      passwordHash: null,
+      oidcSubject: "sub-1",
+      pendingOidcSubject: "sub-2",
+      oidcLinkPending: true,
+      oidcLinkToken: "tok",
+      oidcLinkExpiresAt: new Date(),
+    });
+
+    it("converts to a local account with a temporary password and revokes like reset", async () => {
+      usersRepository.findOne.mockResolvedValue(ssoUser());
+
+      const result = await service.unlinkUserSso("admin-1", "user-2");
+
+      expect(result.temporaryPassword.length).toBeGreaterThan(8);
+      const saved = usersRepository.save.mock.calls[0][0];
+      expect(saved.authProvider).toBe("local");
+      expect(saved.oidcSubject).toBeNull();
+      expect(saved.pendingOidcSubject).toBeNull();
+      expect(saved.oidcLinkPending).toBe(false);
+      expect(saved.oidcLinkToken).toBeNull();
+      expect(saved.oidcLinkExpiresAt).toBeNull();
+      expect(saved.mustChangePassword).toBe(true);
+      expect(saved.passwordHash).not.toBe(result.temporaryPassword);
+      expect(patRepository.update).toHaveBeenCalledWith(
+        { userId: "user-2", isRevoked: false },
+        { isRevoked: true },
+      );
+      expect(trustedDevicesRepository.delete).toHaveBeenCalledWith({
+        userId: "user-2",
+      });
+      expect(refreshTokensRepository.update).toHaveBeenCalledWith(
+        { userId: "user-2", isRevoked: false },
+        { isRevoked: true },
+      );
+      expect(oauthProviderService.revokeAllForUser).toHaveBeenCalledWith(
+        "user-2",
+      );
+    });
+
+    it("refuses to unlink the caller's own account", async () => {
+      await expect(service.unlinkUserSso("admin-1", "admin-1")).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it("throws NotFoundException when user not found", async () => {
+      usersRepository.findOne.mockResolvedValue(null);
+      await expect(
+        service.unlinkUserSso("admin-1", "nonexistent"),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("throws BadRequestException for a non-SSO account and writes nothing", async () => {
+      usersRepository.findOne.mockResolvedValue({ ...mockTargetUser });
+      await expect(service.unlinkUserSso("admin-1", "user-2")).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(usersRepository.save).not.toHaveBeenCalled();
+    });
+  });
 });
