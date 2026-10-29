@@ -82,13 +82,20 @@ import {
   NotificationSeverity,
   NotificationType,
 } from "../notification-center/entities/notification.entity";
-import { lockAccountsForBalanceWrite } from "../common/db/locks";
+import {
+  acquireAdvisoryLocks,
+  LockScope,
+  lockAccountsForBalanceWrite,
+} from "../common/db/locks";
 import { withScopedDb } from "../common/db/scoped-db";
 import { returnedRows } from "../common/db/query-result";
 import { validateSplitAmountSum } from "../common/split-amount.util";
 import { roundMoney, sumMoney } from "../common/round.util";
 import { PayrollDeductionRule } from "../payroll-deductions/entities/payroll-deduction-rule.entity";
-import { applyPayrollDeductionCaps } from "../payroll-deductions/payroll-deduction-cap";
+import {
+  applyPayrollDeductionCaps,
+  loadPooledPeerRules,
+} from "../payroll-deductions/payroll-deduction-cap";
 import {
   loadScheduledPayrollDeductions,
   ScheduledPayrollDeduction,
@@ -3783,6 +3790,23 @@ export class ScheduledTransactionsService {
         const rules = await m
           .getRepository(PayrollDeductionRule)
           .find({ where: { scheduledTransactionId: id, userId } });
+        // Two bills on one category draw down one maximum: queue behind
+        // the other poster before the paid figure is read. The schedule row
+        // is already locked; every payroll poster takes the two in that
+        // order, so they cannot cross (docs/concurrency-and-idempotency.md).
+        const categoryIds = [...new Set(rules.map((r) => r.categoryId))];
+        await acquireAdvisoryLocks(
+          m,
+          LockScope.PayrollCategory,
+          categoryIds.map((c) => `${userId}:${c}`),
+        );
+        const peers = await loadPooledPeerRules(
+          m,
+          userId,
+          id,
+          categoryIds,
+          current.currencyCode,
+        );
         const capped = await applyPayrollDeductionCaps(
           m,
           userId,
@@ -3790,6 +3814,7 @@ export class ScheduledTransactionsService {
           current.currencyCode,
           postDate,
           transactionPayload.splits as any[],
+          peers,
         );
         if (capped.changed) {
           transactionPayload.splits = capped.splits;

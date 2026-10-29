@@ -508,5 +508,37 @@ describe("CustomReportViewer", () => {
       expect(screen.queryByTestId("partial-total")).not.toBeInTheDocument();
       expect(screen.queryByTestId("partial-data-notice")).not.toBeInTheDocument();
     });
+
+    it("formats the count metric's headline as a number, not money", async () => {
+      mockGetById.mockResolvedValue({
+        ...savedReport,
+        config: { ...savedReport.config, metric: "COUNT" },
+      });
+      mockExecute.mockResolvedValue({
+        ...executed,
+        summary: { total: 42, knownTotal: 42, count: 42, average: 1 },
+        missingCurrencies: [],
+        excludedCount: 0,
+      });
+      render(<CustomReportViewer reportId="rpt-1" />);
+
+      await screen.findByText("42");
+      expect(screen.queryByText("$42.00")).not.toBeInTheDocument();
+    });
+
+    it("shows the truncation notice and marks the withheld total partial", async () => {
+      mockGetById.mockResolvedValue(savedReport);
+      mockExecute.mockResolvedValue({
+        ...executed,
+        summary: { total: null, knownTotal: 200, count: 1, average: null },
+        missingCurrencies: [],
+        excludedCount: 0,
+        truncated: true,
+      });
+      render(<CustomReportViewer reportId="rpt-1" />);
+
+      expect(await screen.findByTestId("truncated-notice")).toBeInTheDocument();
+      expect(screen.getByTestId("partial-total")).toHaveTextContent("$200.00");
+    });
   });
 });

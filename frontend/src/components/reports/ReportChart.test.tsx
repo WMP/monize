@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, act } from '@/test/render';
 import { ReportChart } from './ReportChart';
-import { ReportViewType, GroupByType, TableColumn } from '@/types/custom-report';
+import { ReportViewType, GroupByType, TableColumn, MetricType } from '@/types/custom-report';
 
 vi.mock('@/hooks/useNumberFormat', async () => {
   const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
@@ -428,6 +428,51 @@ describe('ReportChart', () => {
       fireEvent.click(csvBtn);
     }
     expect(exportToCsv).toHaveBeenCalled();
+  });
+
+  it('exports the pdf with formatted cells, a cent-exact total and a partial marker', async () => {
+    const { exportToPdf } = await import('@/lib/pdf-export');
+    (exportToPdf as any).mockClear();
+    render(
+      <ReportChart
+        viewType={ReportViewType.TABLE}
+        data={[
+          { label: 'A', value: 0.1, count: 1, id: 'a', percentage: 50 },
+          { label: 'B', value: 0.2, count: 2, id: 'b', percentage: 50 },
+        ]}
+        groupBy={GroupByType.CATEGORY}
+        tableColumns={[TableColumn.LABEL, TableColumn.VALUE, TableColumn.PERCENTAGE, TableColumn.COUNT]}
+        partialTotal={{ value: 0.3, missingCurrencies: ['JPY'], excludedCount: 1 }}
+      />
+    );
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /export/i })); });
+    await act(async () => { fireEvent.click(screen.getByText(/PDF/i)); });
+
+    const { tableData } = (exportToPdf as any).mock.calls[0][0];
+    expect(tableData.rows[0]).toEqual(['A', '$0.10', '50.0%', '1']);
+    // 0.1 + 0.2 is 0.30000000000000004 as a float.
+    expect(tableData.totalRow[1]).toBe('$0.30 (partial)');
+  });
+
+  it('prints the count metric as a number and the server headline in the total row', async () => {
+    const { exportToPdf } = await import('@/lib/pdf-export');
+    (exportToPdf as any).mockClear();
+    render(
+      <ReportChart
+        viewType={ReportViewType.TABLE}
+        data={[{ label: 'A', value: 3, count: 3, id: 'a' }]}
+        groupBy={GroupByType.CATEGORY}
+        tableColumns={[TableColumn.LABEL, TableColumn.VALUE]}
+        metric={MetricType.COUNT}
+        totalRowValue={7}
+      />
+    );
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /export/i })); });
+    await act(async () => { fireEvent.click(screen.getByText(/PDF/i)); });
+
+    const { tableData } = (exportToPdf as any).mock.calls[0][0];
+    expect(tableData.rows[0][1]).toBe('3');
+    expect(tableData.totalRow[1]).toBe('7');
   });
 
   it('exports pdf with DATE-only label fallback in totalRow', async () => {
