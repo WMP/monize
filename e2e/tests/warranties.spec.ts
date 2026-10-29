@@ -207,7 +207,10 @@ test.describe('Warranties', () => {
       await expect(dialog).toBeVisible({ timeout: 2000 });
     }).toPass({ timeout: 30000 });
 
-    await dialog.getByLabel('CSV file').setInputFiles({
+    // Exact: the dialog's description is an InfoTooltip whose accessible name
+    // is the sentence "A CSV file in Warracker's columns...", which a
+    // substring match on "CSV file" would also reach.
+    await dialog.getByLabel('CSV file', { exact: true }).setInputFiles({
       name: 'warracker.csv',
       mimeType: 'text/csv',
       buffer: Buffer.from(csv, 'utf8'),
