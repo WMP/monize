@@ -25,6 +25,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { SummaryCard, SummaryIcons } from '@/components/ui/SummaryCard';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { CARD_CLASS } from '@/components/ui/Card';
+import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
 import { useFormModal } from '@/hooks/useFormModal';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { createLogger } from '@/lib/logger';
@@ -241,6 +242,12 @@ function InstitutionsContent() {
     (sum, i) => sum + (i.accountCount || 0),
     0,
   );
+  let activeAccountsCount = 0;
+  let closedAccountsCount = 0;
+  for (const counts of accountCountByStatus.values()) {
+    activeAccountsCount += counts.active;
+    closedAccountsCount += counts.closed;
+  }
 
   return (
     <PageLayout>
@@ -248,6 +255,7 @@ function InstitutionsContent() {
         <PageHeader
           title={t('page.title')}
           subtitle={t('page.subtitle')}
+          helpUrl="https://github.com/kenlasko/monize/wiki/Accounts#financial-institutions"
           actions={<Button onClick={openCreate}>{t('page.newInstitution')}</Button>}
         />
 
@@ -270,48 +278,31 @@ function InstitutionsContent() {
           />
         </div>
 
-        <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="mb-6 flex flex-wrap items-center gap-4">
           <input
             type="text"
             placeholder={t('page.searchPlaceholder')}
+            aria-label={t('page.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="block w-full sm:max-w-md rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400"
+            className="block w-full sm:w-auto sm:flex-1 sm:max-w-md rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400"
           />
-          <div className="inline-flex rounded-md shadow-sm">
-            <button
-              type="button"
-              onClick={() => handleFilterStatusChange('')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-l-md border ${
-                filterStatus === ''
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-              }`}
-            >
-              {t('list.statusFilter.all')}
-            </button>
-            <button
-              type="button"
-              onClick={() => handleFilterStatusChange('active')}
-              className={`px-3 py-1.5 text-sm font-medium border-t border-b ${
-                filterStatus === 'active'
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-              }`}
-            >
-              {t('list.statusFilter.active')}
-            </button>
-            <button
-              type="button"
-              onClick={() => handleFilterStatusChange('closed')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-r-md border ${
-                filterStatus === 'closed'
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-              }`}
-            >
-              {t('list.statusFilter.closed')}
-            </button>
+          {/* The filter keeps every institution and narrows the Accounts
+              column, so each segment counts the accounts it shows. */}
+          <div role="group" aria-label={t('list.statusFilter.label')} className={SEGMENTED_GROUP_CLASS}>
+            {(['', 'active', 'closed'] as const).map((status) => (
+              <button
+                key={status || 'all'}
+                type="button"
+                onClick={() => handleFilterStatusChange(status)}
+                aria-pressed={filterStatus === status}
+                className={segmentClass(filterStatus === status)}
+              >
+                {status === 'active' ? t('list.statusFilter.active', { count: activeAccountsCount }) :
+                 status === 'closed' ? t('list.statusFilter.closed', { count: closedAccountsCount }) :
+                 t('list.statusFilter.all', { count: linkedAccountsCount })}
+              </button>
+            ))}
           </div>
         </div>
 
