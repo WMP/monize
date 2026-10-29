@@ -483,7 +483,8 @@ describe("SecurityDetailService", () => {
     it("separates invested, sold, income and fees by action", async () => {
       const { activity } = await getDetail();
 
-      expect(activity.totalInvested).toBe(6000);
+      // Stored total, commission included: 6,005, not 60 x 100.
+      expect(activity.totalInvested).toBe(6005);
       expect(activity.totalSold).toBe(2497);
       // Dividend plus interest; both are income, not a change of position.
       expect(activity.dividends).toBe(130.75);
@@ -516,6 +517,56 @@ describe("SecurityDetailService", () => {
 
       const { activity } = await getDetail();
       expect(activity.totalInvested).toBe(400);
+    });
+
+    it("nets a transfer out against its transfer in", async () => {
+      given({
+        transactions: [
+          historyTransaction({
+            action: InvestmentAction.BUY,
+            quantity: 10,
+            price: 100,
+            totalAmount: 1010,
+            commission: 10,
+          }),
+          historyTransaction({
+            id: "tx-out",
+            action: InvestmentAction.TRANSFER_OUT,
+            quantity: 10,
+            price: 101,
+            totalAmount: 0,
+            commission: 0,
+          }),
+          historyTransaction({
+            id: "tx-in",
+            action: InvestmentAction.TRANSFER_IN,
+            quantity: 10,
+            price: 101,
+            totalAmount: 0,
+            commission: 0,
+          }),
+        ],
+      });
+
+      const { activity } = await getDetail();
+      expect(activity.totalInvested).toBe(1010);
+    });
+
+    it("reports invested capital as unknown when an acquisition has no price", async () => {
+      given({
+        transactions: [
+          historyTransaction({
+            action: InvestmentAction.BUY,
+            quantity: 10,
+            price: null,
+            totalAmount: 0,
+            commission: 0,
+          }),
+        ],
+      });
+
+      const { activity } = await getDetail();
+      expect(activity.totalInvested).toBeNull();
     });
 
     it("counts a reinvested distribution as income at its shares' cost", async () => {

@@ -3,6 +3,7 @@ import { roundMoney, roundToDecimals, sumMoney } from "../common/round.util";
 import { Security } from "./entities/security.entity";
 import { InvestmentAction } from "./entities/investment-transaction.entity";
 import {
+  acquisitionCost,
   baseInvestmentAction,
   investmentIncomeAmount,
 } from "./investment-replay.util";
@@ -75,7 +76,8 @@ export interface SecurityDetailActivity {
   firstTransactionDate: string | null;
   lastTransactionDate: string | null;
   /** Cost of every acquiring leg (buys, reinvestments, transfers in). */
-  totalInvested: number;
+  /** Null when an acquiring or transferring row has no price to state its cost. */
+  totalInvested: number | null;
   /** Cash taken out on SELL legs, commission deducted. */
   totalSold: number;
   /** Dividends, interest and distributed capital gains received. */
@@ -347,6 +349,38 @@ export class SecurityDetailService {
     });
   }
 
+  /**
+   * What was put in: the executed cost of every acquisition, commission
+   * included (`acquisitionCost`, stored total first). A transfer moves shares
+   * between accounts and is no new capital, so an OUT leg takes off what its IN
+   * leg adds. A row that cannot state its cost makes the total unknown, never
+   * zero.
+   */
+  private totalInvested(
+    effects: readonly SecurityHistoryTransaction[],
+  ): number | null {
+    const parts: number[] = [];
+    for (const tx of effects) {
+      const action = baseInvestmentAction(tx.action) as InvestmentAction;
+      const sign =
+        action === InvestmentAction.TRANSFER_OUT
+          ? -1
+          : ACQUIRING_ACTIONS.has(action)
+            ? 1
+            : 0;
+      if (sign === 0) continue;
+      const cost = acquisitionCost({
+        quantity: Math.abs(Number(tx.quantity) || 0),
+        price: tx.price,
+        commission: tx.commission,
+        totalAmount: tx.totalAmount,
+      });
+      if (cost === null) return null;
+      parts.push(sign * cost);
+    }
+    return sumMoney(parts);
+  }
+
   private buildActivity(
     securityId: string,
     transactions: readonly SecurityHistoryTransaction[],
@@ -386,18 +420,7 @@ export class SecurityDetailService {
       // Cost, not cash out: `totalAmount` is zero on reinvestments and transfers
       // in, which still acquire shares and still add to cost basis, so summing
       // it would report nothing invested beside a real cost basis.
-      totalInvested: sumMoney(
-        effects
-          .filter((tx) =>
-            ACQUIRING_ACTIONS.has(
-              baseInvestmentAction(tx.action) as InvestmentAction,
-            ),
-          )
-          .map(
-            (tx) =>
-              Math.abs(Number(tx.quantity) || 0) * (Number(tx.price) || 0),
-          ),
-      ),
+      totalInvested: this.totalInvested(effects),
       // Base-normalized: a CD/bond redemption is a sale, and the term'd gain
       // distributions are income; the raw action only refines the kind.
       totalSold: amountsFor(

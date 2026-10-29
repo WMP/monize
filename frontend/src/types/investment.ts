@@ -661,7 +661,8 @@ export interface SecurityDetailPosition {
 export interface SecurityDetailActivity {
   firstTransactionDate: string | null;
   lastTransactionDate: string | null;
-  totalInvested: number;
+  /** Null when an acquiring row has no price to state its cost. */
+  totalInvested: number | null;
   totalSold: number;
   dividends: number;
   fees: number;

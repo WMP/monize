@@ -24,6 +24,7 @@ import { Holding } from "../securities/entities/holding.entity";
 import { Security } from "../securities/entities/security.entity";
 import { Account } from "../accounts/entities/account.entity";
 import { roundMoney } from "../common/round.util";
+import { FALLBACK_DEFAULT_CURRENCY } from "../common/default-currency.util";
 
 export interface HistoricalStats {
   /** Number of full calendar years of data used to compute the stats. */
@@ -720,7 +721,7 @@ export class MonteCarloService {
       grouped.get(h.accountId)!.push({
         symbol: h.security?.symbol ?? "?",
         name: h.security?.name ?? "Unknown",
-        currencyCode: h.security?.currencyCode ?? "USD",
+        currencyCode: h.security?.currencyCode || FALLBACK_DEFAULT_CURRENCY,
         quantity: Number(h.quantity),
         marketValue:
           price == null ? null : roundMoney(Number(h.quantity) * price),
