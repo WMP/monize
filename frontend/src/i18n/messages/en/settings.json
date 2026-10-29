@@ -104,6 +104,8 @@
       "noDevices": "No trusted devices. When you check \"Don't ask again on this browser\" during 2FA login, the device will appear here.",
       "currentBadge": "Current",
       "revokeButton": "Revoke",
+      "ipAddress": "IP: {ip}",
+      "dates": "Added {added} · Last used {lastUsed} · Expires {expires}",
       "revokeAllModal": {
         "title": "Revoke All Trusted Devices",
         "description": "This will remove all trusted devices. You will need to enter your 2FA code on your next login from any device."
