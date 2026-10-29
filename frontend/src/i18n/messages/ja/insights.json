@@ -5,7 +5,21 @@
   },
   "list": {
     "refreshButton": "インサイトを更新",
+    "refreshAge": "({time})",
+    "summary": {
+      "active": "有効なインサイト",
+      "alerts": "アラート",
+      "warnings": "警告"
+    },
     "allTypes": "すべての種類",
+    "typeFilterLabel": "種類",
+    "severityFilterLabel": "重要度",
+    "severityFilter": {
+      "all": "すべて ({count})",
+      "alert": "アラート ({count})",
+      "warning": "警告 ({count})",
+      "info": "情報 ({count})"
+    },
     "showDismissed": "非表示にしたものを表示",
     "emptyNoInsights": "インサイトはまだ生成されていません。「インサイトを更新」をクリックして支出パターンを分析してください。",
     "emptyFiltered": "現在のフィルターに一致するインサイトはありません。",

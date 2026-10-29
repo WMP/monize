@@ -24,6 +24,7 @@
     "postTransaction": "過帳此交易",
     "manual": "手動",
     "negativeBalanceWarning": "此交易將導致科目結餘低於零",
+    "negativeBalanceLegend": "會使帳戶餘額低於零",
     "moreItems": "+{count} 更多",
     "overdue": "已逾期",
     "today": "今天",
@@ -109,9 +110,9 @@
     "refreshPrices": "更新價格",
     "viewPortfolio": "查看投資組合",
     "filter": {
-      "all": "全部",
-      "gainers": "上漲",
-      "losers": "下跌",
+      "all": "全部 ({count})",
+      "gainers": "上漲 ({count})",
+      "losers": "下跌 ({count})",
       "label": "方向"
     },
     "metric": {

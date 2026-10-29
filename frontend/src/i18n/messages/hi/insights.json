@@ -5,7 +5,21 @@
   },
   "list": {
     "refreshButton": "अंतर्दृष्टि रीफ्रेश करें",
+    "refreshAge": "({time})",
+    "summary": {
+      "active": "सक्रिय अंतर्दृष्टि",
+      "alerts": "चेतावनियाँ",
+      "warnings": "सावधानियाँ"
+    },
     "allTypes": "सभी प्रकार",
+    "typeFilterLabel": "प्रकार",
+    "severityFilterLabel": "गंभीरता",
+    "severityFilter": {
+      "all": "सभी ({count})",
+      "alert": "चेतावनियाँ ({count})",
+      "warning": "सावधानियाँ ({count})",
+      "info": "जानकारी ({count})"
+    },
     "showDismissed": "खारिज की गई दिखाएं",
     "emptyNoInsights": "अभी तक कोई अंतर्दृष्टि नहीं उत्पन्न हुई। अपने व्यय पैटर्न का विश्लेषण करने के लिए \"अंतर्दृष्टि रीफ्रेश करें\" पर क्लिक करें।",
     "emptyFiltered": "आपके वर्तमान फ़िल्टर से कोई अंतर्दृष्टि मेल नहीं खाती।",

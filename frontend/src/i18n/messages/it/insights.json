@@ -5,7 +5,21 @@
   },
   "list": {
     "refreshButton": "Aggiorna analisi",
+    "refreshAge": "({time})",
+    "summary": {
+      "active": "Analisi attive",
+      "alerts": "Avvisi",
+      "warnings": "Avvertimenti"
+    },
     "allTypes": "Tutti i tipi",
+    "typeFilterLabel": "Tipo",
+    "severityFilterLabel": "Gravità",
+    "severityFilter": {
+      "all": "Tutte ({count})",
+      "alert": "Avvisi ({count})",
+      "warning": "Avvertimenti ({count})",
+      "info": "Info ({count})"
+    },
     "showDismissed": "Mostra ignorati",
     "emptyNoInsights": "Nessuna analisi generata. Clicca su \"Aggiorna analisi\" per analizzare i tuoi modelli di spesa.",
     "emptyFiltered": "Nessuna analisi corrisponde ai filtri attuali.",

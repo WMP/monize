@@ -5,7 +5,21 @@
   },
   "list": {
     "refreshButton": "重新整理洞察",
+    "refreshAge": "({time})",
+    "summary": {
+      "active": "有效洞察",
+      "alerts": "警示",
+      "warnings": "警告"
+    },
     "allTypes": "所有類型",
+    "typeFilterLabel": "類型",
+    "severityFilterLabel": "嚴重程度",
+    "severityFilter": {
+      "all": "全部 ({count})",
+      "alert": "警示 ({count})",
+      "warning": "警告 ({count})",
+      "info": "資訊 ({count})"
+    },
     "showDismissed": "顯示已關閉",
     "emptyNoInsights": "尚未生成任何洞察。點擊「重新整理洞察」以分析您的消費模式。",
     "emptyFiltered": "沒有符合目前篩選條件的洞察。",

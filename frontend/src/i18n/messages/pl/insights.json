@@ -5,7 +5,21 @@
   },
   "list": {
     "refreshButton": "Odśwież analizę",
+    "refreshAge": "({time})",
+    "summary": {
+      "active": "Aktywne analizy",
+      "alerts": "Alerty",
+      "warnings": "Ostrzeżenia"
+    },
     "allTypes": "Wszystkie typy",
+    "typeFilterLabel": "Typ",
+    "severityFilterLabel": "Ważność",
+    "severityFilter": {
+      "all": "Wszystkie ({count})",
+      "alert": "Alerty ({count})",
+      "warning": "Ostrzeżenia ({count})",
+      "info": "Informacje ({count})"
+    },
     "showDismissed": "Pokaż odrzucone",
     "emptyNoInsights": "Nie wygenerowano jeszcze żadnej analizy. Kliknij \"Odśwież analizę\", aby przeanalizować wzorce wydatków.",
     "emptyFiltered": "Żadna analiza nie pasuje do bieżących filtrów.",

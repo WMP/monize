@@ -5,7 +5,21 @@
   },
   "list": {
     "refreshButton": "Làm mới thông tin",
+    "refreshAge": "({time})",
+    "summary": {
+      "active": "Thông tin chi tiết đang hoạt động",
+      "alerts": "Cảnh báo",
+      "warnings": "Lưu ý"
+    },
     "allTypes": "Tất cả loại",
+    "typeFilterLabel": "Loại",
+    "severityFilterLabel": "Mức độ",
+    "severityFilter": {
+      "all": "Tất cả ({count})",
+      "alert": "Cảnh báo ({count})",
+      "warning": "Lưu ý ({count})",
+      "info": "Thông tin ({count})"
+    },
     "showDismissed": "Hiển thị đã ẩn",
     "emptyNoInsights": "Chưa có thông tin nào được tạo. Nhấn \"Làm mới thông tin\" để phân tích xu hướng chi tiêu của bạn.",
     "emptyFiltered": "Không có thông tin nào khớp với bộ lọc hiện tại của bạn.",

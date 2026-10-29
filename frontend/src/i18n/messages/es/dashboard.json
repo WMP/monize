@@ -24,6 +24,7 @@
     "postTransaction": "Registrar esta transacción",
     "manual": "Manual",
     "negativeBalanceWarning": "Esta transacción hará que el saldo de la cuenta quede en negativo",
+    "negativeBalanceLegend": "Deja su cuenta por debajo de cero",
     "moreItems": "+{count} más",
     "overdue": "Vencida",
     "today": "Hoy",
@@ -109,9 +110,9 @@
     "refreshPrices": "Actualizar precios",
     "viewPortfolio": "Ver cartera",
     "filter": {
-      "all": "Todas",
-      "gainers": "Ganadoras",
-      "losers": "Perdedoras",
+      "all": "Todas ({count})",
+      "gainers": "Ganadoras ({count})",
+      "losers": "Perdedoras ({count})",
       "label": "Dirección"
     },
     "metric": {

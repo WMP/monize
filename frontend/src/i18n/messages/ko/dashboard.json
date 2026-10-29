@@ -24,6 +24,7 @@
     "postTransaction": "이 거래 등록",
     "manual": "수동",
     "negativeBalanceWarning": "이 거래로 인해 계정 잔액이 0 미만이 됩니다",
+    "negativeBalanceLegend": "계좌 잔액이 0 미만이 됩니다",
     "moreItems": "+{count}개 더",
     "overdue": "연체",
     "today": "오늘",
@@ -109,9 +110,9 @@
     "refreshPrices": "가격 새로고침",
     "viewPortfolio": "포트폴리오 보기",
     "filter": {
-      "all": "전체",
-      "gainers": "상승 종목",
-      "losers": "하락 종목",
+      "all": "전체 ({count})",
+      "gainers": "상승 종목 ({count})",
+      "losers": "하락 종목 ({count})",
       "label": "방향"
     },
     "metric": {

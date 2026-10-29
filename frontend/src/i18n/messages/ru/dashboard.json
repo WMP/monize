@@ -24,6 +24,7 @@
     "postTransaction": "Провести эту проводку",
     "manual": "Вручную",
     "negativeBalanceWarning": "Эта проводка приведёт к тому, что остаток по счёту уйдёт в минус",
+    "negativeBalanceLegend": "Уводит баланс счёта ниже нуля",
     "moreItems": "+{count} ещё",
     "overdue": "Просрочено",
     "today": "Сегодня",
@@ -109,9 +110,9 @@
     "refreshPrices": "Обновить цены",
     "viewPortfolio": "Просмотреть портфель",
     "filter": {
-      "all": "Все",
-      "gainers": "Растущие",
-      "losers": "Падающие",
+      "all": "Все ({count})",
+      "gainers": "Растущие ({count})",
+      "losers": "Падающие ({count})",
       "label": "Направление"
     },
     "metric": {

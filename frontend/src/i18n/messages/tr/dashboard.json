@@ -24,6 +24,7 @@
     "postTransaction": "Bu işlemi kaydet",
     "manual": "Manuel",
     "negativeBalanceWarning": "Bu işlem hesap bakiyesinin sıfırın altına düşmesine yol açacak",
+    "negativeBalanceLegend": "Hesabının bakiyesini sıfırın altına düşürür",
     "moreItems": "+{count} daha",
     "overdue": "Vadesi geçmiş",
     "today": "Bugün",
@@ -109,9 +110,9 @@
     "refreshPrices": "Fiyatları yenile",
     "viewPortfolio": "Portföyü görüntüle",
     "filter": {
-      "all": "Tümü",
-      "gainers": "Kazananlar",
-      "losers": "Kaybedenler",
+      "all": "Tümü ({count})",
+      "gainers": "Kazananlar ({count})",
+      "losers": "Kaybedenler ({count})",
       "label": "Yön"
     },
     "metric": {

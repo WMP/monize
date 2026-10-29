@@ -5,7 +5,21 @@
   },
   "list": {
     "refreshButton": "Insights aktualisieren",
+    "refreshAge": "({time})",
+    "summary": {
+      "active": "Aktive Insights",
+      "alerts": "Alarme",
+      "warnings": "Warnungen"
+    },
     "allTypes": "Alle Typen",
+    "typeFilterLabel": "Typ",
+    "severityFilterLabel": "Schweregrad",
+    "severityFilter": {
+      "all": "Alle ({count})",
+      "alert": "Alarme ({count})",
+      "warning": "Warnungen ({count})",
+      "info": "Info ({count})"
+    },
     "showDismissed": "Ausgeblendete anzeigen",
     "emptyNoInsights": "Noch keine Insights generiert. Klicken Sie auf \"Insights aktualisieren\", um Ihre Ausgabenmuster zu analysieren.",
     "emptyFiltered": "Keine Insights entsprechen Ihren aktuellen Filtern.",

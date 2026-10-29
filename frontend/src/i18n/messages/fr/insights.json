@@ -5,7 +5,21 @@
   },
   "list": {
     "refreshButton": "Actualiser les analyses",
+    "refreshAge": "({time})",
+    "summary": {
+      "active": "Analyses actives",
+      "alerts": "Alertes",
+      "warnings": "Avertissements"
+    },
     "allTypes": "Tous les types",
+    "typeFilterLabel": "Type",
+    "severityFilterLabel": "Gravité",
+    "severityFilter": {
+      "all": "Toutes ({count})",
+      "alert": "Alertes ({count})",
+      "warning": "Avertissements ({count})",
+      "info": "Info ({count})"
+    },
     "showDismissed": "Afficher les éléments ignorés",
     "emptyNoInsights": "Aucune analyse générée. Cliquez sur « Actualiser les analyses » pour analyser vos habitudes de dépenses.",
     "emptyFiltered": "Aucune analyse ne correspond à vos filtres.",

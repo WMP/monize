@@ -24,6 +24,7 @@
     "postTransaction": "过账此交易",
     "manual": "手动",
     "negativeBalanceWarning": "此交易将导致账户余额低于零",
+    "negativeBalanceLegend": "会使账户余额低于零",
     "moreItems": "+{count} 条",
     "overdue": "已逾期",
     "today": "今天",
@@ -109,9 +110,9 @@
     "refreshPrices": "刷新价格",
     "viewPortfolio": "查看投资组合",
     "filter": {
-      "all": "全部",
-      "gainers": "上涨",
-      "losers": "下跌",
+      "all": "全部 ({count})",
+      "gainers": "上涨 ({count})",
+      "losers": "下跌 ({count})",
       "label": "方向"
     },
     "metric": {

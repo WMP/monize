@@ -5,7 +5,21 @@
   },
   "list": {
     "refreshButton": "Inzichten vernieuwen",
+    "refreshAge": "({time})",
+    "summary": {
+      "active": "Actieve inzichten",
+      "alerts": "Meldingen",
+      "warnings": "Waarschuwingen"
+    },
     "allTypes": "Alle typen",
+    "typeFilterLabel": "Type",
+    "severityFilterLabel": "Ernst",
+    "severityFilter": {
+      "all": "Alle ({count})",
+      "alert": "Meldingen ({count})",
+      "warning": "Waarschuwingen ({count})",
+      "info": "Info ({count})"
+    },
     "showDismissed": "Gesloten tonen",
     "emptyNoInsights": "Nog geen inzichten gegenereerd. Klik op \"Inzichten vernieuwen\" om je uitgavenpatronen te analyseren.",
     "emptyFiltered": "Geen inzichten komen overeen met je huidige filters.",

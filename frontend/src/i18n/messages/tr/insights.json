@@ -5,7 +5,21 @@
   },
   "list": {
     "refreshButton": "İçgörüleri Yenile",
+    "refreshAge": "({time})",
+    "summary": {
+      "active": "Etkin İçgörüler",
+      "alerts": "Uyarılar",
+      "warnings": "İkazlar"
+    },
     "allTypes": "Tüm Türler",
+    "typeFilterLabel": "Tür",
+    "severityFilterLabel": "Önem Derecesi",
+    "severityFilter": {
+      "all": "Tümü ({count})",
+      "alert": "Uyarılar ({count})",
+      "warning": "İkazlar ({count})",
+      "info": "Bilgi ({count})"
+    },
     "showDismissed": "Kapatılanları göster",
     "emptyNoInsights": "Henüz içgörü oluşturulmadı. Harcama örüntülerinizi analiz etmek için \"İçgörüleri Yenile\"ye tıklayın.",
     "emptyFiltered": "Mevcut filtrelerinizle eşleşen içgörü yok.",

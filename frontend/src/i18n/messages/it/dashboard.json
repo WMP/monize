@@ -24,6 +24,7 @@
     "postTransaction": "Registra questa transazione",
     "manual": "Manuale",
     "negativeBalanceWarning": "Questa transazione porterà il saldo del conto sotto zero",
+    "negativeBalanceLegend": "Porta il conto sotto zero",
     "moreItems": "+{count} altri",
     "overdue": "Scaduta",
     "today": "Oggi",
@@ -109,9 +110,9 @@
     "refreshPrices": "Aggiorna quotazioni",
     "viewPortfolio": "Visualizza portafoglio",
     "filter": {
-      "all": "Tutti",
-      "gainers": "Guadagni",
-      "losers": "Perdite",
+      "all": "Tutti ({count})",
+      "gainers": "Guadagni ({count})",
+      "losers": "Perdite ({count})",
       "label": "Direzione"
     },
     "metric": {

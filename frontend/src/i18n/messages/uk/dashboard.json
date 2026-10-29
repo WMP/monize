@@ -24,6 +24,7 @@
     "postTransaction": "Провести цю транзакцію",
     "manual": "Вручну",
     "negativeBalanceWarning": "Ця транзакція призведе до від'ємного балансу рахунку",
+    "negativeBalanceLegend": "Опускає баланс рахунку нижче нуля",
     "moreItems": "+{count} ще",
     "overdue": "Прострочено",
     "today": "Сьогодні",
@@ -109,9 +110,9 @@
     "refreshPrices": "Оновити ціни",
     "viewPortfolio": "Переглянути портфель",
     "filter": {
-      "all": "Всі",
-      "gainers": "Зростання",
-      "losers": "Падіння",
+      "all": "Всі ({count})",
+      "gainers": "Зростання ({count})",
+      "losers": "Падіння ({count})",
       "label": "Напрямок"
     },
     "metric": {

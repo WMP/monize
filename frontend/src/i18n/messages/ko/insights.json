@@ -5,7 +5,21 @@
   },
   "list": {
     "refreshButton": "인사이트 새로고침",
+    "refreshAge": "({time})",
+    "summary": {
+      "active": "활성 인사이트",
+      "alerts": "알림",
+      "warnings": "경고"
+    },
     "allTypes": "모든 유형",
+    "typeFilterLabel": "유형",
+    "severityFilterLabel": "심각도",
+    "severityFilter": {
+      "all": "전체 ({count})",
+      "alert": "알림 ({count})",
+      "warning": "경고 ({count})",
+      "info": "정보 ({count})"
+    },
     "showDismissed": "해제된 항목 표시",
     "emptyNoInsights": "아직 생성된 인사이트가 없습니다. \"인사이트 새로고침\"을 클릭하여 지출 패턴을 분석하세요.",
     "emptyFiltered": "현재 필터와 일치하는 인사이트가 없습니다.",

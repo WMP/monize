@@ -24,6 +24,7 @@
     "postTransaction": "Đăng giao dịch này",
     "manual": "Thủ công",
     "negativeBalanceWarning": "Giao dịch này sẽ khiến số dư tài khoản xuống dưới không",
+    "negativeBalanceLegend": "Khiến số dư tài khoản xuống dưới 0",
     "moreItems": "+{count} thêm",
     "overdue": "Quá hạn",
     "today": "Hôm nay",
@@ -109,9 +110,9 @@
     "refreshPrices": "Làm mới giá",
     "viewPortfolio": "Xem danh mục đầu tư",
     "filter": {
-      "all": "Tất cả",
-      "gainers": "Tăng",
-      "losers": "Giảm",
+      "all": "Tất cả ({count})",
+      "gainers": "Tăng ({count})",
+      "losers": "Giảm ({count})",
       "label": "Hướng"
     },
     "metric": {

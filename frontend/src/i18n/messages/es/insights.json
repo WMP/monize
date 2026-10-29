@@ -5,7 +5,21 @@
   },
   "list": {
     "refreshButton": "Actualizar análisis",
+    "refreshAge": "({time})",
+    "summary": {
+      "active": "Análisis activos",
+      "alerts": "Alertas",
+      "warnings": "Avisos"
+    },
     "allTypes": "Todos los tipos",
+    "typeFilterLabel": "Tipo",
+    "severityFilterLabel": "Gravedad",
+    "severityFilter": {
+      "all": "Todos ({count})",
+      "alert": "Alertas ({count})",
+      "warning": "Avisos ({count})",
+      "info": "Info ({count})"
+    },
     "showDismissed": "Mostrar descartados",
     "emptyNoInsights": "Aún no se han generado análisis. Haz clic en \"Actualizar análisis\" para analizar tus patrones de gasto.",
     "emptyFiltered": "Ningún análisis coincide con los filtros actuales.",

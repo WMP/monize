@@ -35,7 +35,7 @@
     "createFailed": "No se pudo establecer el recordatorio",
     "dialogTitle": "Recordarme",
     "dialogDescription": "Recibe esta notificación de nuevo más tarde hasta que actúes.",
-    "modeLabel": "Con qué frecuencia",
+    "modeLabel": "Frecuencia",
     "modeRepeat": "Repetir hasta que lo detenga",
     "modeOnce": "Solo una vez más",
     "intervalLabelRepeat": "Recordarme cada",
