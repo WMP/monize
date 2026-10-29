@@ -502,6 +502,8 @@
     "mnyStagedFileInUse": "Diese Money-Datei wird gerade importiert. Warten Sie, bis der Import abgeschlossen ist, bevor Sie sie verwerfen.",
     "mnyImportAlreadyRunning": "Ein Import läuft bereits. Warten Sie, bis er abgeschlossen ist, bevor Sie einen weiteren starten.",
     "mnyAlreadyImported": "Diese Datei wurde bereits am {{ date }} importiert (Import {{ jobId }}), und ihre Datensätze befinden sich noch in Ihrem Konto. Ein erneuter Import würde sie duplizieren. Um sie zu ersetzen, beginnen Sie von vorn und wählen Sie, Ihre vorhandenen Daten zu ersetzen.",
+    "mnyExistingAccountClosed": "Das bestehende Konto \"{{ name }}\" ist geschlossen, daher kann die Money-Datei nicht damit zusammengeführt werden. Öffnen Sie es wieder oder benennen Sie es um und importieren Sie erneut.",
+    "mnyExistingAccountCurrency": "Das bestehende Konto \"{{ name }}\" verwendet {{ existing }}, das Konto in der Money-Datei jedoch {{ file }}. Benennen Sie eines davon um und importieren Sie erneut.",
     "mnyJobNotFound": "Import-Auftrag nicht gefunden",
     "mnyFileTooLarge": "Diese Money-Datei ist größer als das Importlimit von {{ limit }} MB.",
     "noRateForSplitTransfer": "Kein Wechselkurs für {{ pair }} am {{ date }}: Eine Splitzeile überweist auf ein Konto in einer anderen Währung. Fügen Sie einen Wechselkurs für dieses Paar und Datum hinzu und importieren Sie erneut.",

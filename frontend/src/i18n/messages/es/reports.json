@@ -463,6 +463,7 @@
     "generating": "Generando informe...",
     "noData": "No se encontraron datos para los criterios seleccionados",
     "transactionCount": "{count, plural, one {# transacción} other {# transacciones}}",
+    "truncatedNotice": "Este informe alcanzó el límite de filas y solo muestra las más antiguas, por lo que sus cifras son parciales. Acote el período o los filtros para verlas todas.",
     "toasts": {
       "loadFailed": "Error al cargar el informe",
       "executeFailed": "Error al ejecutar el informe"

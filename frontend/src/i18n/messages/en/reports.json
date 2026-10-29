@@ -463,6 +463,7 @@
     "generating": "Generating report...",
     "noData": "No data found for the selected criteria",
     "transactionCount": "{count, plural, one {# transaction} other {# transactions}}",
+    "truncatedNotice": "This report reached the row limit and shows only the oldest rows, so its figures are partial. Narrow the timeframe or the filters to see all of them.",
     "toasts": {
       "loadFailed": "Failed to load report",
       "executeFailed": "Failed to execute report"
