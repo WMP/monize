@@ -961,6 +961,7 @@
     "ownerOnly": "Seul le propriétaire peut gérer les plans de régularisation.",
     "familyRequired": "Choisissez dépense ou revenu pour une transaction sans catégorie.",
     "historyUnsupported": "Ce lot ne peut pas être restauré en toute sécurité depuis l’historique. Divisez-le ou retirez les virements ou investissements non pris en charge.",
-    "ruleUnsupported": "Pour les écritures réparties, exécutez les règles manuellement après avoir vérifié leur impact. Conservez la structure de la transaction et choisissez un bénéficiaire existant."
+    "ruleUnsupported": "Pour les écritures réparties, exécutez les règles manuellement après avoir vérifié leur impact. Conservez la structure de la transaction et choisissez un bénéficiaire existant.",
+    "historyIncomplete": "Les données enregistrées pour annuler sont incomplètes. Cette action n’a pas été appliquée. Modifiez manuellement les écritures concernées."
   }
 }

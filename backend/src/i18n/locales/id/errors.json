@@ -961,6 +961,7 @@
     "ownerOnly": "Hanya pemilik yang dapat mengelola jadwal akrual.",
     "familyRequired": "Pilih pengeluaran atau pendapatan untuk transaksi tanpa kategori.",
     "historyUnsupported": "Kumpulan ini tidak dapat dipulihkan dengan aman dari riwayat. Pisahkan kumpulan atau keluarkan entri transfer atau investasi yang tidak didukung.",
-    "ruleUnsupported": "Untuk entri akrual, jalankan aturan secara manual setelah meninjau dampaknya. Pertahankan struktur transaksi dan pilih penerima pembayaran yang sudah ada."
+    "ruleUnsupported": "Untuk entri akrual, jalankan aturan secara manual setelah meninjau dampaknya. Pertahankan struktur transaksi dan pilih penerima pembayaran yang sudah ada.",
+    "historyIncomplete": "Data pembatalan yang disimpan tidak lengkap. Tindakan ini tidak diterapkan. Edit entri yang terpengaruh secara manual."
   }
 }

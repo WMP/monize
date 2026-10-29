@@ -961,6 +961,7 @@
     "ownerOnly": "Solo il proprietario può gestire i piani di competenza.",
     "familyRequired": "Scegli uscita o entrata per una transazione senza categoria.",
     "historyUnsupported": "Questo gruppo non può essere ripristinato in sicurezza dalla cronologia. Dividilo o rimuovi i trasferimenti o gli investimenti non supportati.",
-    "ruleUnsupported": "Per le registrazioni per competenza, esegui le regole manualmente dopo averne verificato l’impatto. Mantieni la struttura della transazione e scegli un beneficiario esistente."
+    "ruleUnsupported": "Per le registrazioni per competenza, esegui le regole manualmente dopo averne verificato l’impatto. Mantieni la struttura della transazione e scegli un beneficiario esistente.",
+    "historyIncomplete": "I dati salvati per annullare sono incompleti. Questa azione non è stata applicata. Modifica manualmente le voci interessate."
   }
 }

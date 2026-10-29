@@ -961,6 +961,7 @@
     "ownerOnly": "[XX-Only the owner can manage accrual schedules.-XX]",
     "familyRequired": "[XX-Choose expense or income for an uncategorized transaction.-XX]",
     "historyUnsupported": "[XX-This batch cannot be safely restored from history. Split the batch or remove unsupported transfer or investment entries.-XX]",
-    "ruleUnsupported": "[XX-For accrued entries, run rules manually after reviewing the impact. Keep the transaction structure and choose an existing payee.-XX]"
+    "ruleUnsupported": "[XX-For accrued entries, run rules manually after reviewing the impact. Keep the transaction structure and choose an existing payee.-XX]",
+    "historyIncomplete": "[XX-Saved undo data is incomplete. This action was not applied. Edit the affected entries manually.-XX]"
   }
 }

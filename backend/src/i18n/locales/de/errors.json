@@ -961,6 +961,7 @@
     "ownerOnly": "Nur der Eigentümer kann Abgrenzungspläne verwalten.",
     "familyRequired": "Wählen Sie Ausgabe oder Einnahme für eine Transaktion ohne Kategorie.",
     "historyUnsupported": "Dieser Stapel kann nicht sicher aus dem Verlauf wiederhergestellt werden. Teilen Sie ihn auf oder entfernen Sie nicht unterstützte Überweisungs- oder Anlagebuchungen.",
-    "ruleUnsupported": "Führen Sie Regeln für abgegrenzte Buchungen nach Prüfung der Auswirkungen manuell aus. Behalten Sie die Transaktionsstruktur bei und wählen Sie einen vorhandenen Zahlungsempfänger."
+    "ruleUnsupported": "Führen Sie Regeln für abgegrenzte Buchungen nach Prüfung der Auswirkungen manuell aus. Behalten Sie die Transaktionsstruktur bei und wählen Sie einen vorhandenen Zahlungsempfänger.",
+    "historyIncomplete": "Die gespeicherten Rückgängig-Daten sind unvollständig. Diese Aktion wurde nicht ausgeführt. Bearbeiten Sie die betroffenen Einträge manuell."
   }
 }

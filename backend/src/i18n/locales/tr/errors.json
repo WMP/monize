@@ -961,6 +961,7 @@
     "ownerOnly": "Tahakkuk planlarını yalnızca sahibi yönetebilir.",
     "familyRequired": "Kategorisiz bir işlem için gider veya gelir seçin.",
     "historyUnsupported": "Bu toplu işlem geçmişten güvenle geri yüklenemez. İşlemi bölün veya desteklenmeyen transfer ve yatırım kayıtlarını seçimden çıkarın.",
-    "ruleUnsupported": "Tahakkuk kayıtları için etkileri inceledikten sonra kuralları elle çalıştırın. İşlem yapısını koruyun ve mevcut bir alıcı seçin."
+    "ruleUnsupported": "Tahakkuk kayıtları için etkileri inceledikten sonra kuralları elle çalıştırın. İşlem yapısını koruyun ve mevcut bir alıcı seçin.",
+    "historyIncomplete": "Kaydedilen geri alma verileri eksik. Bu işlem uygulanmadı. Etkilenen kayıtları elle düzenleyin."
   }
 }

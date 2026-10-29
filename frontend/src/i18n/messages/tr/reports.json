@@ -466,7 +466,9 @@
     "toasts": {
       "loadFailed": "Rapor yüklenemedi",
       "executeFailed": "Rapor çalıştırılamadı"
-    }
+    },
+    "limitedResults": "İlk {limit, number} eşleşen işlemle sınırlıdır. Gösterilen tüm rakamlar kısmidir. Tam sonuçlar için tarihleri veya filtreleri daraltın.",
+    "partialFigure": "(kısmi)"
   },
   "debtPayoff": {
     "empty": "Borç hesabı bulunamadı. Kapatma takvimini görmek için kredi, ipotek veya kredi limiti ekleyin.",
@@ -1941,7 +1943,10 @@
     "knownValue": "Bilinen Değer",
     "weightingIntro": "Yüzdeler yalnızca değerlenebilen pozisyonları kapsar.",
     "weightingNoPrice": "{symbols} için fiyat yok: menkul kıymet sayfasında fiyatı güncelleyin veya ekleyin.",
-    "weightingNoRate": "{pairs} için döviz kuru yok: Para Birimleri sayfasından ekleyin."
+    "weightingNoRate": "{pairs} için döviz kuru yok: Para Birimleri sayfasından ekleyin.",
+    "detailsLimited": "Bazı ayrıntılar gösterilmiyor. Daha fazlasını görmek için tarihleri veya filtreleri daraltın.",
+    "resultUnavailable": "Bu sonuç eksik. Eksik döviz kurları eklenene kadar toplamlar ve hesaplanan puanlar kullanılamaz.",
+    "knownComponents": "Bilinen tutarlar"
   },
   "sankey": {
     "help": "Gelen para ortadan geçerek harcandığı yerlere, biriktirilen veya yatırılan kısma ve borç ödemelerine akar. Rapor varsayılan olarak açık vadesiz, birikim, nakit, kredi kartı ve kredili mevduat hesaplarınızı kapsar ve bunlardan ikisi arasındaki transfer gösterilmez. Bir birikim hesabına ne aktardığınızı görmek için o hesabı hesap filtresinden çıkarın. Kredi kartı ödemesi asla borç ödemesi değildir: kapattığı alışverişler zaten harcama olarak sayılmıştır.",

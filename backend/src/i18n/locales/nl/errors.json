@@ -961,6 +961,7 @@
     "ownerOnly": "Alleen de eigenaar kan toerekeningsschema’s beheren.",
     "familyRequired": "Kies uitgaven of inkomsten voor een transactie zonder categorie.",
     "historyUnsupported": "Deze batch kan niet veilig uit de geschiedenis worden hersteld. Splits de batch of verwijder niet-ondersteunde overboekingen of beleggingen uit de selectie.",
-    "ruleUnsupported": "Voer regels voor toegerekende boekingen handmatig uit nadat u de impact hebt bekeken. Behoud de transactiestructuur en kies een bestaande begunstigde."
+    "ruleUnsupported": "Voer regels voor toegerekende boekingen handmatig uit nadat u de impact hebt bekeken. Behoud de transactiestructuur en kies een bestaande begunstigde.",
+    "historyIncomplete": "De opgeslagen gegevens voor ongedaan maken zijn onvolledig. Deze actie is niet toegepast. Bewerk de betrokken boekingen handmatig."
   }
 }

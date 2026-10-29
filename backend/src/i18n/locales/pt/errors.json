@@ -961,6 +961,7 @@
     "ownerOnly": "Só o proprietário pode gerir os planos de especialização.",
     "familyRequired": "Escolha despesa ou rendimento para uma transação sem categoria.",
     "historyUnsupported": "Este lote não pode ser restaurado com segurança a partir do histórico. Divida-o ou exclua as transferências ou investimentos não suportados da seleção.",
-    "ruleUnsupported": "Para lançamentos por competência, execute as regras manualmente após rever o impacto. Mantenha a estrutura da transação e escolha um beneficiário existente."
+    "ruleUnsupported": "Para lançamentos por competência, execute as regras manualmente após rever o impacto. Mantenha a estrutura da transação e escolha um beneficiário existente.",
+    "historyIncomplete": "Os dados guardados para anular estão incompletos. Esta ação não foi aplicada. Edite manualmente os lançamentos afetados."
   }
 }

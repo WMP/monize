@@ -466,7 +466,9 @@
     "toasts": {
       "loadFailed": "加载报告失败",
       "executeFailed": "执行报告失败"
-    }
+    },
+    "limitedResults": "仅显示前 {limit, number} 笔匹配的交易。所有显示的数据均为部分结果。请缩小日期或筛选范围以获取完整结果。",
+    "partialFigure": "（部分）"
   },
   "debtPayoff": {
     "empty": "未找到债务账户。添加贷款、抵押贷款或信用额度账户以查看偿还时间表。",
@@ -1941,7 +1943,10 @@
     "knownValue": "已知价值",
     "weightingIntro": "百分比仅涵盖能够估值的持仓。",
     "weightingNoPrice": "{symbols} 没有价格：请在证券页面刷新或添加价格。",
-    "weightingNoRate": "{pairs} 没有汇率：请在“货币”页面添加。"
+    "weightingNoRate": "{pairs} 没有汇率：请在“货币”页面添加。",
+    "detailsLimited": "部分详细信息已省略。请缩小日期或筛选范围以查看更多信息。",
+    "resultUnavailable": "此结果不完整。在添加缺失的汇率之前，无法显示总计和计算得分。",
+    "knownComponents": "已知金额"
   },
   "sankey": {
     "help": "流入的资金经过中间，流向其被花费的去处、被储蓄或投资的部分以及用于偿还债务的部分。默认情况下，报告涵盖您未关闭的支票、储蓄、现金、信用卡和信用额度账户，这些账户之间的转账不会显示。将某个储蓄账户从账户筛选中移除，即可看到您转入其中的金额。信用卡还款从不算作债务还款：它结清的消费已计为支出。",
