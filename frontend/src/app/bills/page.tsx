@@ -134,6 +134,12 @@ function BillsContent() {
   // The list ("table") or the month calendar: remembered per screen in the
   // shared view-mode store, as Transactions and Investments remember theirs.
   const { view: viewMode, setView: setViewMode } = useViewMode('bills');
+  // A ?highlight= link (a calendar chip on Transactions, the assistant) points
+  // at a row, and only the list draws rows: arriving with one opens the list
+  // even when the calendar was the remembered view.
+  useEffect(() => {
+    if (highlightId) setViewMode('table');
+  }, [highlightId, setViewMode]);
   const filters = useBillsFilters();
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [overrideEditor, setOverrideEditor] = useState<OverrideEditorState>({

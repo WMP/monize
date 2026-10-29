@@ -527,6 +527,16 @@ describe('BillsPage', () => {
       expect(screen.getByRole('button', { name: 'Calendar' })).toHaveAttribute('aria-pressed', 'true');
     });
 
+    it('opens the list for a ?highlight= link even when the calendar is the stored choice', async () => {
+      // Only the list draws the row a highlight link points at.
+      useViewModeStore.getState().setView('bills', 'calendar');
+      nav.searchParams = new URLSearchParams('highlight=st-1');
+      render(<BillsPage />);
+      await waitFor(() => expect(screen.getByTestId('scheduled-transaction-list')).toBeInTheDocument());
+      expect(screen.getByRole('button', { name: 'Table' })).toHaveAttribute('aria-pressed', 'true');
+      expect(useViewModeStore.getState().surfaces.bills.view).toBe('table');
+    });
+
     it('keeps the toggle in the calendar toolbar, so the reader can switch back', async () => {
       render(<BillsPage />);
       await waitFor(() => expect(screen.getByTestId('scheduled-transaction-list')).toBeInTheDocument());
