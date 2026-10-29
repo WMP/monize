@@ -190,6 +190,30 @@ describe('InstitutionsPage', () => {
     expect(group.parentElement!.className).toContain('flex-wrap');
   });
 
+  it('counts All from the same accounts list as Active and Closed, not from the server total', async () => {
+    // The server says TD has 2 accounts; the list the segments split holds 3.
+    mockAccountsGetAll.mockResolvedValue([
+      { id: 'a-1', name: 'Chequing', institutionId: 'i-1', isClosed: false },
+      { id: 'a-2', name: 'Savings', institutionId: 'i-1', isClosed: false },
+      { id: 'a-3', name: 'Old Savings', institutionId: 'i-1', isClosed: true },
+    ]);
+    render(<InstitutionsPage />);
+    const group = await screen.findByRole('group', { name: 'Account Status' });
+    expect(await within(group).findByRole('button', { name: 'All (3)' })).toBeInTheDocument();
+    expect(within(group).getByRole('button', { name: 'Active (2)' })).toBeInTheDocument();
+    expect(within(group).getByRole('button', { name: 'Closed (1)' })).toBeInTheDocument();
+  });
+
+  it('draws the segments without counts when the accounts could not be read, never as zero', async () => {
+    mockAccountsGetAll.mockRejectedValue(new Error('boom'));
+    render(<InstitutionsPage />);
+    await waitFor(() => expect(screen.getByText('TD')).toBeInTheDocument());
+    const group = screen.getByRole('group', { name: 'Account Status' });
+    expect(within(group).getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(group).getByRole('button', { name: 'Active' })).toBeInTheDocument();
+    expect(within(group).getByRole('button', { name: 'Closed' })).toBeInTheDocument();
+  });
+
   it('filters by search query', async () => {
     render(<InstitutionsPage />);
     await waitFor(() => expect(screen.getByText('TD')).toBeInTheDocument());

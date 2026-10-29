@@ -46,6 +46,9 @@ function InstitutionsContent() {
   const t = useTranslations('institutions');
   const [institutions, setInstitutions] = useState<Institution[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  // Whether `accounts` is the answer or a failed read standing in for one:
+  // the status segments count accounts only when the list really loaded.
+  const [accountsLoaded, setAccountsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'active' | 'closed' | ''>('');
@@ -75,10 +78,11 @@ function InstitutionsContent() {
         // (an institution has no status of its own).
         const [data, accountsData] = await Promise.all([
           institutionsApi.getAll(),
-          accountsApi.getAll(true).catch(() => [] as Account[]),
+          accountsApi.getAll(true).catch(() => null),
         ]);
         setInstitutions(data);
-        setAccounts(accountsData);
+        setAccounts(accountsData ?? []);
+        setAccountsLoaded(accountsData !== null);
       } catch (error) {
         toast.error(getErrorMessage(error, t('page.toasts.loadFailed')));
         logger.error(error);
@@ -242,12 +246,23 @@ function InstitutionsContent() {
     (sum, i) => sum + (i.accountCount || 0),
     0,
   );
-  let activeAccountsCount = 0;
-  let closedAccountsCount = 0;
-  for (const counts of accountCountByStatus.values()) {
-    activeAccountsCount += counts.active;
-    closedAccountsCount += counts.closed;
+  // The status segments' counts, all three from the one accounts list that
+  // splits the Accounts column by status, so All is always Active plus Closed.
+  // A failed accounts read leaves them unknown, and the labels carry no count.
+  let statusCounts: { all: number; active: number; closed: number } | null = null;
+  if (accountsLoaded) {
+    let active = 0;
+    let closed = 0;
+    for (const counts of accountCountByStatus.values()) {
+      active += counts.active;
+      closed += counts.closed;
+    }
+    statusCounts = { all: active + closed, active, closed };
   }
+  const statusSegmentLabel = (status: 'all' | 'active' | 'closed') =>
+    statusCounts === null
+      ? t(`list.statusFilter.${status}`)
+      : t(`list.statusFilter.counted.${status}`, { count: statusCounts[status] });
 
   return (
     <PageLayout>
@@ -298,9 +313,7 @@ function InstitutionsContent() {
                 aria-pressed={filterStatus === status}
                 className={segmentClass(filterStatus === status)}
               >
-                {status === 'active' ? t('list.statusFilter.active', { count: activeAccountsCount }) :
-                 status === 'closed' ? t('list.statusFilter.closed', { count: closedAccountsCount }) :
-                 t('list.statusFilter.all', { count: linkedAccountsCount })}
+                {statusSegmentLabel(status || 'all')}
               </button>
             ))}
           </div>
