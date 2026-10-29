@@ -2,9 +2,7 @@
 
 import { ReactNode, useEffect, useId, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { HOVER_ROW_ON_CARD } from './Card';
-import { useTranslations } from 'next-intl';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { InfoTooltip } from './InfoTooltip';
 
 // Tracks programmatic history.back() calls from modal cleanup.
 // When a nested modal closes programmatically, it pops its history entry which fires popstate.
@@ -69,16 +67,20 @@ interface ModalProps {
    *  ordinary z-50 backdrop sits *below* the tour overlay so in-form spotlight
    *  cutouts work. */
   elevated?: boolean;
-  /** Heading for the dialog. Supplying it draws the standard header -- title,
-   *  a close button, a rule under both -- and wires `aria-labelledby`, so the
-   *  dialog announces itself by name instead of as an unlabelled region.
+  /** Heading for the dialog. Supplying it draws the standard heading -- the
+   *  New Transaction dialog's large bold title, with no rule under it and no
+   *  close button beside it -- and wires `aria-labelledby`, so the dialog
+   *  announces itself by name instead of as an unlabelled region. The dialog
+   *  must offer its own Cancel or Close button.
    *
    *  Every call site used to hand-roll this, which is how eight different
    *  heading treatments ended up in the tree for the same slot. */
   title?: ReactNode;
-  /** Optional line under the title, wired to `aria-describedby`. */
-  description?: ReactNode;
-  /** Right-aligned action row along the bottom, above a rule. */
+  /** Optional explanation, drawn as an `InfoTooltip` beside the title rather
+   *  than a paragraph every reader must read again on each open, and wired to
+   *  `aria-describedby`. */
+  description?: string;
+  /** Right-aligned action row along the bottom. */
   footer?: ReactNode;
   /** Padding for the body.
    *
@@ -142,7 +144,6 @@ export function Modal({
   fullScreenOnPhone = false,
   fixedHeight = false,
 }: ModalProps) {
-  const t = useTranslations('common');
   const generatedId = useId();
   const titleId = `${generatedId}-title`;
   const descriptionId = `${generatedId}-description`;
@@ -282,9 +283,14 @@ export function Modal({
 
     const frameId = requestAnimationFrame(() => {
       if (!modalRef.current) return;
-      const focusable = modalRef.current.querySelectorAll(FOCUSABLE_SELECTOR);
+      // Skip the heading's help icon: focus arriving there programmatically
+      // reads as keyboard focus and would open the description's tooltip on
+      // every open, which is the paragraph it replaced in another shape.
+      const focusable = Array.from(
+        modalRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+      ).filter((el) => !el.closest('[data-modal-heading]'));
       if (focusable.length > 0) {
-        (focusable[0] as HTMLElement).focus();
+        focusable[0].focus();
       } else {
         modalRef.current.focus();
       }
@@ -383,6 +389,20 @@ export function Modal({
           : `max-h-[90vh] ${overflowClass}`
       } outline-none transition duration-200 ease-out opacity-100 scale-100 starting:opacity-0 starting:scale-95 motion-reduce:transition-none${fillPhone ? ' max-sm:h-dvh max-sm:max-h-none max-sm:max-w-none max-sm:rounded-none' : ''} ${className}`;
 
+  // The title and the button row follow the New Transaction dialog: a large
+  // bold heading and a right-aligned row, separated from the body by space
+  // alone -- no rule under the header or over the buttons, and no X beside the
+  // title (Cancel / Close in the button row, Escape and the backdrop close).
+  // With `padding="none"` the caller pads the panel through `className`, as
+  // the TransactionForm hosts do, so the heading sits inside that padding.
+  const padded = padding === 'md' || fixed;
+  const titleBlockClassName = `flex items-center gap-2 ${
+    padded ? 'px-4 pt-4 sm:px-6 sm:pt-6' : 'mb-4'
+  }${fixed ? ' shrink-0' : ''}`;
+  const footerClassName = `flex flex-wrap items-center justify-end gap-2 ${
+    padded ? 'px-4 pb-4 sm:px-6 sm:pb-6' : 'pt-4'
+  }${fixed ? ' shrink-0' : ''}`;
+
   return createPortal(
     <div
       className={backdropClassName}
@@ -400,31 +420,20 @@ export function Modal({
         onSubmit={(e) => e.stopPropagation()}
       >
         {title && (
-          <div
-            className={`flex items-start justify-between gap-4 border-b border-gray-200 px-4 py-3 sm:px-6 dark:border-gray-700${fixed ? ' shrink-0' : ''}`}
-          >
-            <div className="min-w-0">
-              <h2
-                id={titleId}
-                className="text-lg font-semibold text-gray-900 dark:text-gray-100"
-              >
-                {title}
-              </h2>
-              {description && (
-                <p id={descriptionId} className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <div className={titleBlockClassName} data-modal-heading>
+            <h2
+              id={titleId}
+              className="min-w-0 text-2xl font-bold text-gray-900 dark:text-gray-100"
+            >
+              {title}
+            </h2>
+            {description && (
+              <>
+                <InfoTooltip text={description} usePortal />
+                <span id={descriptionId} className="sr-only">
                   {description}
-                </p>
-              )}
-            </div>
-            {onClose && (
-              <button
-                type="button"
-                onClick={() => attemptClose('escape')}
-                aria-label={t('close')}
-                className={`-mr-1 shrink-0 rounded-md p-1 text-gray-400 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:text-gray-200 ${HOVER_ROW_ON_CARD}`}
-              >
-                <XMarkIcon className="h-5 w-5" />
-              </button>
+                </span>
+              </>
             )}
           </div>
         )}
@@ -444,9 +453,7 @@ export function Modal({
           children
         )}
         {footer && (
-          <div
-            className={`flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 px-4 py-3 sm:px-6 dark:border-gray-700${fixed ? ' shrink-0' : ''}`}
-          >
+          <div className={footerClassName}>
             {footer}
           </div>
         )}

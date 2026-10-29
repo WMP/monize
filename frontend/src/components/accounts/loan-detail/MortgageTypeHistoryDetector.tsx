@@ -84,11 +84,12 @@ export function MortgageTypeHistoryDetector({
         isOpen={detection !== null}
         onClose={close}
         maxWidth="lg"
+        padding="md"
         title={t('mortgageFields.detect.history.title')}
         description={t('mortgageFields.detect.history.intro')}
       >
         {detection && (
-          <div className="p-4 sm:p-6 space-y-4">
+          <div className="space-y-4">
             <p className="text-sm text-gray-700 dark:text-gray-300">
               {t('mortgageFields.detect.history.current', {
                 type: t(`mortgageFields.type.${currentType}`),
