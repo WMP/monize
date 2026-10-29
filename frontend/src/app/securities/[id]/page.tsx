@@ -26,12 +26,14 @@ import { SecurityBondCard } from '@/components/securities/detail/SecurityBondCar
 import { useOnUndoRedo } from '@/hooks/useOnUndoRedo';
 import { useOnAiAction } from '@/hooks/useOnAiAction';
 import { usePriceRefresh } from '@/hooks/usePriceRefresh';
+import { useFinancialToday } from '@/hooks/useFinancialToday';
 import { BondRefreshProgress } from '@/components/securities/BondRefreshProgress';
 import { investmentsApi } from '@/lib/investments';
 import { getErrorMessage } from '@/lib/errors';
 import { SECURITY_PRICE_HISTORY_LIMIT } from '@/lib/constants';
 import { TOUR_ANCHORS, tourAnchor } from '@/lib/tours/anchors';
 import { roundToDecimals } from '@/lib/format';
+import { daysBetweenYmd } from '@/lib/bank-sync-link-defaults';
 import {
   toPriceSeries,
   buildQuantitySteps,
@@ -118,22 +120,12 @@ function tabFromQuery(value: string | null): TabKey {
 }
 
 /**
- * How old the newest close may be and still describe "today's" move. Covers a
- * long weekend plus a public holiday, which is the normal gap between sessions.
+ * The backend's `resolveDailyPriceChange` rule (daily-change.util.ts): two closes
+ * are a daily move only when adjacent sessions (gap under 7 days) and the newer
+ * one is current (under 5 days old).
  */
-const STALE_QUOTE_DAYS = 4;
-
-/** Whole days between an ISO `yyyy-MM-dd` and today. */
-function daysSince(isoDate: string): number {
-  const then = new Date(`${isoDate}T00:00:00`).getTime();
-  const today = new Date();
-  const midnight = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate(),
-  ).getTime();
-  return Math.round((midnight - then) / 86_400_000);
-}
+const DAILY_GAP_EXCLUSION_DAYS = 7;
+const DAILY_STALE_AFTER_DAYS = 5;
 
 export default function SecurityDetailPage() {
   return (
@@ -307,11 +299,22 @@ function SecurityDetailContent() {
   // The newest close, plus how far it moved against the one before it. Derived
   // here rather than fetched: the page already holds the whole series, and the
   // quote endpoints answer for the portfolio rather than for one security.
+  const todayYmd = useFinancialToday();
   const quote = useMemo(() => {
     const latest = priceSeries[priceSeries.length - 1];
     if (!latest) return null;
     const previous = priceSeries[priceSeries.length - 2];
-    const change = previous ? roundToDecimals(latest.close - previous.close, 6) : null;
+    // Two closes are not a daily move unless they are adjacent sessions and the
+    // newer is current; otherwise there is no daily figure to show.
+    const gapDays = previous ? daysBetweenYmd(previous.date, latest.date) : null;
+    const ageDays = daysBetweenYmd(latest.date, todayYmd);
+    const isDailyMove =
+      !!previous &&
+      gapDays !== null &&
+      ageDays !== null &&
+      gapDays < DAILY_GAP_EXCLUSION_DAYS &&
+      ageDays < DAILY_STALE_AFTER_DAYS;
+    const change = isDailyMove ? roundToDecimals(latest.close - previous.close, 6) : null;
     return {
       price: latest.close,
       priceDate: latest.date,
@@ -324,13 +327,10 @@ function SecurityDetailContent() {
         previous && previous.close !== 0 && change !== null
           ? roundToDecimals((change / previous.close) * 100, 2)
           : null,
-      // A move is only "today's" if the quote it came from is fresh. Prices are
-      // refreshed daily and there are no weekend closes, so anything within a
-      // few days still counts as the latest session; older than that and the
-      // header says "last move" instead of misdating it.
-      isCurrent: daysSince(latest.date) <= STALE_QUOTE_DAYS,
+      // The move is only shown while current, so it is always today's session.
+      isCurrent: true,
     };
-  }, [priceSeries]);
+  }, [priceSeries, todayYmd]);
 
   const handleToggleFavourite = useCallback(async () => {
     if (!detail) return;

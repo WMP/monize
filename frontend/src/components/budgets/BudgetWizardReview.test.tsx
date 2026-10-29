@@ -386,7 +386,8 @@ describe('BudgetWizardReview', () => {
       />,
     );
 
-    const remaining = screen.getAllByText('$0.00').find((el) => el.className.includes('text-'));
+    const remaining = screen.getByText('Remaining').nextElementSibling;
+    expect(remaining).toHaveTextContent('$0.00');
     expect(remaining?.className).toContain('text-green');
     expect(remaining?.className).not.toContain('text-red');
   });

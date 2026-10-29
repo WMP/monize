@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { financialTodayYmd } from '@/lib/financial-today';
 import { render, screen, act, fireEvent, waitFor, within } from '@/test/render';
 import SecurityDetailPage from './page';
 import type { Security, SecurityDetail } from '@/types/investment';
@@ -319,6 +320,46 @@ describe('SecurityDetailPage', () => {
     // The quote is the largest figure on the page and the one a reader anchors
     // on, so a figure in another currency has to say which.
     expect(screen.getByText(/150\.00 EUR/)).toBeInTheDocument();
+  });
+
+  describe('header daily change follows the backend refusal rule', () => {
+    const ymdAgo = (days: number) =>
+      financialTodayYmd(undefined, new Date(Date.now() - days * 86_400_000));
+    const twoCloses = (newerAgo: number, olderAgo: number) =>
+      [
+        { newerAgo: olderAgo, close: 145, id: 1 },
+        { newerAgo, close: 150, id: 2 },
+      ].map((r) => ({
+        id: r.id,
+        securityId: 'sec-1',
+        priceDate: ymdAgo(r.newerAgo),
+        openPrice: null,
+        highPrice: null,
+        lowPrice: null,
+        closePrice: r.close,
+        adjustedClose: r.close,
+        volume: null,
+        source: 'yahoo_finance',
+        createdAt: '2026-07-27T00:00:00.000Z',
+      }));
+
+    it('shows the move for adjacent sessions with a current newer close', async () => {
+      mockGetSecurityPrices.mockResolvedValue(twoCloses(0, 1));
+      await renderPage();
+      expect(screen.getByText(/\+\$?5\.00.*today/)).toBeInTheDocument();
+    });
+
+    it('shows no move when the two closes are a week or more apart', async () => {
+      mockGetSecurityPrices.mockResolvedValue(twoCloses(0, 10));
+      await renderPage();
+      expect(screen.queryByText(/today|last move/)).not.toBeInTheDocument();
+    });
+
+    it('shows no move when the newer close is no longer current', async () => {
+      mockGetSecurityPrices.mockResolvedValue(twoCloses(8, 9));
+      await renderPage();
+      expect(screen.queryByText(/today|last move/)).not.toBeInTheDocument();
+    });
   });
 
   it('refreshes only this security from the header, then re-reads the quote', async () => {
