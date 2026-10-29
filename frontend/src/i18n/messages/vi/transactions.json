@@ -175,7 +175,6 @@
       "viewPayeeTitle": "Xem chi tiết {name}",
       "investmentLabel": "Đầu tư",
       "linkedInvestmentTitle": "Xem trong Đầu tư",
-      "linkedInvestmentBadgeTitle": "Giao dịch này được liên kết với một giao dịch đầu tư",
       "filterByDate": "Lọc theo ngày \"{date}\"",
       "filterByAccount": "Lọc theo \"{name}\"",
       "filterByPayee": "Lọc theo \"{name}\"",
@@ -223,10 +222,10 @@
       "show": "Hiển thị bộ lọc"
     },
     "accounts": {
-      "label": "Hiển thị tài khoản:",
-      "all": "Tất cả",
-      "active": "Hoạt động",
-      "closed": "Đã đóng"
+      "label": "Hiển thị tài khoản",
+      "allCount": "Tất cả ({count})",
+      "activeCount": "Hoạt động ({count})",
+      "closedCount": "Đã đóng ({count})"
     },
     "fields": {
       "accounts": "Tài khoản",

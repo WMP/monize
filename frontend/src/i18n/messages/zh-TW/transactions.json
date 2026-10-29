@@ -175,7 +175,6 @@
       "viewPayeeTitle": "檢視 {name} 的詳細資料",
       "investmentLabel": "投資",
       "linkedInvestmentTitle": "在投資中查看",
-      "linkedInvestmentBadgeTitle": "此交易已連結至一筆投資交易",
       "filterByDate": "依日期「{date}」篩選",
       "filterByAccount": "依「{name}」篩選",
       "filterByPayee": "依「{name}」篩選",
@@ -223,10 +222,10 @@
       "show": "顯示篩選"
     },
     "accounts": {
-      "label": "顯示科目：",
-      "all": "全部",
-      "active": "活躍",
-      "closed": "已關閉"
+      "label": "顯示科目",
+      "allCount": "全部 ({count})",
+      "activeCount": "活躍 ({count})",
+      "closedCount": "已關閉 ({count})"
     },
     "fields": {
       "accounts": "科目",

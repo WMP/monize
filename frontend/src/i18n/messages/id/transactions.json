@@ -175,7 +175,6 @@
       "viewPayeeTitle": "Lihat detail {name}",
       "investmentLabel": "Investasi",
       "linkedInvestmentTitle": "Lihat di Investasi",
-      "linkedInvestmentBadgeTitle": "Transaksi ini ditautkan ke transaksi investasi",
       "filterByDate": "Filter berdasarkan tanggal \"{date}\"",
       "filterByAccount": "Filter berdasarkan \"{name}\"",
       "filterByPayee": "Filter berdasarkan \"{name}\"",
@@ -223,10 +222,10 @@
       "show": "Tampilkan filter"
     },
     "accounts": {
-      "label": "Tampilkan akun:",
-      "all": "Semua",
-      "active": "Aktif",
-      "closed": "Ditutup"
+      "label": "Tampilkan akun",
+      "allCount": "Semua ({count})",
+      "activeCount": "Aktif ({count})",
+      "closedCount": "Ditutup ({count})"
     },
     "fields": {
       "accounts": "Akun",

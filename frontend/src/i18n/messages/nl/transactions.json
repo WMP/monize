@@ -175,7 +175,6 @@
       "viewPayeeTitle": "Details van {name} bekijken",
       "investmentLabel": "Belegging",
       "linkedInvestmentTitle": "Bekijk in Beleggingen",
-      "linkedInvestmentBadgeTitle": "Deze transactie is gekoppeld aan een beleggingstransactie",
       "filterByDate": "Filteren op datum \"{date}\"",
       "filterByAccount": "Filteren op \"{name}\"",
       "filterByPayee": "Filteren op \"{name}\"",
@@ -223,10 +222,10 @@
       "show": "Filters tonen"
     },
     "accounts": {
-      "label": "Rekeningen tonen:",
-      "all": "Alle",
-      "active": "Actief",
-      "closed": "Gesloten"
+      "label": "Rekeningen tonen",
+      "allCount": "Alle ({count})",
+      "activeCount": "Actief ({count})",
+      "closedCount": "Gesloten ({count})"
     },
     "fields": {
       "accounts": "Rekeningen",

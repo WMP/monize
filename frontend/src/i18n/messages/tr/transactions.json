@@ -175,7 +175,6 @@
       "viewPayeeTitle": "{name} ayrıntılarını görüntüle",
       "investmentLabel": "Yatırım",
       "linkedInvestmentTitle": "Yatırımlarda Görüntüle",
-      "linkedInvestmentBadgeTitle": "Bu işlem bir yatırım işlemiyle bağlantılıdır",
       "filterByDate": "\"{date}\" tarihine göre filtrele",
       "filterByAccount": "\"{name}\" adına göre filtrele",
       "filterByPayee": "\"{name}\" adına göre filtrele",
@@ -223,10 +222,10 @@
       "show": "Filtreleri göster"
     },
     "accounts": {
-      "label": "Hesapları göster:",
-      "all": "Tümü",
-      "active": "Aktif",
-      "closed": "Kapalı"
+      "label": "Hesapları göster",
+      "allCount": "Tümü ({count})",
+      "activeCount": "Aktif ({count})",
+      "closedCount": "Kapalı ({count})"
     },
     "fields": {
       "accounts": "Hesaplar",

@@ -175,7 +175,6 @@
       "viewPayeeTitle": "{name} 상세 보기",
       "investmentLabel": "투자",
       "linkedInvestmentTitle": "투자에서 보기",
-      "linkedInvestmentBadgeTitle": "이 거래는 투자 거래에 연결되어 있습니다",
       "filterByDate": "날짜 \"{date}\"로 필터링",
       "filterByAccount": "\"{name}\"으로 필터링",
       "filterByPayee": "\"{name}\"으로 필터링",
@@ -223,10 +222,10 @@
       "show": "필터 표시"
     },
     "accounts": {
-      "label": "계정 표시:",
-      "all": "전체",
-      "active": "활성",
-      "closed": "마감됨"
+      "label": "계정 표시",
+      "allCount": "전체 ({count})",
+      "activeCount": "활성 ({count})",
+      "closedCount": "마감됨 ({count})"
     },
     "fields": {
       "accounts": "계정",

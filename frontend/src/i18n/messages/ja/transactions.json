@@ -175,7 +175,6 @@
       "viewPayeeTitle": "{name} の詳細を表示",
       "investmentLabel": "投資",
       "linkedInvestmentTitle": "投資で表示",
-      "linkedInvestmentBadgeTitle": "この取引は投資取引にリンクされています",
       "filterByDate": "日付「{date}」でフィルター",
       "filterByAccount": "「{name}」でフィルター",
       "filterByPayee": "「{name}」でフィルター",
@@ -223,10 +222,10 @@
       "show": "フィルターを表示"
     },
     "accounts": {
-      "label": "口座を表示:",
-      "all": "すべて",
-      "active": "アクティブ",
-      "closed": "閉鎖済み"
+      "label": "口座を表示",
+      "allCount": "すべて ({count})",
+      "activeCount": "アクティブ ({count})",
+      "closedCount": "閉鎖済み ({count})"
     },
     "fields": {
       "accounts": "口座",

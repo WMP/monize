@@ -2365,7 +2365,6 @@ describe("row hover comes from the shared pair, not a hand-picked grey", () => {
     "/src/components/transactions/SplitTransactionFields.tsx",
     "/src/components/transactions/StatusCellButton.tsx",
     "/src/components/transactions/TransactionActionSheet.tsx",
-    "/src/components/transactions/TransactionFilterPanel.tsx",
     "/src/components/transactions/TransactionForm.tsx",
     "/src/components/transactions/TransactionRow.tsx",
     "/src/components/ui/ActionMenu.tsx",

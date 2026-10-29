@@ -1599,6 +1599,7 @@ function TransactionsContent() {
           setFiltersExpanded={filters.setFiltersExpanded}
           activeFilterCount={filters.activeFilterCount}
           filteredAccounts={filters.filteredAccounts}
+          accountStatusCounts={filters.accountStatusCounts}
           selectedAccounts={filters.selectedAccounts}
           selectedCategories={filters.selectedCategories}
           selectedPayees={filters.selectedPayees}

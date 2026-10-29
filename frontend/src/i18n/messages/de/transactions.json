@@ -175,7 +175,6 @@
       "viewPayeeTitle": "Details zu {name} anzeigen",
       "investmentLabel": "Investition",
       "linkedInvestmentTitle": "In Investitionen anzeigen",
-      "linkedInvestmentBadgeTitle": "Diese Transaktion ist mit einer Anlagetransaktion verknüpft",
       "filterByDate": "Nach Datum „{date}” filtern",
       "filterByAccount": "Nach „{name}” filtern",
       "filterByPayee": "Nach „{name}” filtern",
@@ -223,10 +222,10 @@
       "show": "Filter anzeigen"
     },
     "accounts": {
-      "label": "Konten anzeigen:",
-      "all": "Alle",
-      "active": "Aktiv",
-      "closed": "Geschlossen"
+      "label": "Konten anzeigen",
+      "allCount": "Alle ({count})",
+      "activeCount": "Aktiv ({count})",
+      "closedCount": "Geschlossen ({count})"
     },
     "fields": {
       "accounts": "Konten",

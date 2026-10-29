@@ -175,7 +175,6 @@
       "viewPayeeTitle": "{name} का विवरण देखें",
       "investmentLabel": "निवेश",
       "linkedInvestmentTitle": "निवेश में देखें",
-      "linkedInvestmentBadgeTitle": "यह लेनदेन एक निवेश लेनदेन से जुड़ा हुआ है",
       "filterByDate": "तिथि \"{date}\" से फ़िल्टर करें",
       "filterByAccount": "\"{name}\" से फ़िल्टर करें",
       "filterByPayee": "\"{name}\" से फ़िल्टर करें",
@@ -223,10 +222,10 @@
       "show": "फ़िल्टर दिखाएं"
     },
     "accounts": {
-      "label": "खाते दिखाएं:",
-      "all": "सभी",
-      "active": "सक्रिय",
-      "closed": "बंद"
+      "label": "खाते दिखाएं",
+      "allCount": "सभी ({count})",
+      "activeCount": "सक्रिय ({count})",
+      "closedCount": "बंद ({count})"
     },
     "fields": {
       "accounts": "खाते",

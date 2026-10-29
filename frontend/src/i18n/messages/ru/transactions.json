@@ -175,7 +175,6 @@
       "viewPayeeTitle": "Показать сведения о {name}",
       "investmentLabel": "Инвестиция",
       "linkedInvestmentTitle": "Просмотр в разделе Инвестиции",
-      "linkedInvestmentBadgeTitle": "Эта транзакция связана с инвестиционной транзакцией",
       "filterByDate": "Фильтр по дате \"{date}\"",
       "filterByAccount": "Фильтр по \"{name}\"",
       "filterByPayee": "Фильтр по \"{name}\"",
@@ -223,10 +222,10 @@
       "show": "Показать фильтры"
     },
     "accounts": {
-      "label": "Показать счета:",
-      "all": "Все",
-      "active": "Активные",
-      "closed": "Закрытые"
+      "label": "Показать счета",
+      "allCount": "Все ({count})",
+      "activeCount": "Активные ({count})",
+      "closedCount": "Закрытые ({count})"
     },
     "fields": {
       "accounts": "Счета",

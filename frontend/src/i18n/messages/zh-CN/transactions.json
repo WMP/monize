@@ -175,7 +175,6 @@
       "viewPayeeTitle": "查看 {name} 的详情",
       "investmentLabel": "投资",
       "linkedInvestmentTitle": "在投资中查看",
-      "linkedInvestmentBadgeTitle": "此交易已关联到一笔投资交易",
       "filterByDate": "按日期筛选\"{date}\"",
       "filterByAccount": "按\"{name}\"筛选",
       "filterByPayee": "按\"{name}\"筛选",
@@ -223,10 +222,10 @@
       "show": "显示筛选"
     },
     "accounts": {
-      "label": "显示账户：",
-      "all": "全部",
-      "active": "活跃",
-      "closed": "已关闭"
+      "label": "显示账户",
+      "allCount": "全部 ({count})",
+      "activeCount": "活跃 ({count})",
+      "closedCount": "已关闭 ({count})"
     },
     "fields": {
       "accounts": "账户",

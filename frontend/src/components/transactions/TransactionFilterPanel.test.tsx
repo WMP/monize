@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@/test/render';
+import { render, screen, fireEvent, within } from '@/test/render';
 import { TransactionFilterPanel } from './TransactionFilterPanel';
 import { Account } from '@/types/account';
 import { Category } from '@/types/category';
 import { Payee } from '@/types/payee';
+import { SEGMENTED_GROUP_CLASS } from '@/components/ui/segmented-control';
 
 function createAccount(overrides: Partial<Account> = {}): Account {
   return {
@@ -102,6 +103,7 @@ describe('TransactionFilterPanel', () => {
     setFiltersExpanded: vi.fn(),
     activeFilterCount: 0,
     filteredAccounts: [] as Account[],
+    accountStatusCounts: { all: 3, active: 2, closed: 1 },
     selectedAccounts: [] as Account[],
     selectedCategories: [] as Category[],
     selectedPayees: [] as Payee[],
@@ -222,10 +224,10 @@ describe('TransactionFilterPanel', () => {
   it('shows account status segmented control when expanded', () => {
     render(<TransactionFilterPanel {...defaultProps} filtersExpanded={true} />);
 
-    expect(screen.getByText('Show accounts:')).toBeInTheDocument();
-    expect(screen.getByText('All')).toBeInTheDocument();
-    expect(screen.getByText('Active')).toBeInTheDocument();
-    expect(screen.getByText('Closed')).toBeInTheDocument();
+    expect(screen.getByText('Show Accounts')).toBeInTheDocument();
+    expect(screen.getByText('All (3)')).toBeInTheDocument();
+    expect(screen.getByText('Active (2)')).toBeInTheDocument();
+    expect(screen.getByText('Closed (1)')).toBeInTheDocument();
   });
 
   it('renders filter inputs when expanded', () => {
@@ -233,7 +235,8 @@ describe('TransactionFilterPanel', () => {
 
     expect(screen.getByText('Start Date')).toBeInTheDocument();
     expect(screen.getByText('End Date')).toBeInTheDocument();
-    expect(screen.getByText('Search')).toBeInTheDocument();
+    // The search field has no label above it; it is named for assistive tech.
+    expect(screen.getByRole('textbox', { name: 'Search' })).toBeInTheDocument();
   });
 
   // ----------------------------------------------------------------
@@ -241,6 +244,25 @@ describe('TransactionFilterPanel', () => {
   // ----------------------------------------------------------------
 
   describe('expand/collapse toggle', () => {
+    it('folds from a real button with aria-expanded, which the keyboard reaches', () => {
+      render(<TransactionFilterPanel {...defaultProps} filtersExpanded={false} />);
+      const toggle = screen.getByRole('button', { name: /Show/ });
+      expect(toggle).toHaveAttribute('aria-expanded', 'false');
+      fireEvent.click(toggle);
+      expect(defaultProps.setFiltersExpanded).toHaveBeenCalledWith(true);
+    });
+
+    it('draws the account status filter as the shared segmented control with counts', () => {
+      render(<TransactionFilterPanel {...defaultProps} filtersExpanded={true} />);
+      const group = screen.getByRole('group', { name: 'Show Accounts' });
+      expect(group.className).toBe(SEGMENTED_GROUP_CLASS);
+      expect(within(group).getAllByRole('button').map((b) => b.textContent)).toEqual([
+        'All (3)',
+        'Active (2)',
+        'Closed (1)',
+      ]);
+    });
+
     it('calls setFiltersExpanded(false) when header is clicked while expanded', () => {
       render(<TransactionFilterPanel {...defaultProps} filtersExpanded={true} />);
 
@@ -788,14 +810,14 @@ describe('TransactionFilterPanel', () => {
     it('calls setFilterAccountStatus with "active" when Active button is clicked', () => {
       render(<TransactionFilterPanel {...defaultProps} filtersExpanded={true} />);
 
-      fireEvent.click(screen.getByText('Active'));
+      fireEvent.click(screen.getByText('Active (2)'));
       expect(defaultProps.setFilterAccountStatus).toHaveBeenCalledWith('active');
     });
 
     it('calls setFilterAccountStatus with "closed" when Closed button is clicked', () => {
       render(<TransactionFilterPanel {...defaultProps} filtersExpanded={true} />);
 
-      fireEvent.click(screen.getByText('Closed'));
+      fireEvent.click(screen.getByText('Closed (1)'));
       expect(defaultProps.setFilterAccountStatus).toHaveBeenCalledWith('closed');
     });
 
@@ -808,7 +830,7 @@ describe('TransactionFilterPanel', () => {
         />
       );
 
-      fireEvent.click(screen.getByText('All'));
+      fireEvent.click(screen.getByText('All (3)'));
       expect(defaultProps.setFilterAccountStatus).toHaveBeenCalledWith('');
     });
 
@@ -1348,8 +1370,8 @@ describe('TransactionFilterPanel', () => {
         />
       );
 
-      const allButton = screen.getByText('All');
-      expect(allButton.className).toContain('bg-blue-600');
+      const allButton = screen.getByText('All (3)');
+      expect(allButton).toHaveAttribute('aria-pressed', 'true');
     });
 
     it('applies selected styling to Active button when filterAccountStatus is active', () => {
@@ -1361,8 +1383,8 @@ describe('TransactionFilterPanel', () => {
         />
       );
 
-      const activeButton = screen.getByText('Active');
-      expect(activeButton.className).toContain('bg-blue-600');
+      const activeButton = screen.getByText('Active (2)');
+      expect(activeButton).toHaveAttribute('aria-pressed', 'true');
     });
 
     it('applies selected styling to Closed button when filterAccountStatus is closed', () => {
@@ -1374,8 +1396,8 @@ describe('TransactionFilterPanel', () => {
         />
       );
 
-      const closedButton = screen.getByText('Closed');
-      expect(closedButton.className).toContain('bg-blue-600');
+      const closedButton = screen.getByText('Closed (1)');
+      expect(closedButton).toHaveAttribute('aria-pressed', 'true');
     });
 
     it('applies unselected styling to non-active status buttons', () => {
@@ -1387,10 +1409,10 @@ describe('TransactionFilterPanel', () => {
         />
       );
 
-      const allButton = screen.getByText('All');
-      const closedButton = screen.getByText('Closed');
-      expect(allButton.className).not.toContain('bg-blue-600');
-      expect(closedButton.className).not.toContain('bg-blue-600');
+      const allButton = screen.getByText('All (3)');
+      const closedButton = screen.getByText('Closed (1)');
+      expect(allButton).toHaveAttribute('aria-pressed', 'false');
+      expect(closedButton).toHaveAttribute('aria-pressed', 'false');
     });
   });
 

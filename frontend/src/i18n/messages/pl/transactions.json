@@ -175,7 +175,6 @@
       "viewPayeeTitle": "Zobacz szczegóły {name}",
       "investmentLabel": "Inwestycja",
       "linkedInvestmentTitle": "Zobacz w Inwestycjach",
-      "linkedInvestmentBadgeTitle": "Ta transakcja jest powiązana z transakcją inwestycyjną",
       "filterByDate": "Filtruj według daty \"{date}\"",
       "filterByAccount": "Filtruj według \"{name}\"",
       "filterByPayee": "Filtruj według \"{name}\"",
@@ -223,10 +222,10 @@
       "show": "Pokaż filtry"
     },
     "accounts": {
-      "label": "Pokaż konta:",
-      "all": "Wszystkie",
-      "active": "Aktywny",
-      "closed": "Zamknięte"
+      "label": "Pokaż konta",
+      "allCount": "Wszystkie ({count})",
+      "activeCount": "Aktywny ({count})",
+      "closedCount": "Zamknięte ({count})"
     },
     "fields": {
       "accounts": "Konta",

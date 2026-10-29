@@ -276,10 +276,8 @@ describe('TransactionRow', () => {
     renderRow({}, { linkedInvestmentTransactionId: 'inv1' });
     const badge = screen.getByText('Investment');
     expect(badge).toBeInTheDocument();
-    expect(badge).toHaveAttribute(
-      'title',
-      'This transaction is linked to an investment transaction',
-    );
+    // A hover-only title is not an information channel; the pill is Badge.
+    expect(badge).not.toHaveAttribute('title');
   });
 
   it('renders split badge with summary', () => {
@@ -363,9 +361,17 @@ describe('TransactionRow', () => {
     expect(screen.getAllByText('-').length).toBeGreaterThan(0);
   });
 
-  it('shows displayAmount with marker when provided', () => {
+  it('shows displayAmount with marker when provided, and says what the marker means', () => {
     renderRow({ displayAmount: 5 });
     expect(screen.getByText('*')).toBeInTheDocument();
+    expect(screen.getByText(/^Filtered amount \(full transaction: /)).toBeInTheDocument();
+    expect(document.querySelector('[title^="Filtered amount"]')).toBeNull();
+  });
+
+  it('names the attachment count for assistive tech instead of in a title', () => {
+    renderRow({}, { attachmentCount: 3 });
+    const badge = screen.getByRole('img', { name: '3 attachments' });
+    expect(badge).not.toHaveAttribute('title');
   });
 
   it('renders single Copy button when only onDuplicate provided', () => {
