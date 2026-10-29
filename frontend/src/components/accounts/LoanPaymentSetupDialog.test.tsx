@@ -822,7 +822,7 @@ describe('LoanPaymentSetupDialog', () => {
     mockSetupLoanPayments.mockResolvedValue({} as any);
     await renderDialog();
 
-    expect(screen.getByText('Interest Expense Category (required)')).toBeInTheDocument();
+    expect(screen.getByText('Interest Expense Category')).toBeInTheDocument();
     const submitButton = screen.getByRole('button', { name: /Set Up Payments/i });
     await act(async () => {
       fireEvent.click(submitButton);
@@ -863,7 +863,7 @@ describe('LoanPaymentSetupDialog', () => {
     await act(async () => fireEvent.click(checkbox));
 
     // Enter an extra principal value
-    const extraInput = screen.getByLabelText(/Extra Principal Per Payment/i) as HTMLInputElement;
+    const extraInput = screen.getByLabelText(/Extra Principal per Payment/i) as HTMLInputElement;
     await act(async () => fireEvent.change(extraInput, { target: { value: '200' } }));
     await act(async () => fireEvent.blur(extraInput));
 
@@ -883,7 +883,7 @@ describe('LoanPaymentSetupDialog', () => {
 
     const checkbox = screen.getByLabelText(/Include extra payment to principal/i);
     await act(async () => fireEvent.click(checkbox));
-    const extraInput = screen.getByLabelText(/Extra Principal Per Payment/i) as HTMLInputElement;
+    const extraInput = screen.getByLabelText(/Extra Principal per Payment/i) as HTMLInputElement;
     await act(async () => fireEvent.change(extraInput, { target: { value: '100' } }));
 
     expect(screen.getByText(/Total payment:/)).toBeInTheDocument();
@@ -989,7 +989,7 @@ describe('LoanPaymentSetupDialog', () => {
     // Checkbox should be checked (pre-filled) so the extra input shows
     const checkbox = screen.getByLabelText(/Include extra payment to principal/i) as HTMLInputElement;
     expect(checkbox.checked).toBe(true);
-    expect(screen.getByLabelText(/Extra Principal Per Payment/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Extra Principal per Payment/i)).toBeInTheDocument();
   });
 
   it('selects first source account when no detection result is returned', async () => {

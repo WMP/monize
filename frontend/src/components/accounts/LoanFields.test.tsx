@@ -123,11 +123,11 @@ describe('LoanFields', () => {
   it('renders the heading and all form fields', () => {
     render(<LoanFields {...defaultProps} />);
     expect(screen.getByText('Loan Payment Details')).toBeInTheDocument();
-    expect(screen.getByText('Payment Amount (required)')).toBeInTheDocument();
-    expect(screen.getByText('Payment Frequency (required)')).toBeInTheDocument();
-    expect(screen.getByText('First Payment Date (required)')).toBeInTheDocument();
-    expect(screen.getByText('Payment From Account (required)')).toBeInTheDocument();
-    expect(screen.getByText('Interest Category (required)')).toBeInTheDocument();
+    expect(screen.getByText('Payment Amount')).toBeInTheDocument();
+    expect(screen.getByText('Payment Frequency')).toBeInTheDocument();
+    expect(screen.getByText('First Payment Date')).toBeInTheDocument();
+    expect(screen.getByText('Payment From Account')).toBeInTheDocument();
+    expect(screen.getByText('Interest Category')).toBeInTheDocument();
   });
 
   it('renders payment frequency select options', () => {
@@ -141,7 +141,7 @@ describe('LoanFields', () => {
 
   it('renders accounts in the source account select', () => {
     render(<LoanFields {...defaultProps} />);
-    const sourceAccountSelect = screen.getByLabelText('Payment From Account (required)');
+    const sourceAccountSelect = screen.getByLabelText('Payment From Account');
     const options = sourceAccountSelect.querySelectorAll('option');
     expect(options[0].textContent).toBe('Select account...');
     expect(options[1].textContent).toBe('Main Chequing (CAD)');
@@ -149,7 +149,7 @@ describe('LoanFields', () => {
 
   it('renders categories in the interest category select', () => {
     render(<LoanFields {...defaultProps} />);
-    const categorySelect = screen.getByTestId('combobox-select-Interest Category (required)');
+    const categorySelect = screen.getByTestId('combobox-select-Interest Category');
     const options = categorySelect.querySelectorAll('option');
     expect(options[0].textContent).toBe('Select category...');
     expect(options[1].textContent).toBe('Interest Expenses');
@@ -282,7 +282,7 @@ describe('LoanFields', () => {
     ] as any[];
 
     render(<LoanFields {...defaultProps} accounts={multipleAccounts} />);
-    const sourceSelect = screen.getByLabelText('Payment From Account (required)');
+    const sourceSelect = screen.getByLabelText('Payment From Account');
     const options = sourceSelect.querySelectorAll('option');
     // First option is placeholder
     expect(options[0].textContent).toBe('Select account...');
@@ -356,6 +356,6 @@ describe('LoanFields', () => {
     ] as any[];
 
     render(<LoanFields {...defaultProps} categories={categoriesWithParent} />);
-    expect(screen.getByText('Interest Category (required)')).toBeInTheDocument();
+    expect(screen.getByText('Interest Category')).toBeInTheDocument();
   });
 });
