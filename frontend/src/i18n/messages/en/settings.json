@@ -1247,6 +1247,10 @@
       "editButton": "Edit",
       "deleteButton": "Delete"
     },
+    "deleteDialog": {
+      "title": "Delete AI Provider",
+      "message": "Delete {name}? Its saved API key is removed with it. This cannot be undone."
+    },
     "configForm": {
       "addTitle": "Add AI Provider",
       "editTitle": "Edit Provider",

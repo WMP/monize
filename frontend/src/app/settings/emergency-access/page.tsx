@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
-import Link from 'next/link';
+import { BackToSettingsLink } from '@/components/settings/BackToSettingsLink';
 import { useTranslations } from 'next-intl';
 import { useForm, useWatch, Controller } from 'react-hook-form';
 import '@/lib/zodConfig';
@@ -127,14 +127,7 @@ function EmergencyAccessContent() {
     return (
       <PageLayout>
         <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-12 pt-6 pb-8">
-          <div className="mb-4">
-            <Link
-              href="/settings"
-              className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-            >
-              &larr; {t('backLink')}
-            </Link>
-          </div>
+          <BackToSettingsLink label={t('backLink')} />
           <PageHeader title={t('title')} />
           <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg p-6 mb-6">
             <p className="text-sm text-amber-700 dark:text-amber-300">
@@ -552,14 +545,7 @@ function EmergencyAccessSection() {
   return (
     <PageLayout>
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-12 pt-6 pb-8">
-        <div className="mb-4">
-          <Link
-            href="/settings"
-            className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-          >
-            &larr; {t('backLink')}
-          </Link>
-        </div>
+        <BackToSettingsLink label={t('backLink')} />
 
         <PageHeader
           title={t('title')}
