@@ -982,15 +982,19 @@
       "warranties": {
         "label": "Warranties",
         "description": "Warranties, their documents and claims. A linked purchase shows only for an account they can read."
-      }
+      },
+      "toggleLabel": "{section} section"
     },
     "accounts": {
       "noAccounts": "No accounts to grant.",
       "grantAll": "Grant all",
-      "jointRequiresFullAccount": "Joint accounts can only be shared with users who have their own Monize account"
+      "jointRequiresFullAccount": "Joint accounts can only be shared with users who have their own Monize account",
+      "grantAllLabel": "{op} all {type} accounts",
+      "grantLabel": "{op} access to {account}"
     },
     "shared": {
-      "description": "READ of payees, categories and tags is always allowed. These control create/edit/delete."
+      "description": "READ of payees, categories and tags is always allowed. These control create/edit/delete.",
+      "toggleLabel": "{op} {resource}"
     },
     "saveButton": "Save",
     "toasts": {

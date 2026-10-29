@@ -10,6 +10,8 @@ import { createLogger } from '@/lib/logger';
 import { getErrorMessage } from '@/lib/errors';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { Button } from '@/components/ui/Button';
+import { FormActions } from '@/components/ui/FormActions';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Modal } from '@/components/ui/Modal';
@@ -378,17 +380,15 @@ export function SharedAccessSection() {
         maxWidth="lg"
         pushHistory
       >
-        <form onSubmit={handleCreate} className="flex flex-col">
-          <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+        <form onSubmit={handleCreate} className="p-6">
+          <div className="mb-4 flex items-center gap-2">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
               {t('createModal.title')}
             </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {t('createModal.description')}
-            </p>
+            <InfoTooltip text={t('createModal.description')} usePortal />
           </div>
 
-          <div className="px-6 py-4 space-y-4">
+          <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 {t('createModal.emailLabel')}
@@ -496,23 +496,12 @@ export function SharedAccessSection() {
             )}
           </div>
 
-          <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-end gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowCreate(false)}
-              disabled={submitting}
-            >
-              {tc('cancel')}
-            </Button>
-            <Button
-              type="submit"
-              isLoading={submitting}
-              disabled={lookupFailed}
-            >
-              {t('createModal.submitButton')}
-            </Button>
-          </div>
+          <FormActions
+            onCancel={() => setShowCreate(false)}
+            submitLabel={t('createModal.submitButton')}
+            isSubmitting={submitting}
+            submitDisabled={lookupFailed}
+          />
         </form>
       </Modal>
 
@@ -555,7 +544,7 @@ export function SharedAccessSection() {
         pushHistory
       >
         <div className="p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             {t('tempPasswordModal.title')}
           </h2>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">

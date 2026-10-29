@@ -431,7 +431,7 @@ export function DelegateAccessModal({
                   <ToggleSwitch
                     checked={draft.sections[s.key]}
                     onChange={(v) => setSection(s.key, v)}
-                    label={`${label} section`}
+                    label={t('sections.toggleLabel', { section: label })}
                   />
                 </div>
               );
@@ -488,7 +488,7 @@ export function DelegateAccessModal({
                               onChange={(v) =>
                                 setColumnForAccounts(ids, o.key, v)
                               }
-                              label={`${o.label} all ${typeLabel} accounts`}
+                              label={t('accounts.grantAllLabel', { op: o.label, type: typeLabel })}
                             />
                             <span className="text-xs">{o.label}</span>
                           </label>
@@ -525,7 +525,7 @@ export function DelegateAccessModal({
                                     onChange={(v) =>
                                       setGrant(a.id, o.key, v)
                                     }
-                                    label={`${o.label} access to ${a.name}`}
+                                    label={t('accounts.grantLabel', { op: o.label, account: a.name })}
                                   />
                                   <span className="text-xs">{o.label}</span>
                                 </label>
@@ -561,7 +561,7 @@ export function DelegateAccessModal({
                       size="sm"
                       checked={draft.capabilities[res.key][o.op]}
                       onChange={(v) => setCapability(res.key, o.op, v)}
-                      label={`${o.label} ${res.label}`}
+                      label={t('shared.toggleLabel', { op: o.label, resource: res.label })}
                     />
                     <span className="text-xs">{o.label}</span>
                   </label>
@@ -574,7 +574,7 @@ export function DelegateAccessModal({
 
       <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-3 flex justify-end gap-3">
         <Button variant="outline" onClick={onCancel} disabled={saving}>
-          Cancel
+          {tc('cancel')}
         </Button>
         <Button
           onClick={() => void handleSave()}
