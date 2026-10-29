@@ -1714,6 +1714,85 @@ describe("ReportsService", () => {
         expect(result.summary.average).toBe(50);
       });
 
+      it("summarises the average metric over every row, not the sum of group averages", async () => {
+        const transactions = [
+          createMockTransaction({
+            id: "tx-1",
+            categoryId: "cat-1",
+            amount: -10,
+          }),
+          createMockTransaction({
+            id: "tx-2",
+            categoryId: "cat-1",
+            amount: -20,
+          }),
+          createMockTransaction({
+            id: "tx-3",
+            categoryId: "cat-1",
+            amount: -30,
+          }),
+          createMockTransaction({
+            id: "tx-4",
+            categoryId: "cat-2",
+            amount: -100,
+          }),
+        ];
+        setupExecuteMocks(
+          {
+            groupBy: GroupByType.CATEGORY,
+            config: { ...defaultConfig, metric: MetricType.AVERAGE },
+          },
+          transactions,
+        );
+        categoriesRepository.find.mockResolvedValue([
+          mockCategory,
+          { ...mockCategory, id: "cat-2", name: "Dining" },
+        ]);
+
+        const result = await service.execute("user-1", "report-1");
+
+        // Group means are 20 and 100 (sum 120); the mean of the four rows is 40.
+        expect(result.summary.total).toBe(40);
+        expect(result.summary.average).toBe(40);
+        expect(result.summary.count).toBe(4);
+      });
+
+      it("withholds the total and flags the report when the row limit cut the read", async () => {
+        const rows = Array.from({ length: 50001 }, (_, i) =>
+          createMockTransaction({ id: `tx-${i}`, amount: -1 }),
+        );
+        const { qb } = setupExecuteMocks(
+          {
+            groupBy: GroupByType.NONE,
+            config: { ...defaultConfig, metric: MetricType.TOTAL_AMOUNT },
+          },
+          rows,
+        );
+
+        const result = await service.execute("user-1", "report-1");
+
+        expect(qb.take).toHaveBeenCalledWith(50001);
+        expect(result.truncated).toBe(true);
+        expect(result.summary.total).toBeNull();
+        expect(result.summary.average).toBeNull();
+        expect(result.summary.knownTotal).toBe(50000);
+      });
+
+      it("is not truncated when the rows fit the limit", async () => {
+        setupExecuteMocks(
+          {
+            groupBy: GroupByType.NONE,
+            config: { ...defaultConfig, metric: MetricType.TOTAL_AMOUNT },
+          },
+          [createMockTransaction({ id: "tx-1", amount: -5 })],
+        );
+
+        const result = await service.execute("user-1", "report-1");
+
+        expect(result.truncated).toBe(false);
+        expect(result.summary.total).toBe(5);
+      });
+
       it("returns zero summary when no data", async () => {
         setupExecuteMocks({
           groupBy: GroupByType.NONE,
@@ -3126,12 +3205,14 @@ describe("ReportsService", () => {
           createMockTransaction({
             id: "tx-1",
             amount: -100,
+            isSplit: true,
             tags: [
               { id: "tag-1", name: "Essentials", color: "#ff0000" },
             ] as any,
             splits: [
               {
                 id: "split-1",
+                amount: -100,
                 tags: [
                   { id: "tag-1", name: "Essentials", color: "#ff0000" },
                   { id: "tag-2", name: "Luxury", color: "#0000ff" },
@@ -3216,10 +3297,12 @@ describe("ReportsService", () => {
           createMockTransaction({
             id: "tx-1",
             amount: -100,
+            isSplit: true,
             tags: [],
             splits: [
               {
                 id: "split-1",
+                amount: -100,
                 tags: [{ id: "tag-3", name: "SplitOnly", color: "#aaa" }],
               },
             ] as any,
@@ -3237,6 +3320,69 @@ describe("ReportsService", () => {
 
         expect(result.data).toHaveLength(1);
         expect(result.data[0].label).toBe("SplitOnly");
+      });
+    });
+
+    describe("groupBy TAG, split lines", () => {
+      it("keeps a line out of a tag only a sibling line carries", async () => {
+        const vacation = { id: "tag-v", name: "Vacation", color: null };
+        const transactions = [
+          createMockTransaction({
+            id: "tx-1",
+            amount: -100,
+            isSplit: true,
+            tags: [],
+            splits: [
+              {
+                id: "s1",
+                amount: -30,
+                categoryId: "cat-1",
+                tags: [vacation],
+              },
+              { id: "s2", amount: -70, categoryId: "cat-2", tags: [] },
+            ] as any,
+          }),
+        ];
+        setupExecuteMocks(
+          {
+            groupBy: GroupByType.TAG,
+            config: { ...defaultConfig, metric: MetricType.TOTAL_AMOUNT },
+          },
+          transactions,
+        );
+
+        const result = await service.execute("user-1", "report-1");
+
+        expect(result.data.find((d) => d.label === "Vacation")!.value).toBe(30);
+        expect(result.data.find((d) => d.label === "Untagged")!.value).toBe(70);
+      });
+
+      it("files every line under the parent's tags as well as its own", async () => {
+        const trip = { id: "tag-t", name: "Trip", color: null };
+        const transactions = [
+          createMockTransaction({
+            id: "tx-1",
+            amount: -100,
+            isSplit: true,
+            tags: [trip] as any,
+            splits: [
+              { id: "s1", amount: -30, categoryId: "cat-1", tags: [] },
+              { id: "s2", amount: -70, categoryId: "cat-2", tags: [] },
+            ] as any,
+          }),
+        ];
+        setupExecuteMocks(
+          {
+            groupBy: GroupByType.TAG,
+            config: { ...defaultConfig, metric: MetricType.TOTAL_AMOUNT },
+          },
+          transactions,
+        );
+
+        const result = await service.execute("user-1", "report-1");
+
+        expect(result.data).toHaveLength(1);
+        expect(result.data[0]).toMatchObject({ label: "Trip", value: 100 });
       });
     });
 
@@ -3263,6 +3409,7 @@ describe("ReportsService", () => {
         setupExecuteMocks(
           {
             groupBy: GroupByType.CATEGORY,
+            timeframeType: TimeframeType.LAST_MONTH,
             config: {
               ...defaultConfig,
               metric: MetricType.BUDGET_VARIANCE,
@@ -3277,6 +3424,7 @@ describe("ReportsService", () => {
         ]);
         budgetsService.findOne.mockResolvedValue({
           id: "budget-1",
+          currencyCode: "USD",
           categories: [{ categoryId: "cat-1", amount: 100, isIncome: false }],
         });
 
@@ -3301,6 +3449,7 @@ describe("ReportsService", () => {
         setupExecuteMocks(
           {
             groupBy: GroupByType.CATEGORY,
+            timeframeType: TimeframeType.LAST_MONTH,
             config: {
               ...defaultConfig,
               metric: MetricType.BUDGET_VARIANCE,
@@ -3315,6 +3464,7 @@ describe("ReportsService", () => {
         ]);
         budgetsService.findOne.mockResolvedValue({
           id: "budget-1",
+          currencyCode: "USD",
           categories: [{ categoryId: "cat-1", amount: 200, isIncome: false }],
         });
 
@@ -3335,6 +3485,7 @@ describe("ReportsService", () => {
         setupExecuteMocks(
           {
             groupBy: GroupByType.CATEGORY,
+            timeframeType: TimeframeType.LAST_MONTH,
             config: {
               ...defaultConfig,
               metric: MetricType.BUDGET_VARIANCE,
@@ -3366,6 +3517,7 @@ describe("ReportsService", () => {
         setupExecuteMocks(
           {
             groupBy: GroupByType.CATEGORY,
+            timeframeType: TimeframeType.LAST_MONTH,
             config: {
               ...defaultConfig,
               metric: MetricType.BUDGET_VARIANCE,
@@ -3396,6 +3548,7 @@ describe("ReportsService", () => {
         setupExecuteMocks(
           {
             groupBy: GroupByType.CATEGORY,
+            timeframeType: TimeframeType.LAST_MONTH,
             config: {
               ...defaultConfig,
               metric: MetricType.BUDGET_VARIANCE,
@@ -3410,6 +3563,7 @@ describe("ReportsService", () => {
         ]);
         budgetsService.findOne.mockResolvedValue({
           id: "budget-1",
+          currencyCode: "USD",
           categories: [{ categoryId: "cat-1", amount: 100, isIncome: true }],
         });
 
@@ -3446,8 +3600,141 @@ describe("ReportsService", () => {
         // budgetsService should not be called
         expect(budgetsService.findAll).not.toHaveBeenCalled();
       });
-    });
+      const budgetOf = (
+        categories: Array<Record<string, unknown>>,
+        currencyCode = "USD",
+      ) => {
+        budgetsService.findAll.mockResolvedValue([
+          { id: "budget-1", isActive: true },
+        ]);
+        budgetsService.findOne.mockResolvedValue({
+          id: "budget-1",
+          currencyCode,
+          categories,
+        });
+      };
 
+      it("scales the monthly budget to the months of the report window", async () => {
+        setupExecuteMocks(
+          {
+            groupBy: GroupByType.CATEGORY,
+            timeframeType: TimeframeType.CUSTOM,
+            config: {
+              ...defaultConfig,
+              metric: MetricType.BUDGET_VARIANCE,
+              customStartDate: "2025-01-01",
+              customEndDate: "2025-03-31",
+            },
+          },
+          [
+            createMockTransaction({
+              id: "tx-1",
+              categoryId: "cat-1",
+              amount: -250,
+            }),
+          ],
+        );
+        categoriesRepository.find.mockResolvedValue([mockCategory]);
+        budgetOf([{ categoryId: "cat-1", amount: 100, isIncome: false }]);
+
+        const result = await service.execute("user-1", "report-1");
+
+        const groceries = result.data.find((d) => d.label === "Groceries");
+        // 3 months x 100 = 300 budgeted; 250 spent is 50 under
+        expect(groceries!.budgeted).toBe(300);
+        expect(groceries!.value).toBe(-50);
+      });
+
+      it("lists a budgeted category with no spending as a full under-spend", async () => {
+        setupExecuteMocks(
+          {
+            groupBy: GroupByType.CATEGORY,
+            timeframeType: TimeframeType.LAST_MONTH,
+            config: { ...defaultConfig, metric: MetricType.BUDGET_VARIANCE },
+          },
+          [
+            createMockTransaction({
+              id: "tx-1",
+              categoryId: "cat-1",
+              amount: -80,
+            }),
+          ],
+        );
+        categoriesRepository.find.mockResolvedValue([
+          mockCategory,
+          { ...mockCategory, id: "cat-2", name: "Dining" },
+        ]);
+        budgetOf([
+          { categoryId: "cat-1", amount: 100, isIncome: false },
+          { categoryId: "cat-2", amount: 60, isIncome: false },
+        ]);
+
+        const result = await service.execute("user-1", "report-1");
+
+        const dining = result.data.find((d) => d.label === "Dining");
+        expect(dining).toMatchObject({
+          value: -60,
+          budgeted: 60,
+          actual: 0,
+          count: 0,
+        });
+        // The empty row adds no transaction to the headline count.
+        expect(result.summary.count).toBe(1);
+      });
+
+      it("converts a foreign-currency budget into the reporting currency", async () => {
+        rateMap.set("EUR->USD", 2);
+        setupExecuteMocks(
+          {
+            groupBy: GroupByType.CATEGORY,
+            timeframeType: TimeframeType.LAST_MONTH,
+            config: { ...defaultConfig, metric: MetricType.BUDGET_VARIANCE },
+          },
+          [
+            createMockTransaction({
+              id: "tx-1",
+              categoryId: "cat-1",
+              amount: -80,
+            }),
+          ],
+        );
+        categoriesRepository.find.mockResolvedValue([mockCategory]);
+        budgetOf([{ categoryId: "cat-1", amount: 50, isIncome: false }], "EUR");
+
+        const result = await service.execute("user-1", "report-1");
+
+        const groceries = result.data.find((d) => d.label === "Groceries");
+        expect(groceries!.budgeted).toBe(100);
+        expect(groceries!.value).toBe(-20);
+      });
+
+      it("leaves a budget with no rate unenriched and withholds the total", async () => {
+        setupExecuteMocks(
+          {
+            groupBy: GroupByType.CATEGORY,
+            timeframeType: TimeframeType.LAST_MONTH,
+            config: { ...defaultConfig, metric: MetricType.BUDGET_VARIANCE },
+          },
+          [
+            createMockTransaction({
+              id: "tx-1",
+              categoryId: "cat-1",
+              amount: -80,
+            }),
+          ],
+        );
+        categoriesRepository.find.mockResolvedValue([mockCategory]);
+        budgetOf([{ categoryId: "cat-1", amount: 50, isIncome: false }], "JPY");
+
+        const result = await service.execute("user-1", "report-1");
+
+        const groceries = result.data.find((d) => d.label === "Groceries");
+        expect(groceries!.budgeted).toBeUndefined();
+        expect(groceries!.value).toBe(80);
+        expect(result.summary.total).toBeNull();
+        expect(result.missingCurrencies).toEqual(["JPY"]);
+      });
+    });
     describe("additional sorting columns", () => {
       it("sorts by PERCENTAGE column", async () => {
         const transactions = [

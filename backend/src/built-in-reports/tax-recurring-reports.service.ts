@@ -20,6 +20,7 @@ import {
   type RecurringExpenseFrequency,
   type RecurringExpenseRange,
 } from "./dto/recurring-expenses.dto";
+import { isNetSpending } from "./spending-reports.service";
 import { formatDateYMD } from "../common/date-utils";
 import { roundMoney, sumMoney, toMoneyNumber } from "../common/round.util";
 import {
@@ -206,6 +207,7 @@ export class TaxRecurringReportsService {
     // and its currency is named. A tax figure is withheld rather than shown
     // short.
     const gaps = new ConversionGaps();
+    const netByCategory = new Map<string, number>();
 
     rawResults.forEach((row) => {
       const amount = this.currencyService.tryConvertAmount(
@@ -226,26 +228,22 @@ export class TaxRecurringReportsService {
         : null;
       const catName = parentCategory?.name || category?.name || "Uncategorized";
 
-      if (amount > 0) {
-        totalIncome.addConverted(amount);
-        incomeBySource.set(
-          catName,
-          (incomeBySource.get(catName) || 0) + amount,
-        );
-      } else {
-        const expenseAmt = Math.abs(amount);
-        totalExpenses.addConverted(expenseAmt);
-        allExpensesByCategory.set(
-          catName,
-          (allExpensesByCategory.get(catName) || 0) + expenseAmt,
-        );
+      // Signed, so a refund lowers its category rather than reading as income
+      // (INV-REPORT-004).
+      netByCategory.set(catName, (netByCategory.get(catName) || 0) + amount);
+    });
 
-        if (matchesKeywords(catName)) {
-          deductibleExpenses.set(
-            catName,
-            (deductibleExpenses.get(catName) || 0) + expenseAmt,
-          );
-        }
+    // A category is classified once, by its net: spending when its debits
+    // exceed its credits (`isNetSpending`), income when its credits do.
+    netByCategory.forEach((rawNet, catName) => {
+      const net = roundMoney(rawNet);
+      if (isNetSpending(-net)) {
+        totalExpenses.addConverted(-net);
+        allExpensesByCategory.set(catName, -net);
+        if (matchesKeywords(catName)) deductibleExpenses.set(catName, -net);
+      } else if (net > 0) {
+        totalIncome.addConverted(net);
+        incomeBySource.set(catName, net);
       }
     });
 

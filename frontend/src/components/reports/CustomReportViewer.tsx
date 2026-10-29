@@ -17,6 +17,7 @@ import {
   TimeframeType,
   GroupByType,
   TIMEFRAME_LABELS,
+  MetricType,
 } from '@/types/custom-report';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useDateFormat } from '@/hooks/useDateFormat';
@@ -26,7 +27,7 @@ import { useTranslations } from 'next-intl';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PartialTotal } from '@/components/ui/PartialTotal';
 import { PartialDataNotice } from '@/components/reports/PartialDataNotice';
-import { reportTotal } from '@/lib/currency-total';
+import { isComplete, reportTotal, type ConvertedTotal } from '@/lib/currency-total';
 
 const logger = createLogger('CustomReportViewer');
 
@@ -38,7 +39,7 @@ export function CustomReportViewer({ reportId }: CustomReportViewerProps) {
   const t = useTranslations('reports');
   const tc = useTranslations('common');
   const router = useRouter();
-  const { formatCurrency, defaultCurrency } = useNumberFormat();
+  const { formatCurrency, formatNumber, defaultCurrency } = useNumberFormat();
   const { formatDate } = useDateFormat();
   const [report, setReport] = useState<CustomReport | null>(null);
   const [result, setResult] = useState<ReportResult | null>(null);
@@ -174,6 +175,24 @@ export function CustomReportViewer({ reportId }: CustomReportViewerProps) {
     }));
   }, [result]);
 
+  // The headline, per metric: a count is a number, every other metric money. A
+  // withheld total (a missing rate, or the row limit) is the known part, marked.
+  const metric = report?.config.metric;
+  const formatValue = (value: number) =>
+    metric === MetricType.COUNT ? formatNumber(value, 0) : formatCurrency(value);
+  const summaryTotal: ConvertedTotal | null = result
+    ? (() => {
+        const withheld = result.summary.total === null;
+        const total = reportTotal(
+          result.summary.total ?? result.summary.knownTotal ?? 0,
+          withheld ? result : null,
+        );
+        // A withheld total is partial even if the response named no currency.
+        return withheld && isComplete(total) ? { ...total, excludedCount: 1 } : total;
+      })()
+    : null;
+  const partialTotal = summaryTotal && !isComplete(summaryTotal) ? summaryTotal : null;
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -279,13 +298,10 @@ export function CustomReportViewer({ reportId }: CustomReportViewerProps) {
                 {/* A null total is withheld, not zero: show the part that converted
                     and mark it. The count metric's total is never null. */}
                 <PartialTotal
-                  total={reportTotal(
-                    result.summary.total ?? result.summary.knownTotal ?? 0,
-                    result.summary.total === null ? result : null,
-                  )}
+                  total={summaryTotal ?? reportTotal(0, null)}
                   displayCurrency={result.currency ?? defaultCurrency}
                 >
-                  {formatCurrency(result.summary.total ?? result.summary.knownTotal ?? 0)}
+                  {formatValue(summaryTotal?.value ?? 0)}
                 </PartialTotal>
               </div>
               <div className="text-sm text-gray-500 dark:text-gray-400">
@@ -293,6 +309,11 @@ export function CustomReportViewer({ reportId }: CustomReportViewerProps) {
               </div>
             </div>
           </div>
+          {result.truncated && (
+            <p className="mb-4 text-xs text-amber-600 dark:text-amber-400" role="note" data-testid="truncated-notice">
+              {t('customReportViewer.truncatedNotice')}
+            </p>
+          )}
           <div className="mb-4">
             <PartialDataNotice
               missingCurrencies={result.missingCurrencies ?? []}
@@ -309,6 +330,9 @@ export function CustomReportViewer({ reportId }: CustomReportViewerProps) {
               groupBy={result.groupBy as GroupByType}
               onDataPointClick={handleDataPointClick}
               tableColumns={result.tableColumns}
+              metric={metric}
+              totalRowValue={summaryTotal?.value}
+              partialTotal={partialTotal}
               reportTitle={report.name}
               exportFilename={report.name.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}
             />

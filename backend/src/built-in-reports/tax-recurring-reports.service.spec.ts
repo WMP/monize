@@ -292,8 +292,32 @@ describe("TaxRecurringReportsService", () => {
 
       const result = await service.getTaxSummary(mockUserId, 2025);
 
-      expect(result.incomeBySource[0].name).toBe("Uncategorized");
-      expect(result.allExpenses[0].name).toBe("Uncategorized");
+      // One category nets across its rows: 1000 in, 50 out is 950 of income.
+      expect(result.incomeBySource).toEqual([
+        { name: "Uncategorized", total: 950 },
+      ]);
+      expect(result.allExpenses).toEqual([]);
+    });
+
+    it("nets a refund against its category instead of reporting it as income (INV-REPORT-004)", async () => {
+      scopedManager.query.mockResolvedValue([
+        { category_id: "cat-medical", currency_code: "USD", amount: "-100.00" },
+        { category_id: "cat-medical", currency_code: "USD", amount: "30.00" },
+      ]);
+      categoriesRepository.find.mockResolvedValue([mockMedicalCategory]);
+
+      const result = await service.getTaxSummary(mockUserId, 2025);
+
+      expect(result.deductibleExpenses).toEqual([
+        { name: "Medical Expenses", total: 70 },
+      ]);
+      expect(result.allExpenses).toEqual([
+        { name: "Medical Expenses", total: 70 },
+      ]);
+      expect(result.incomeBySource).toEqual([]);
+      expect(result.totals.deductible).toBe(70);
+      expect(result.totals.expenses).toBe(70);
+      expect(result.totals.income).toBe(0);
     });
 
     it("converts foreign currency amounts", async () => {

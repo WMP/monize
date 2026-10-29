@@ -829,7 +829,7 @@ describe("CashFlowReport", () => {
 
       it("PDF: prints a dash, not 0, when the Balance is unknown", async () => {
         mockGetCashFlow.mockResolvedValue(
-          augResponse(0, { taggedInflows: null }),
+          augResponse(0, { taggedInflows: Number.NaN }),
         );
         mockExportToPdf.mockResolvedValue(undefined);
         render(<CashFlowReport />);
