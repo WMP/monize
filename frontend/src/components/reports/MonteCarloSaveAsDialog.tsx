@@ -66,20 +66,22 @@ export function MonteCarloSaveAsDialog({
       isOpen={isOpen}
       onClose={onCancel}
       maxWidth="md"
-      className="p-6"
+      padding="md"
+      title={t('monteCarlo.saveAsDialogTitle')}
       pushHistory
     >
       <form onSubmit={handleSubmit(submit)}>
-        <h2 className="flex items-center text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-          {t('monteCarlo.saveAsDialogTitle')}
+        {/* The overwrite rule is help beside the field it governs, not a
+            paragraph every save has to read again. */}
+        <div className="flex items-center">
+          <label
+            htmlFor="mc-save-as-name"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+          >
+            {t('monteCarlo.saveAsNameLabel')}
+          </label>
           <InfoTooltip text={t('monteCarlo.saveAsDialogDesc')} usePortal />
-        </h2>
-        <label
-          htmlFor="mc-save-as-name"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-        >
-          {t('monteCarlo.saveAsNameLabel')}
-        </label>
+        </div>
         <input
           id="mc-save-as-name"
           type="text"

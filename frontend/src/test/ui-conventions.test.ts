@@ -2516,7 +2516,6 @@ describe("a dialog is titled through Modal, not by a hand-rolled heading", () =>
     "/src/components/payees/ReactivatePayeeDialog.tsx",
     "/src/components/payees/detail/PayeeTransactionsTab.tsx",
     "/src/components/reports/ForeignCurrencyFeesReport.tsx",
-    "/src/components/reports/MonteCarloSaveAsDialog.tsx",
     "/src/components/scheduled-transactions/OccurrenceDatePicker.tsx",
     "/src/components/scheduled-transactions/OverrideEditorDialog.tsx",
     "/src/components/scheduled-transactions/PostTransactionDialog.tsx",
