@@ -4,6 +4,7 @@
     "subtitle": "[XX-Generate insights about your financial health-XX]",
     "searchPlaceholder": "[XX-Search reports by name or description...-XX]",
     "allReports": "[XX-All Reports-XX]",
+    "categoryWithCount": "[XX-{label} ({count})-XX]",
     "removeFavourite": "[XX-Remove from favourites-XX]",
     "addFavourite": "[XX-Add to favourites-XX]",
     "tableReport": "[XX-Report-XX]",
@@ -137,11 +138,12 @@
   },
   "reportPage": {
     "notFound": "[XX-Report Not Found-XX]",
-    "notFoundDesc": "[XX-The requested report does not exist.-XX]"
+    "notFoundDesc": "[XX-The requested report does not exist.-XX]",
+    "viewLabel": "[XX-View-XX]"
   },
   "error": {
     "defaultMessage": "[XX-Failed to load report data. Please try again.-XX]",
-    "retry": "[XX-Try again-XX]"
+    "retry": "[XX-Try Again-XX]"
   },
   "accountBalances": {
     "totalAssets": "[XX-Total Assets-XX]",
@@ -426,7 +428,7 @@
     "visualization": "[XX-Visualization-XX]",
     "tableConfiguration": "[XX-Table Configuration-XX]",
     "timePeriod": "[XX-Time Period-XX]",
-    "filtersOptional": "[XX-Filters (Optional)-XX]",
+    "filtersOptional": "[XX-Filters (optional)-XX]",
     "aggregationOptions": "[XX-Aggregation Options-XX]",
     "labelReportName": "[XX-Report Name-XX]",
     "labelDescription": "[XX-Description (optional)-XX]",
@@ -514,8 +516,6 @@
     "viewMonthly": "[XX-Monthly-XX]",
     "viewDaily": "[XX-Daily-XX]",
     "viewBySecurity": "[XX-By Security-XX]",
-    "displayChart": "[XX-Chart-XX]",
-    "displayTable": "[XX-Table-XX]",
     "showLabel": "[XX-Show:-XX]",
     "seriesDividends": "[XX-Dividends-XX]",
     "seriesInterest": "[XX-Interest-XX]",
@@ -1251,7 +1251,6 @@
     "incompleteTooltip": "[XX-Some days in this window are missing a price, an exchange rate or a cash balance, so the figures that depend on every day are not shown.-XX]",
     "measuredFromClose": "[XX-Since the close of trading on {date}-XX]",
     "notAvailable": "[XX-N/A-XX]",
-    "intradayUnavailable": "[XX-Detailed intraday pricing unavailable-XX]",
     "intradayUnavailableTitle": "[XX-Intraday view unavailable for this account mix-XX]",
     "intradayUnavailableDesc": "[XX-One or more holdings use a quote provider (MSN Money) that does not expose intraday data{skipped}. Switch to a longer range to see daily snapshots.-XX]",
     "intradayUnavailableSkipped": "[XX-: {symbols}-XX]",
@@ -1302,8 +1301,6 @@
     "costBasis": "[XX-Cost Basis-XX]",
     "realizedGainLoss": "[XX-Realized Gain/Loss-XX]",
     "securitiesSold": "[XX-Securities Sold-XX]",
-    "viewChart": "[XX-Chart-XX]",
-    "viewTable": "[XX-Table-XX]",
     "noTransactions": "[XX-No sell transactions found for this period.-XX]",
     "noGainsLosses": "[XX-No gains or losses to display.-XX]",
     "bySecurityTitle": "[XX-Realized Gains by Security-XX]",
@@ -1339,7 +1336,7 @@
     "sixMonthTotal": "[XX-6-Month Total-XX]",
     "monthlyEstimate": "[XX-Monthly Estimate-XX]",
     "identifiedPayees": "[XX-identified payees-XX]",
-    "minOccurrencesLabel": "[XX-Minimum occurrences:-XX]",
+    "minOccurrencesLabel": "[XX-Minimum Occurrences-XX]",
     "inLast6Months": "[XX-(in last 6 months)-XX]",
     "noRecurring": "[XX-No recurring expenses found with {count}+ occurrences in the last 6 months.-XX]",
     "failedToLoad": "[XX-Failed to load recurring expenses data.-XX]",
@@ -1699,8 +1696,6 @@
     "activeBills": "[XX-Active Bills-XX]",
     "overdue": "[XX-Overdue-XX]",
     "thisMonth": "[XX-This Month-XX]",
-    "autoPostsTitle": "[XX-Auto-posts when due-XX]",
-    "manualPostTitle": "[XX-Requires manual posting-XX]",
     "autoLabel": "[XX-Auto-XX]",
     "manualLabel": "[XX-Manual-XX]",
     "overdueLabel": "[XX-Overdue-XX]",
@@ -1834,6 +1829,7 @@
     "removeAriaLabel": "[XX-Remove {title} from comparison-XX]",
     "removeTitle": "[XX-Remove from comparison-XX]",
     "runFailed": "[XX-Run failed-XX]",
+    "never": "[XX-Never-XX]",
     "errors": {
       "loadScenarioFailed": "[XX-Failed to load scenario.-XX]",
       "simulationFailed": "[XX-Simulation failed.-XX]"
@@ -1847,7 +1843,6 @@
     "backToReports": "[XX-Back to Reports-XX]",
     "deleteButton": "[XX-Delete Report-XX]",
     "deleteConfirmMessage": "[XX-Are you sure you want to delete \"{name}\"? This action cannot be undone.-XX]",
-    "deleting": "[XX-Deleting...-XX]",
     "toasts": {
       "loadFailed": "[XX-Failed to load report-XX]",
       "updated": "[XX-Report updated-XX]",

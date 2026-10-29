@@ -230,7 +230,7 @@ describe('the register on a phone', () => {
     const line2 = attached.querySelector('.col-span-3')!;
     const badge = line2.querySelector('[data-testid="attachment-badge"]');
     expect(badge).toBeTruthy();
-    expect(badge!.getAttribute('title')).toBe('2 attachments');
+    expect(badge!.getAttribute('aria-label')).toBe('2 attachments');
     expect(badge!.textContent).toContain('2');
     const category = screen.getAllByText('Groceries')[0];
     expect(

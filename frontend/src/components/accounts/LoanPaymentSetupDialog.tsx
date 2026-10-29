@@ -431,11 +431,14 @@ export function LoanPaymentSetupDialog({
 
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} maxWidth="lg">
-      <div className="p-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-          {isMortgage ? t('loanPaymentSetup.titleMortgage') : t('loanPaymentSetup.titleLoan')}
-        </h2>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      maxWidth="lg"
+      className="p-6"
+      title={isMortgage ? t('loanPaymentSetup.titleMortgage') : t('loanPaymentSetup.titleLoan')}
+    >
+      <div>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
           {loanAccount.accountName}
         </p>
@@ -779,7 +782,7 @@ export function LoanPaymentSetupDialog({
             </div>
 
             {/* Actions */}
-            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex justify-end gap-3 pt-6">
               <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
                 {t('loanPaymentSetup.skip')}
               </Button>

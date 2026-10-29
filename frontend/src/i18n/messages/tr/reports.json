@@ -4,6 +4,7 @@
     "subtitle": "Finansal sağlığınız hakkında bilgiler edinin",
     "searchPlaceholder": "Raporları ad veya açıklamaya göre arayın...",
     "allReports": "Tüm Raporlar",
+    "categoryWithCount": "{label} ({count})",
     "removeFavourite": "Favorilerden kaldır",
     "addFavourite": "Favorilere ekle",
     "tableReport": "Rapor",
@@ -137,7 +138,8 @@
   },
   "reportPage": {
     "notFound": "Rapor Bulunamadı",
-    "notFoundDesc": "İstenen rapor mevcut değil."
+    "notFoundDesc": "İstenen rapor mevcut değil.",
+    "viewLabel": "Görünüm"
   },
   "error": {
     "defaultMessage": "Rapor verileri yüklenemedi. Lütfen tekrar deneyin.",
@@ -514,8 +516,6 @@
     "viewMonthly": "Aylık",
     "viewDaily": "Günlük",
     "viewBySecurity": "Menkul Kıymete Göre",
-    "displayChart": "Grafik",
-    "displayTable": "Tablo",
     "showLabel": "Göster:",
     "seriesDividends": "Temettüler",
     "seriesInterest": "Faiz",
@@ -1251,7 +1251,6 @@
     "incompleteTooltip": "Bu dönemdeki bazı günlerde fiyat, döviz kuru veya nakit bakiyesi eksik, bu yüzden her güne bağlı olan rakamlar gösterilmiyor.",
     "measuredFromClose": "{date} tarihli işlem kapanışından bu yana",
     "notAvailable": "Y/A",
-    "intradayUnavailable": "Ayrıntılı gün içi fiyatlandırma mevcut değil",
     "intradayUnavailableTitle": "Bu hesap kombinasyonu için gün içi görünüm mevcut değil",
     "intradayUnavailableDesc": "Bir veya daha fazla varlık, gün içi veri sunmayan bir fiyat sağlayıcısı (MSN Money) kullanıyor{skipped}. Günlük anlık görüntüleri görmek için daha uzun bir aralığa geçin.",
     "intradayUnavailableSkipped": ": {symbols}",
@@ -1302,8 +1301,6 @@
     "costBasis": "Maliyet Bazı",
     "realizedGainLoss": "Gerçekleşen Kazanç/Kayıp",
     "securitiesSold": "Satılan Menkul Kıymetler",
-    "viewChart": "Grafik",
-    "viewTable": "Tablo",
     "noTransactions": "Bu dönem için satış işlemi bulunamadı.",
     "noGainsLosses": "Gösterilecek kazanç veya kayıp yok.",
     "bySecurityTitle": "Menkul Kıymete Göre Gerçekleşen Kazançlar",
@@ -1339,7 +1336,7 @@
     "sixMonthTotal": "6 Aylık Toplam",
     "monthlyEstimate": "Aylık Tahmin",
     "identifiedPayees": "tanımlanan alacaklı",
-    "minOccurrencesLabel": "Minimum tekrar:",
+    "minOccurrencesLabel": "Minimum tekrar",
     "inLast6Months": "(son 6 ayda)",
     "noRecurring": "Son 6 ayda {count}+ tekrarla tekrarlayan gider bulunamadı.",
     "failedToLoad": "Tekrarlayan gider verileri yüklenemedi.",
@@ -1699,8 +1696,6 @@
     "activeBills": "Aktif Faturalar",
     "overdue": "Gecikmiş",
     "thisMonth": "Bu Ay",
-    "autoPostsTitle": "Vadesi geldiğinde otomatik kaydedilir",
-    "manualPostTitle": "Manuel kayıt gerektirir",
     "autoLabel": "Otomatik",
     "manualLabel": "Manuel",
     "overdueLabel": "Gecikmiş",
@@ -1834,6 +1829,7 @@
     "removeAriaLabel": "{title} öğesini karşılaştırmadan kaldır",
     "removeTitle": "Karşılaştırmadan kaldır",
     "runFailed": "Çalıştırma başarısız oldu",
+    "never": "Hiç",
     "errors": {
       "loadScenarioFailed": "Senaryo yüklenemedi.",
       "simulationFailed": "Simülasyon başarısız."
@@ -1847,7 +1843,6 @@
     "backToReports": "Raporlara Geri Dön",
     "deleteButton": "Raporu Sil",
     "deleteConfirmMessage": "\"{name}\" raporunu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
-    "deleting": "Siliniyor...",
     "toasts": {
       "loadFailed": "Rapor yüklenemedi",
       "updated": "Rapor güncellendi",

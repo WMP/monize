@@ -37,6 +37,7 @@ import {
 import { useScanSettingsStore } from '@/store/scanSettingsStore';
 import { MAX_ATTACHMENT_BYTES } from '@/types/attachment';
 import { DocumentCornerHandles } from './DocumentCornerHandles';
+import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
 
 /**
  * The scan review step: what the pipeline made of the photo, and what the user
@@ -300,7 +301,7 @@ export function DocumentScanDialog({
 
   const footer = (
     <div className="flex flex-wrap justify-end gap-2">
-      <Button type="button" variant="ghost" onClick={onCancel}>
+      <Button type="button" variant="outline" onClick={onCancel}>
         {t('scan.cancel')}
       </Button>
       <Button type="button" variant="outline" onClick={onRetake}>
@@ -371,27 +372,29 @@ export function DocumentScanDialog({
         {status === 'ready' && shown && (
           <>
             <div className="flex flex-wrap items-center gap-2">
-              {/* Two buttons rather than a tablist: the register's Tabs
-                  component owns `role="tablist"`, and this is a preview
-                  switch inside a dialog, not page navigation. */}
-              <Button
-                type="button"
-                size="sm"
-                variant={mode === 'enhanced' ? 'primary' : 'outline'}
-                onClick={() => setMode('enhanced')}
-                aria-pressed={mode === 'enhanced'}
-              >
-                {t('scan.viewEnhanced')}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={mode === 'original' ? 'primary' : 'outline'}
-                onClick={() => setMode('original')}
-                aria-pressed={mode === 'original'}
-              >
-                {t('scan.viewOriginal')}
-              </Button>
+              {/* A segmented control rather than a tablist: the register's
+                  Tabs component owns `role="tablist"`, and this is a preview
+                  switch inside a dialog, not page navigation. Never primary
+                  buttons, which would put a second primary beside Use
+                  Enhanced. */}
+              <div role="group" aria-label={t('preview.versionLabel')} className={SEGMENTED_GROUP_CLASS}>
+                <button
+                  type="button"
+                  onClick={() => setMode('enhanced')}
+                  aria-pressed={mode === 'enhanced'}
+                  className={segmentClass(mode === 'enhanced')}
+                >
+                  {t('scan.viewEnhanced')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode('original')}
+                  aria-pressed={mode === 'original'}
+                  className={segmentClass(mode === 'original')}
+                >
+                  {t('scan.viewOriginal')}
+                </button>
+              </div>
               {/* Only the scan turns. The original is stored byte-for-byte
                   as the device produced it (`I2`), so a Rotate button beside
                   it would promise something this dialog will not do. */}

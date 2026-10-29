@@ -164,9 +164,9 @@ describe('MortgageFields', () => {
   it('renders the heading and all form fields', () => {
     render(<MortgageFields {...defaultProps} />);
     expect(screen.getByText('Mortgage Details')).toBeInTheDocument();
-    expect(screen.getByText('Payment Frequency (required)')).toBeInTheDocument();
-    expect(screen.getByText('First Payment Date (required)')).toBeInTheDocument();
-    expect(screen.getByText('Interest Category (required)')).toBeInTheDocument();
+    expect(screen.getByText('Payment Frequency')).toBeInTheDocument();
+    expect(screen.getByText('First Payment Date')).toBeInTheDocument();
+    expect(screen.getByText('Interest Category')).toBeInTheDocument();
   });
 
   it('renders payment frequency options for mortgages', () => {
@@ -191,7 +191,7 @@ describe('MortgageFields', () => {
 
   it('renders amortization period years and months inputs', () => {
     render(<MortgageFields {...defaultProps} />);
-    expect(screen.getByText('Amortization Period (required)')).toBeInTheDocument();
+    expect(screen.getByText('Amortization Period')).toBeInTheDocument();
   });
 
   it('populates term inputs from termMonths prop', () => {
@@ -234,7 +234,7 @@ describe('MortgageFields', () => {
 
   it('renders source account select with sorted accounts', () => {
     render(<MortgageFields {...defaultProps} />);
-    expect(screen.getByText('Payment From Account (required)')).toBeInTheDocument();
+    expect(screen.getByText('Payment From Account')).toBeInTheDocument();
     expect(screen.getByText('Main Chequing (CAD)')).toBeInTheDocument();
     expect(screen.getByText('Savings (CAD)')).toBeInTheDocument();
     // The edit-only note about moving the schedule has nothing to move on create
@@ -243,7 +243,7 @@ describe('MortgageFields', () => {
 
   it('renders interest category select with sorted categories', () => {
     render(<MortgageFields {...defaultProps} />);
-    expect(screen.getByText('Interest Category (required)')).toBeInTheDocument();
+    expect(screen.getByText('Interest Category')).toBeInTheDocument();
   });
 
   it('renders one Mortgage Type select in place of the two checkboxes', () => {
@@ -521,18 +521,18 @@ describe('MortgageFields', () => {
     render(<MortgageFields {...defaultProps} isEditing={true} />);
     expect(screen.getByText('Mortgage Details')).toBeInTheDocument();
     expect(screen.getByText('Rate-Fixed Term')).toBeInTheDocument();
-    expect(screen.getByText('Amortization Period (required)')).toBeInTheDocument();
+    expect(screen.getByText('Amortization Period')).toBeInTheDocument();
     expect(screen.getByLabelText('Mortgage Type')).toBeInTheDocument();
     // Payment-setup fields (create-only) should be hidden
-    expect(screen.queryByText('Payment Frequency (required)')).not.toBeInTheDocument();
-    expect(screen.queryByText('First Payment Date (required)')).not.toBeInTheDocument();
+    expect(screen.queryByText('Payment Frequency')).not.toBeInTheDocument();
+    expect(screen.queryByText('First Payment Date')).not.toBeInTheDocument();
     // The paying account stays editable; the server moves the schedule and rule with it
-    expect(screen.getByText('Payment From Account (required)')).toBeInTheDocument();
+    expect(screen.getByText('Payment From Account')).toBeInTheDocument();
     expect(
       screen.getByText(/moves the upcoming scheduled payments and the payment matching rule/),
     ).toBeInTheDocument();
     // Recognition settings (interest category + overpayment) stay available on edit
-    expect(screen.getByText('Interest Category')).toBeInTheDocument();
+    expect(screen.getByText('Interest Category (optional)')).toBeInTheDocument();
     expect(screen.getByText('Overpayment recognition')).toBeInTheDocument();
   });
 
@@ -884,7 +884,7 @@ describe('MortgageFields', () => {
       render(<MortgageFields {...defaultProps} mortgageType={mortgageType} termMonths={60} />);
       expect(screen.getByText('Rate-Fixed Term')).toBeInTheDocument();
       expect(periodInputs()[0]).toHaveValue('5');
-      expect(screen.getByText('Amortization Period (required)')).toBeInTheDocument();
+      expect(screen.getByText('Amortization Period')).toBeInTheDocument();
     },
   );
 

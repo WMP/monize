@@ -334,13 +334,13 @@ describe('the securities list on a phone', () => {
     // The two headers are separate JSX, so this is what ties them together: a
     // tenth sortable column in the tier header fails here until the phone's
     // slim header carries it too. The tier header's sortable cells are the ones
-    // carrying `cursor-pointer`; Favourite, Status and Actions have no control,
+    // carrying `aria-sort`; Favourite, Status and Actions have no control,
     // so a positional assumption would break silently.
     setPhoneViewport(false);
     useDensityStore.setState({ densities: { securities: 'normal' } });
     const { container: tier, unmount } = renderList([makeSecurity()]);
     const tierLabels = Array.from(
-      tier.querySelectorAll('thead th[class*="cursor-pointer"]'),
+      tier.querySelectorAll('thead th[aria-sort]'),
     ).map(labelOf);
     expect(tier.querySelectorAll('thead th').length).toBeGreaterThan(tierLabels.length);
     unmount();

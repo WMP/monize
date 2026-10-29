@@ -4,6 +4,8 @@
     "subtitle": "Kelola mata uang yang digunakan di akun dan efek Anda",
     "refreshRates": "Perbarui Kurs",
     "refreshing": "Memperbarui...",
+    "ratesAge": "({time})",
+    "statusFilterLabel": "Status",
     "newCurrency": "+ Mata Uang Baru",
     "searchPlaceholder": "Cari berdasarkan kode atau nama...",
     "statusAll": "Semua ({count})",
@@ -70,9 +72,9 @@
       "activate": "Aktifkan",
       "deleteCurrency": "Hapus Mata Uang"
     },
-    "usageTooltip": "{accounts} akun, {securities} efek",
     "usageAccounts": "{count, plural, one {# akun} other {# akun}}",
-    "usageSecurities": "{count, plural, one {# efek} other {# efek}}",
+    "usageSecurities": "{count, plural, one {# sekuritas} other {# sekuritas}}",
+    "rateHelp": "Nilai satu unit setiap mata uang dalam {currency}.",
     "empty": {
       "title": "Tidak ada mata uang",
       "subtitle": "Mulailah dengan menambahkan mata uang."

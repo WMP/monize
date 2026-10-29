@@ -40,6 +40,7 @@ import {
   type SortBy,
   type SortDirection,
 } from '@/components/reports/account-balances/grouping';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 const ACCOUNT_TYPE_KEYS = [
   'CHEQUING',
@@ -728,7 +729,7 @@ export function AccountBalancesReport() {
       {viewMode === 'chart' && (
         <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
           {chartData.length === 0 ? (
-            <p className="text-gray-500 dark:text-gray-400 text-center py-8">{t('accountBalances.noData')}</p>
+            <EmptyState title={t('accountBalances.noData')} />
           ) : (
             <>
               <div className="h-72">

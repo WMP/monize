@@ -77,6 +77,8 @@
     "unsupported": "इस प्रकार की फ़ाइल का पूर्वावलोकन नहीं किया जा सकता। आप इसे फिर भी डाउनलोड कर सकते हैं।",
     "fit": "स्क्रीन के अनुसार",
     "actualSize": "वास्तविक आकार",
+    "versionLabel": "संस्करण",
+    "zoomLabel": "ज़ूम",
     "pageCount": "{count, plural, one {# पृष्ठ} other {# पृष्ठ}}",
     "page": "पृष्ठ {page} / {total}",
     "open": "{name} का पूर्वावलोकन"

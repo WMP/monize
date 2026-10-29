@@ -12,7 +12,7 @@ import { ExportIconButton } from '@/components/ui/ExportIconButton';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useChartDateFormat } from '@/hooks/useChartDateFormat';
 import { LoanRateEditing } from './useLoanRateEditing';
-import { CAPTION_CLASS, CellLabel } from '@/components/ui/Table';
+import { CAPTION_CLASS, CellLabel, Th } from '@/components/ui/Table';
 import { ScheduleTableRow } from './ScheduleTableRow';
 
 const COLLAPSED_PAST_ROWS = 5;
@@ -284,8 +284,6 @@ export function AmortizationScheduleTable({
     exportToCsv(sanitizeFilename(t('loanDetail.schedule.title')), headers, data);
   };
 
-  const headerClass =
-    'px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider';
   // Faint arithmetic operators spelling out Payment = Interest + Principal
   // (+ Extra) across the money column headers.
   const operatorClass = 'text-gray-300 dark:text-gray-600 font-normal';
@@ -326,25 +324,25 @@ export function AmortizationScheduleTable({
             <table role="table" className="block min-w-full divide-y divide-gray-200 dark:divide-gray-700 sm:table">
               <thead role="rowgroup" className="hidden bg-gray-50 dark:bg-gray-900/50 sm:table-header-group">
                 <tr>
-                  <th role="columnheader" className={`${headerClass} text-left`}>{t('loanDetail.schedule.colNumber')}</th>
-                  <th role="columnheader" className={`${headerClass} text-left`}>{t('loanDetail.schedule.colDate')}</th>
-                  <th role="columnheader" className={`${headerClass} text-right`}>{t('loanDetail.schedule.colPayment')}</th>
-                  <th role="columnheader" className={`${headerClass} text-right`}>
+                  <Th role="columnheader">{t('loanDetail.schedule.colNumber')}</Th>
+                  <Th role="columnheader">{t('loanDetail.schedule.colDate')}</Th>
+                  <Th role="columnheader" align="right">{t('loanDetail.schedule.colPayment')}</Th>
+                  <Th role="columnheader" align="right">
                     <span className={operatorClass}>= </span>
                     {t('loanDetail.schedule.colInterest')}
-                  </th>
-                  <th role="columnheader" className={`${headerClass} text-right`}>
+                  </Th>
+                  <Th role="columnheader" align="right">
                     <span className={operatorClass}>+ </span>
                     {t('loanDetail.schedule.colPrincipal')}
-                  </th>
+                  </Th>
                   {showExtraColumn && (
-                    <th role="columnheader" className={`${headerClass} text-right`}>
+                    <Th role="columnheader" align="right">
                       <span className={operatorClass}>+ </span>
                       {t('loanDetail.schedule.colExtra')}
-                    </th>
+                    </Th>
                   )}
-                  <th role="columnheader" className={`${headerClass} text-right`}>{t('loanDetail.schedule.colRate')}</th>
-                  <th role="columnheader" className={`${headerClass} text-right`}>{t('loanDetail.schedule.colBalance')}</th>
+                  <Th role="columnheader" align="right">{t('loanDetail.schedule.colRate')}</Th>
+                  <Th role="columnheader" align="right">{t('loanDetail.schedule.colBalance')}</Th>
                 </tr>
               </thead>
               <tbody role="rowgroup" className="block bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 sm:table-row-group">

@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
 import { ChevronLeftIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/Button';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { InstitutionLogo, InstitutionLogoData } from '@/components/institutions/InstitutionLogo';
 import { formatAccountType } from '@/lib/account-utils';
 import type { Account } from '@/types/account';
@@ -204,8 +205,8 @@ export function AccountDetailShell({
           </div>
         </div>
       ) : isLoading ? (
-        <div className="py-12 text-center text-gray-500 dark:text-gray-400" aria-busy="true">
-          {t('loading')}
+        <div aria-busy="true">
+          <LoadingSpinner text={t('loading')} />
         </div>
       ) : (
         children

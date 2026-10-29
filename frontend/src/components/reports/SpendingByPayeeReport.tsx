@@ -31,6 +31,7 @@ import { PartialTotal } from '@/components/ui/PartialTotal';
 import { reportTotal } from '@/lib/currency-total';
 import { exportToCsv } from '@/lib/csv-export';
 import type { ChartDatum } from '@/types/chart';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 type SpendingPayeeSortField = 'name' | 'value' | 'percentage';
 
@@ -195,9 +196,7 @@ export function SpendingByPayeeReport() {
             <Skeleton className="h-96 w-full" />
           </div>
         ) : chartData.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            {t('spendingByPayee.noData')}
-          </p>
+          <EmptyState title={t('spendingByPayee.noData')} />
         ) : viewType === 'table' ? (
           <>
             <div className="overflow-x-auto">

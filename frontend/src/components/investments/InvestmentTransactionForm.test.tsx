@@ -433,7 +433,7 @@ describe('InvestmentTransactionForm', () => {
       });
     });
     await waitFor(() => {
-      expect(screen.getByLabelText('Deposit To (optional)')).toBeInTheDocument();
+      expect(screen.getByLabelText('Deposit to (optional)')).toBeInTheDocument();
     });
     expect(screen.queryByText('Funds From (optional)')).not.toBeInTheDocument();
   });
@@ -477,7 +477,7 @@ describe('InvestmentTransactionForm', () => {
       });
     });
     await waitFor(() => {
-      expect(screen.getByLabelText('Deposit To (optional)')).toBeInTheDocument();
+      expect(screen.getByLabelText('Deposit to (optional)')).toBeInTheDocument();
     });
 
     await act(async () => {
@@ -486,7 +486,7 @@ describe('InvestmentTransactionForm', () => {
       });
     });
     await waitFor(() => {
-      expect(screen.getByLabelText('Deposit To (optional)')).toBeInTheDocument();
+      expect(screen.getByLabelText('Deposit to (optional)')).toBeInTheDocument();
     });
   });
 
@@ -519,10 +519,10 @@ describe('InvestmentTransactionForm', () => {
       });
     });
     await waitFor(() => {
-      expect(screen.getByLabelText('Deposit To (optional)')).toBeInTheDocument();
+      expect(screen.getByLabelText('Deposit to (optional)')).toBeInTheDocument();
     });
 
-    const select = screen.getByLabelText('Deposit To (optional)');
+    const select = screen.getByLabelText('Deposit to (optional)');
     const optionTexts = Array.from(select.querySelectorAll('option')).map(
       (o) => o.textContent,
     );
@@ -562,7 +562,7 @@ describe('InvestmentTransactionForm', () => {
       });
     });
     await act(async () => {
-      fireEvent.change(screen.getByLabelText('Deposit To (optional)'), {
+      fireEvent.change(screen.getByLabelText('Deposit to (optional)'), {
         target: { value: 'a2' },
       });
     });
@@ -599,7 +599,7 @@ describe('InvestmentTransactionForm', () => {
       await waitFor(() => {
         expect(screen.getByLabelText('Security')).toBeInTheDocument();
       });
-      expect(screen.getByLabelText('Deposit To (optional)')).toBeInTheDocument();
+      expect(screen.getByLabelText('Deposit to (optional)')).toBeInTheDocument();
       expect(screen.getByLabelText(/Amount/)).toBeInTheDocument();
       expect(screen.getByText(/lowers the cost basis of your holding/)).toBeInTheDocument();
       // Not a trade: no shares, no per-share price, no commission.
@@ -650,7 +650,7 @@ describe('InvestmentTransactionForm', () => {
         });
       });
       await act(async () => {
-        fireEvent.change(screen.getByLabelText('Deposit To (optional)'), {
+        fireEvent.change(screen.getByLabelText('Deposit to (optional)'), {
           target: { value: 'a2' },
         });
       });
@@ -1320,7 +1320,7 @@ describe('InvestmentTransactionForm', () => {
 
     await waitFor(() => {
       expect(screen.queryByLabelText('Funds From (optional)')).not.toBeInTheDocument();
-      expect(screen.queryByLabelText('Deposit To (optional)')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Deposit to (optional)')).not.toBeInTheDocument();
     });
 
     // Now switch back to BUY: funding should be empty (default), not stale 'a2'
@@ -1657,7 +1657,7 @@ describe('InvestmentTransactionForm', () => {
         await renderCrossCurrencyBuy();
 
         const convertedInput = screen.getByLabelText(
-          /Converted total \(CAD\)/,
+          /^Converted Total$/,
         ) as HTMLInputElement;
         expect(convertedInput.value).toBe('');
         // and the figure is not printed anywhere as a complete CAD total
@@ -1688,7 +1688,7 @@ describe('InvestmentTransactionForm', () => {
 
         await waitFor(() => {
           const convertedInput = screen.getByLabelText(
-            /Converted total \(CAD\)/,
+            /^Converted Total$/,
           ) as HTMLInputElement;
           expect(Number(convertedInput.value)).toBeCloseTo(1350, 4);
         });
@@ -2024,7 +2024,7 @@ describe('InvestmentTransactionForm', () => {
       await selectSplitAction();
       await waitFor(() => {
         expect(
-          screen.getByText(/New price per share, after split/i),
+          screen.getByText(/New Price per Share After Split/i),
         ).toBeInTheDocument();
       });
     });

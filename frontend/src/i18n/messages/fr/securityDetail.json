@@ -34,7 +34,6 @@
     "units": "Parts",
     "avgCostPerUnit": "Coût moyen / part",
     "heldInAccounts": "Détenu dans les comptes",
-    "openAccount": "Afficher {name} sur la page Investissements",
     "unitsShare": "{units} ({share})",
     "valueUnknown": "Non valorisé",
     "approx": "~ {amount}"

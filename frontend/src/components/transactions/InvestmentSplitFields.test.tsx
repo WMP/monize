@@ -625,7 +625,7 @@ describe('InvestmentSplitFields', () => {
     // The amount is in the SECURITY's currency (sec-1 is USD), not the cash
     // account's -- that is how the backend reads price and commission, and
     // labelling them with the account's currency asked for the wrong number.
-    expect(screen.getByPlaceholderText('Amount (USD)')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Amount')).toBeInTheDocument();
     // DIVIDEND still needs a security
     expect(screen.getByLabelText('Security')).toBeInTheDocument();
   });
@@ -637,7 +637,7 @@ describe('InvestmentSplitFields', () => {
       onChange,
     });
     await act(async () => {
-      fireEvent.change(screen.getByPlaceholderText('Amount (USD)'), {
+      fireEvent.change(screen.getByPlaceholderText('Amount'), {
         target: { value: '25' },
       });
     });
@@ -650,7 +650,7 @@ describe('InvestmentSplitFields', () => {
   it('hides the security dropdown for actions that do not need one (INTEREST)', async () => {
     await renderFieldsAsync({ value: buyValue({ action: 'INTEREST' }) });
     expect(screen.queryByLabelText('Security')).not.toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Amount (USD)')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Amount')).toBeInTheDocument();
   });
 
   it('honours a custom currency code in the amount placeholder and symbol', async () => {
@@ -658,7 +658,7 @@ describe('InvestmentSplitFields', () => {
       value: buyValue({ action: 'INTEREST' }),
       currencyCode: 'USD',
     });
-    expect(screen.getByPlaceholderText('Amount (USD)')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Amount')).toBeInTheDocument();
   });
 
   it('disables all controls when disabled', async () => {

@@ -11,6 +11,7 @@
     "subtitle": "अपने स्टॉक, ETF, म्यूचुअल फंड और अन्य प्रतिभूतियां प्रबंधित करें",
     "newSecurity": "+ नई प्रतिभूति",
     "searchPlaceholder": "प्रतीक या नाम से खोजें...",
+    "statusFilterLabel": "स्थिति",
     "statusAll": "सभी ({count})",
     "statusActive": "सक्रिय ({count})",
     "statusInactive": "निष्क्रिय ({count})",
@@ -65,10 +66,7 @@
       "inactive": "निष्क्रिय",
       "inactiveShort": "नि."
     },
-    "providerTitle": {
-      "override": "प्रति-प्रतिभूति प्रदाता ओवरराइड",
-      "inherited": "आपकी डिफ़ॉल्ट उद्धरण प्रदाता प्राथमिकता से विरासत में मिला"
-    },
+    "providerInherited": "{provider} (डिफ़ॉल्ट)",
     "columnTitles": {
       "shares": "सभी खातों में वर्तमान शेयर",
       "value": "सभी खातों में रखे गए शेयर, नवीनतम मूल्य पर, प्रतिभूति की अपनी मुद्रा में",
@@ -218,11 +216,10 @@
   "priceForm": {
     "dateLabel": "तिथि",
     "closePriceLabel": "बंद मूल्य",
-    "openPriceLabel": "खुला मूल्य",
-    "highPriceLabel": "उच्च मूल्य",
-    "lowPriceLabel": "निम्न मूल्य",
-    "volumeLabel": "वॉल्यूम",
-    "optionalPlaceholder": "वैकल्पिक",
+    "openPriceLabel": "खुला मूल्य (वैकल्पिक)",
+    "highPriceLabel": "उच्च मूल्य (वैकल्पिक)",
+    "lowPriceLabel": "निम्न मूल्य (वैकल्पिक)",
+    "volumeLabel": "वॉल्यूम (वैकल्पिक)",
     "submitCreate": "मूल्य जोड़ें",
     "submitUpdate": "मूल्य अपडेट करें"
   },

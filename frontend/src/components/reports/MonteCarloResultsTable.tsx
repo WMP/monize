@@ -2,7 +2,8 @@
 
 import { CashFlowEvent, CashFlowLegendSwatch } from './MonteCarloChartParts';
 import { useTranslations } from 'next-intl';
-import { CAPTION_CLASS, CellLabel } from '@/components/ui/Table';
+import { CAPTION_CLASS, CellLabel, Th } from '@/components/ui/Table';
+import { gainLossColor } from '@/lib/format';
 
 export function SummaryStat({
   label,
@@ -77,13 +78,13 @@ export function ResultsTable({
           className="hidden bg-gray-50 dark:bg-gray-900/40 text-gray-500 dark:text-gray-400 sm:table-header-group"
         >
           <tr role="row">
-            <th role="columnheader" className="px-3 py-2 text-left font-medium">{t('monteCarloResults.colYear')}</th>
-            <th role="columnheader" className="px-3 py-2 text-right font-medium">{t('monteCarloResults.col10th')}</th>
-            <th role="columnheader" className="px-3 py-2 text-right font-medium">{t('monteCarloResults.col25th')}</th>
-            <th role="columnheader" className="px-3 py-2 text-right font-medium">{t('monteCarloResults.colMedian')}</th>
-            <th role="columnheader" className="px-3 py-2 text-right font-medium">{t('monteCarloResults.col75th')}</th>
-            <th role="columnheader" className="px-3 py-2 text-right font-medium">{t('monteCarloResults.col90th')}</th>
-            <th role="columnheader" className="px-3 py-2 text-left font-medium">{t('monteCarloResults.colEvents')}</th>
+            <Th role="columnheader" className="px-3 py-2">{t('monteCarloResults.colYear')}</Th>
+            <Th role="columnheader" align="right" className="px-3 py-2">{t('monteCarloResults.col10th')}</Th>
+            <Th role="columnheader" align="right" className="px-3 py-2">{t('monteCarloResults.col25th')}</Th>
+            <Th role="columnheader" align="right" className="px-3 py-2">{t('monteCarloResults.colMedian')}</Th>
+            <Th role="columnheader" align="right" className="px-3 py-2">{t('monteCarloResults.col75th')}</Th>
+            <Th role="columnheader" align="right" className="px-3 py-2">{t('monteCarloResults.col90th')}</Th>
+            <Th role="columnheader" className="px-3 py-2">{t('monteCarloResults.colEvents')}</Th>
           </tr>
         </thead>
         <tbody
@@ -131,11 +132,7 @@ export function ResultsTable({
                     {r.events.map((e, i) => (
                       <span
                         key={i}
-                        className={`inline-flex items-center gap-1 ${
-                          e.income
-                            ? 'text-emerald-700 dark:text-emerald-400'
-                            : 'text-red-700 dark:text-red-400'
-                        }`}
+                        className={`inline-flex items-center gap-1 ${gainLossColor(e.income ? 1 : -1)}`}
                       >
                         <CashFlowLegendSwatch role={e.role} income={e.income} />
                         {e.flowType === 'ONE_TIME'

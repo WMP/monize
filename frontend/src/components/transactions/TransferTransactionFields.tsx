@@ -222,7 +222,7 @@ export function TransferTransactionFields({
       <div className={`grid grid-cols-1 gap-4 ${crossCurrencyInfo ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
         <div>
           <CurrencyInput
-            label={crossCurrencyInfo ? t('form.fields.transferAmountWithCurrency', { currency: crossCurrencyInfo.fromCurrency }) : t('form.fields.transferAmount')}
+            label={t('form.fields.transferAmount')}
             prefix={getCurrencySymbol(watchedCurrencyCode)}
             value={watchedAmount}
             onChange={(value) => setValue('amount', value !== undefined ? Math.abs(value) : 0, { shouldValidate: true })}
@@ -241,7 +241,7 @@ export function TransferTransactionFields({
         {crossCurrencyInfo && (
           <div>
             <CurrencyInput
-              label={t('form.fields.amountReceived', { currency: crossCurrencyInfo.toCurrency })}
+              label={t('form.fields.amountReceivedLabel')}
               prefix={getCurrencySymbol(crossCurrencyInfo.toCurrency)}
               value={transferTargetAmount}
               onChange={(value) => setTransferTargetAmount(value !== undefined ? Math.abs(value) : undefined)}

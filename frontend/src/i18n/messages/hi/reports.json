@@ -4,6 +4,7 @@
     "subtitle": "अपने वित्तीय स्वास्थ्य के बारे में अंतर्दृष्टि प्राप्त करें",
     "searchPlaceholder": "नाम या विवरण द्वारा रिपोर्ट खोजें...",
     "allReports": "सभी रिपोर्ट",
+    "categoryWithCount": "{label} ({count})",
     "removeFavourite": "पसंदीदा से हटाएँ",
     "addFavourite": "पसंदीदा में जोड़ें",
     "tableReport": "रिपोर्ट",
@@ -137,7 +138,8 @@
   },
   "reportPage": {
     "notFound": "रिपोर्ट नहीं मिली",
-    "notFoundDesc": "अनुरोधित रिपोर्ट मौजूद नहीं है।"
+    "notFoundDesc": "अनुरोधित रिपोर्ट मौजूद नहीं है।",
+    "viewLabel": "दृश्य"
   },
   "error": {
     "defaultMessage": "रिपोर्ट डेटा लोड करने में विफल। कृपया पुनः प्रयास करें।",
@@ -514,8 +516,6 @@
     "viewMonthly": "मासिक",
     "viewDaily": "दैनिक",
     "viewBySecurity": "प्रतिभूति के अनुसार",
-    "displayChart": "चित्र",
-    "displayTable": "तालिका",
     "showLabel": "दिखाएँ:",
     "seriesDividends": "लाभांश",
     "seriesInterest": "ब्याज",
@@ -1251,7 +1251,6 @@
     "incompleteTooltip": "इस अवधि के कुछ दिनों में मूल्य, विनिमय दर या नकद शेष उपलब्ध नहीं है, इसलिए हर दिन पर निर्भर आँकड़े नहीं दिखाए गए हैं।",
     "measuredFromClose": "{date} के कारोबारी समापन से",
     "notAvailable": "N/A",
-    "intradayUnavailable": "विस्तृत इंट्राडे मूल्य निर्धारण अनुपलब्ध",
     "intradayUnavailableTitle": "इस खाता मिश्रण के लिए इंट्राडे दृश्य अनुपलब्ध",
     "intradayUnavailableDesc": "एक या अधिक होल्डिंग एक उद्धरण प्रदाता (MSN Money) का उपयोग करती हैं जो इंट्राडे डेटा{skipped} का खुलासा नहीं करता। दैनिक स्नैपशॉट देखने के लिए लंबी सीमा पर स्विच करें।",
     "intradayUnavailableSkipped": ": {symbols}",
@@ -1302,8 +1301,6 @@
     "costBasis": "लागत आधार",
     "realizedGainLoss": "वास्तविक लाभ/हानि",
     "securitiesSold": "बेची गई प्रतिभूतियाँ",
-    "viewChart": "चित्र",
-    "viewTable": "तालिका",
     "noTransactions": "इस अवधि के लिए कोई बिक्री लेनदेन नहीं मिला।",
     "noGainsLosses": "प्रदर्शित करने के लिए कोई लाभ या हानि नहीं।",
     "bySecurityTitle": "प्रतिभूति के अनुसार वास्तविक लाभ",
@@ -1339,7 +1336,7 @@
     "sixMonthTotal": "6-माह कुल",
     "monthlyEstimate": "मासिक अनुमान",
     "identifiedPayees": "पहचाने गए भुगतानकर्ता",
-    "minOccurrencesLabel": "न्यूनतम घटनाएँ:",
+    "minOccurrencesLabel": "न्यूनतम घटनाएँ",
     "inLast6Months": "(पिछले 6 महीनों में)",
     "noRecurring": "पिछले 6 महीनों में {count}+ घटनाओं के साथ कोई आवर्ती व्यय नहीं मिला।",
     "failedToLoad": "आवर्ती व्यय डेटा लोड करने में विफल।",
@@ -1699,8 +1696,6 @@
     "activeBills": "सक्रिय बिल",
     "overdue": "अतिदेय",
     "thisMonth": "इस महीने",
-    "autoPostsTitle": "देय होने पर स्वतः पोस्ट होता है",
-    "manualPostTitle": "मैन्युअल पोस्टिंग आवश्यक है",
     "autoLabel": "स्वतः",
     "manualLabel": "मैन्युअल",
     "overdueLabel": "अतिदेय",
@@ -1834,6 +1829,7 @@
     "removeAriaLabel": "तुलना से {title} हटाएं",
     "removeTitle": "तुलना से हटाएं",
     "runFailed": "रन विफल",
+    "never": "कभी नहीं",
     "errors": {
       "loadScenarioFailed": "परिदृश्य लोड करने में विफल।",
       "simulationFailed": "सिमुलेशन विफल।"
@@ -1847,7 +1843,6 @@
     "backToReports": "रिपोर्ट पर वापस जाएँ",
     "deleteButton": "रिपोर्ट हटाएँ",
     "deleteConfirmMessage": "क्या आप वाकई \"{name}\" को हटाना चाहते हैं? यह क्रिया पूर्ववत नहीं की जा सकती।",
-    "deleting": "हटाया जा रहा है...",
     "toasts": {
       "loadFailed": "रिपोर्ट लोड करने में विफल",
       "updated": "रिपोर्ट अपडेट की गई",

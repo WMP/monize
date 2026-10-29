@@ -4,6 +4,8 @@
     "subtitle": "Gérez les devises utilisées dans vos comptes et titres",
     "refreshRates": "Actualiser les taux",
     "refreshing": "Actualisation...",
+    "ratesAge": "({time})",
+    "statusFilterLabel": "Statut",
     "newCurrency": "+ Nouvelle devise",
     "searchPlaceholder": "Rechercher par code ou nom...",
     "statusAll": "Toutes ({count})",
@@ -70,9 +72,9 @@
       "activate": "Activer",
       "deleteCurrency": "Supprimer la devise"
     },
-    "usageTooltip": "{accounts} compte(s), {securities} titre(s)",
-    "usageAccounts": "{count, plural, one {# cpt} other {# cpts}}",
+    "usageAccounts": "{count, plural, one {# compte} other {# comptes}}",
     "usageSecurities": "{count, plural, one {# titre} other {# titres}}",
+    "rateHelp": "Ce que vaut une unité de chaque devise en {currency}.",
     "empty": {
       "title": "Aucune devise",
       "subtitle": "Commencez par ajouter une devise."

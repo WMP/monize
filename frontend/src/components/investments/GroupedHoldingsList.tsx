@@ -670,7 +670,10 @@ const HoldingRow = memo(function HoldingRow({
           </div>
           {/* The name wraps unclamped on a phone (it is the row's identity) and
               keeps its desktop clamp from `sm` up. */}
-          <div className="text-xs text-gray-500 dark:text-gray-400 break-words sm:truncate sm:max-w-[320px]">
+          <div
+            className="text-xs text-gray-500 dark:text-gray-400 break-words sm:truncate sm:max-w-[320px]"
+            title={holding.name}
+          >
             {holding.name}
           </div>
         </button>

@@ -11,6 +11,7 @@
     "subtitle": "Gestiona tus acciones, ETFs, fondos mutuos y otros valores",
     "newSecurity": "+ Nuevo valor",
     "searchPlaceholder": "Buscar por símbolo o nombre...",
+    "statusFilterLabel": "Estado",
     "statusAll": "Todos ({count})",
     "statusActive": "Activos ({count})",
     "statusInactive": "Inactivos ({count})",
@@ -65,10 +66,7 @@
       "inactive": "Inactivo",
       "inactiveShort": "Ina"
     },
-    "providerTitle": {
-      "override": "Proveedor configurado para este valor",
-      "inherited": "Heredado de tu preferencia de proveedor de cotizaciones predeterminado"
-    },
+    "providerInherited": "{provider} (predeterminado)",
     "columnTitles": {
       "shares": "Acciones actuales en todas las cuentas",
       "value": "Acciones en todas las cuentas al precio más reciente, en la divisa del propio valor",
@@ -218,11 +216,10 @@
   "priceForm": {
     "dateLabel": "Fecha",
     "closePriceLabel": "Precio de cierre",
-    "openPriceLabel": "Precio de apertura",
-    "highPriceLabel": "Precio máximo",
-    "lowPriceLabel": "Precio mínimo",
-    "volumeLabel": "Volumen",
-    "optionalPlaceholder": "Opcional",
+    "openPriceLabel": "Precio de apertura (opcional)",
+    "highPriceLabel": "Precio máximo (opcional)",
+    "lowPriceLabel": "Precio mínimo (opcional)",
+    "volumeLabel": "Volumen (opcional)",
     "submitCreate": "Agregar precio",
     "submitUpdate": "Actualizar precio"
   },

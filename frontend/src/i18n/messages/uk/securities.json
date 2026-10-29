@@ -11,6 +11,7 @@
     "subtitle": "Управляйте акціями, ETF, пайовими фондами та іншими цінними паперами",
     "newSecurity": "+ Новий цінний папір",
     "searchPlaceholder": "Пошук за символом або назвою...",
+    "statusFilterLabel": "Статус",
     "statusAll": "Всі ({count})",
     "statusActive": "Активні ({count})",
     "statusInactive": "Неактивні ({count})",
@@ -65,10 +66,7 @@
       "inactive": "Неактивний",
       "inactiveShort": "Неакт"
     },
-    "providerTitle": {
-      "override": "Індивідуальне налаштування провайдера для цього цінного паперу",
-      "inherited": "Успадковано від ваших налаштувань провайдера котирувань за замовчуванням"
-    },
+    "providerInherited": "{provider} (типово)",
     "columnTitles": {
       "shares": "Поточні акції на всіх рахунках",
       "value": "Папери на всіх рахунках за останньою ціною, у валюті самого цінного паперу",
@@ -218,11 +216,10 @@
   "priceForm": {
     "dateLabel": "Дата",
     "closePriceLabel": "Ціна закриття",
-    "openPriceLabel": "Ціна відкриття",
-    "highPriceLabel": "Максимальна ціна",
-    "lowPriceLabel": "Мінімальна ціна",
-    "volumeLabel": "Обсяг",
-    "optionalPlaceholder": "Необов'язково",
+    "openPriceLabel": "Ціна відкриття (необов'язково)",
+    "highPriceLabel": "Максимальна ціна (необов'язково)",
+    "lowPriceLabel": "Мінімальна ціна (необов'язково)",
+    "volumeLabel": "Обсяг (необов'язково)",
     "submitCreate": "Додати ціну",
     "submitUpdate": "Оновити ціну"
   },

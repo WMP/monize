@@ -11,6 +11,7 @@
     "subtitle": "Hisselerinizi, ETF'lerinizi, yatırım fonlarınızı ve diğer menkul kıymetlerinizi yönetin",
     "newSecurity": "+ Yeni Menkul Kıymet",
     "searchPlaceholder": "Sembol veya ada göre ara...",
+    "statusFilterLabel": "Durum",
     "statusAll": "Tümü ({count})",
     "statusActive": "Aktif ({count})",
     "statusInactive": "Pasif ({count})",
@@ -65,10 +66,7 @@
       "inactive": "Pasif",
       "inactiveShort": "Pas"
     },
-    "providerTitle": {
-      "override": "Menkul kıymet bazında sağlayıcı geçersiz kılma",
-      "inherited": "Varsayılan Fiyat Teklifi Sağlayıcısı tercihinizden devralındı"
-    },
+    "providerInherited": "{provider} (varsayılan)",
     "columnTitles": {
       "shares": "Tüm hesaplarda tutulan güncel hisse sayısı",
       "value": "Tüm hesaplardaki paylar, en güncel fiyatla ve menkul kıymetin kendi para biriminde",
@@ -218,11 +216,10 @@
   "priceForm": {
     "dateLabel": "Tarih",
     "closePriceLabel": "Kapanış Fiyatı",
-    "openPriceLabel": "Açılış Fiyatı",
-    "highPriceLabel": "En Yüksek Fiyat",
-    "lowPriceLabel": "En Düşük Fiyat",
-    "volumeLabel": "Hacim",
-    "optionalPlaceholder": "İsteğe bağlı",
+    "openPriceLabel": "Açılış Fiyatı (isteğe bağlı)",
+    "highPriceLabel": "En Yüksek Fiyat (isteğe bağlı)",
+    "lowPriceLabel": "En Düşük Fiyat (isteğe bağlı)",
+    "volumeLabel": "Hacim (isteğe bağlı)",
     "submitCreate": "Fiyat Ekle",
     "submitUpdate": "Fiyatı Güncelle"
   },

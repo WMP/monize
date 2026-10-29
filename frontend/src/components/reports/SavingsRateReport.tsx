@@ -32,6 +32,7 @@ import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { useReportData } from '@/hooks/useReportData';
 import { ReportError } from '@/components/reports/ReportError';
 import { createLogger } from '@/lib/logger';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 const logger = createLogger('SavingsRateReport');
 
@@ -356,9 +357,7 @@ export function SavingsRateReport() {
       {/* Chart */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
         {data.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            {t('savingsRate.noData')}
-          </p>
+          <EmptyState title={t('savingsRate.noData')} />
         ) : (
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%" minWidth={0}>

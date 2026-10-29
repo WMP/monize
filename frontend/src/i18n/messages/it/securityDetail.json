@@ -34,7 +34,6 @@
     "units": "Quote",
     "avgCostPerUnit": "Costo medio / quota",
     "heldInAccounts": "Detenuto nei conti",
-    "openAccount": "Mostra {name} nella pagina Investimenti",
     "unitsShare": "{units} ({share})",
     "valueUnknown": "Non valorizzato",
     "approx": "~ {amount}"

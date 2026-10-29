@@ -4,6 +4,8 @@
     "subtitle": "[XX-Manage currencies used across your accounts and securities-XX]",
     "refreshRates": "[XX-Refresh Rates-XX]",
     "refreshing": "[XX-Refreshing...-XX]",
+    "ratesAge": "[XX-({time})-XX]",
+    "statusFilterLabel": "[XX-Status-XX]",
     "newCurrency": "[XX-+ New Currency-XX]",
     "searchPlaceholder": "[XX-Search by code or name...-XX]",
     "statusAll": "[XX-All ({count})-XX]",
@@ -70,9 +72,9 @@
       "activate": "[XX-Activate-XX]",
       "deleteCurrency": "[XX-Delete Currency-XX]"
     },
-    "usageTooltip": "[XX-{accounts} account(s), {securities} security/ies-XX]",
-    "usageAccounts": "[XX-{count, plural, one {# acct} other {# accts}}-XX]",
-    "usageSecurities": "[XX-{count, plural, one {# sec} other {# secs}}-XX]",
+    "usageAccounts": "[XX-{count, plural, one {# account} other {# accounts}}-XX]",
+    "usageSecurities": "[XX-{count, plural, one {# security} other {# securities}}-XX]",
+    "rateHelp": "[XX-What one unit of each currency is worth in {currency}.-XX]",
     "empty": {
       "title": "[XX-No currencies-XX]",
       "subtitle": "[XX-Get started by adding a currency.-XX]"

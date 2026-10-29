@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { useTranslations } from 'next-intl';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -27,6 +26,7 @@ import { Account } from '@/types/account';
 import { ScheduledTransaction } from '@/types/scheduled-transaction';
 import { ReconciliationData, Transaction, TransactionStatus } from '@/types/transaction';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { useDateFormat } from '@/hooks/useDateFormat';
 import { useSortableTable } from '@/hooks/useSortableTable';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useFormModal } from '@/hooks/useFormModal';
@@ -83,6 +83,7 @@ function ReconcileContent() {
   const searchParams = useSearchParams();
   const preselectedAccountId = searchParams.get('accountId');
   const { formatCurrency, defaultCurrency } = useNumberFormat();
+  const { formatDate } = useDateFormat();
   const reconciledLocked = usePreferencesStore(
     (s) => s.preferences?.lockReconciledTransactions ?? false,
   );
@@ -618,7 +619,7 @@ function ReconcileContent() {
           {t('complete.title')}
         </h2>
         <p className="text-gray-600 dark:text-gray-400 mb-6">
-          {t('complete.message', { date: format(new Date(statementDate), 'MMMM d, yyyy') })}
+          {t('complete.message', { date: formatDate(statementDate) })}
         </p>
 
         {/* Revolving-credit payment prompt: offer to update or create the

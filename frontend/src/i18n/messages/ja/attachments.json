@@ -77,6 +77,8 @@
     "unsupported": "この種類のファイルはプレビューできません。ダウンロードは可能です。",
     "fit": "画面に合わせる",
     "actualSize": "実際のサイズ",
+    "versionLabel": "バージョン",
+    "zoomLabel": "ズーム",
     "pageCount": "{count, plural, other {# ページ}}",
     "page": "{total} ページ中 {page} ページ",
     "open": "{name} をプレビュー"

@@ -19,6 +19,7 @@ import { getErrorMessage } from '@/lib/errors';
 import { documentHost } from '@/lib/security-detail';
 import { SecurityDocumentForm } from './SecurityDocumentForm';
 import { SecurityIssueLetters } from './SecurityIssueLetters';
+import { Th } from '@/components/ui/Table';
 import type {
   CreateSecurityDocumentData,
   Security,
@@ -34,8 +35,6 @@ interface SecurityDocumentsTabProps {
   refreshVersion?: number;
 }
 
-const TH =
-  'px-3 py-2 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400';
 const TD = 'px-3 py-2 text-sm';
 
 /**
@@ -240,27 +239,21 @@ export function SecurityDocumentsTab({ security, refreshVersion = 0 }: SecurityD
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-900">
               <tr>
-                <th scope="col" className={`${TH} text-left`}>
+                <Th scope="col" className="px-3 py-2">
                   {t('documents.columns.type')}
-                </th>
-                <th scope="col" className={`${TH} text-left`}>
+                </Th>
+                <Th scope="col" className="px-3 py-2">
                   {t('documents.columns.name')}
-                </th>
-                <th
-                  scope="col"
-                  className={`${TH} hidden text-left sm:table-cell`}
-                >
+                </Th>
+                <Th scope="col" className="px-3 py-2 hidden sm:table-cell">
                   {t('documents.columns.date')}
-                </th>
-                <th
-                  scope="col"
-                  className={`${TH} hidden text-left md:table-cell`}
-                >
+                </Th>
+                <Th scope="col" className="px-3 py-2 hidden md:table-cell">
                   {t('documents.columns.address')}
-                </th>
-                <th scope="col" className={`${TH} text-right`}>
+                </Th>
+                <Th scope="col" align="right" className="px-3 py-2">
                   {t('documents.columns.actions')}
-                </th>
+                </Th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -335,20 +328,14 @@ export function SecurityDocumentsTab({ security, refreshVersion = 0 }: SecurityD
         maxWidth="lg"
         className="p-6"
         pushHistory
+        title={editing ? t('documents.form.editTitle') : t('documents.form.addTitle')}
       >
         {isFormOpen && (
-          <>
-            <h2 className="mb-4 text-xl font-bold text-gray-900 dark:text-gray-100">
-              {editing
-                ? t('documents.form.editTitle')
-                : t('documents.form.addTitle')}
-            </h2>
-            <SecurityDocumentForm
-              document={editing}
-              onSubmit={handleSubmit}
-              onCancel={closeForm}
-            />
-          </>
+          <SecurityDocumentForm
+            document={editing}
+            onSubmit={handleSubmit}
+            onCancel={closeForm}
+          />
         )}
       </Modal>
 

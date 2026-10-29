@@ -34,7 +34,6 @@
     "units": "Единицы",
     "avgCostPerUnit": "Средняя цена / единицу",
     "heldInAccounts": "На счетах",
-    "openAccount": "Показать {name} на странице «Инвестиции»",
     "unitsShare": "{units} ({share})",
     "valueUnknown": "Нет оценки",
     "approx": "~ {amount}"

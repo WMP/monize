@@ -45,6 +45,8 @@ import {
 } from '@/lib/transaction-sort';
 import { PHONE_HEADER_CLASS } from '@/components/ui/Table';
 import { walkRunningBalances } from '@/lib/running-balance';
+import { balanceColor, gainLossColor } from '@/lib/format';
+import { DocumentArrowDownIcon } from '@heroicons/react/24/outline';
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -651,7 +653,7 @@ export function TransactionList({
     const formatted = formatCurrency(absAmount, currencyCode);
 
     return (
-      <span className={isNegative ? 'text-red-600' : 'text-green-600'}>
+      <span className={gainLossColor(amount)}>
         {isNegative ? '-' : '+'}{formatted}
       </span>
     );
@@ -660,7 +662,7 @@ export function TransactionList({
   const formatBalance = useCallback((balance: number, currencyCode?: string) => {
     const formatted = formatCurrency(Math.abs(balance), currencyCode);
     return (
-      <span className={balance < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100'}>
+      <span className={balanceColor(balance)}>
         {balance < 0 ? `-${formatted}` : formatted}
       </span>
     );
@@ -751,18 +753,16 @@ export function TransactionList({
                 <button
                   onClick={onExport}
                   disabled={isExporting}
-                  className={LIST_TOOLBAR_BUTTON_CLASS}
+                  className={`${LIST_TOOLBAR_BUTTON_CLASS} gap-1`}
                   title={t('list.export.title')}
                 >
                   {isExporting ? (
-                    <svg className="w-4 h-4 sm:mr-1 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
                   ) : (
-                    <svg className="w-4 h-4 sm:mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
+                    <DocumentArrowDownIcon className="w-4 h-4" aria-hidden="true" />
                   )}
                     <span className="hidden sm:inline">{isExporting ? t('list.export.exporting') : t('list.export.button')}</span>
                   </button>

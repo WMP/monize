@@ -77,6 +77,8 @@
     "unsupported": "Bu dosya türü önizlenemiyor. Yine de indirebilirsiniz.",
     "fit": "Ekrana sığdır",
     "actualSize": "Gerçek boyut",
+    "versionLabel": "Sürüm",
+    "zoomLabel": "Yakınlaştırma",
     "pageCount": "{count, plural, one {# sayfa} other {# sayfa}}",
     "page": "Sayfa {page} / {total}",
     "open": "{name} önizlemesi"

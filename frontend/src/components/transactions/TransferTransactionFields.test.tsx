@@ -215,7 +215,7 @@ describe('TransferTransactionFields', () => {
       />,
     );
 
-    expect(screen.getByText('Category (Optional)')).toBeInTheDocument();
+    expect(screen.getByText('Category (optional)')).toBeInTheDocument();
     expect(
       screen.getByText(/won't count as income or expense/i),
     ).toBeInTheDocument();
@@ -240,7 +240,7 @@ describe('TransferTransactionFields', () => {
       />
     );
 
-    expect(screen.getByText('Amount Received (USD)')).toBeInTheDocument();
+    expect(screen.getByText('Amount Received')).toBeInTheDocument();
   });
 
   // --- New tests below ---
@@ -386,8 +386,8 @@ describe('TransferTransactionFields', () => {
       />
     );
 
-    expect(screen.getByText('Transfer Amount (CAD)')).toBeInTheDocument();
-    expect(screen.getByText('Amount Received (USD)')).toBeInTheDocument();
+    expect(screen.getByText('Transfer Amount')).toBeInTheDocument();
+    expect(screen.getByText('Amount Received')).toBeInTheDocument();
   });
 
   it('does not show "Amount must be positive" hint when in cross-currency mode', () => {
@@ -480,7 +480,7 @@ describe('TransferTransactionFields', () => {
       />
     );
 
-    const payeeSelect = screen.getByTestId('combobox-select-Payee (Optional)');
+    const payeeSelect = screen.getByTestId('combobox-select-Payee (optional)');
     const options = Array.from(payeeSelect.querySelectorAll('option'));
     const labels = options.map(o => o.textContent);
 
@@ -500,7 +500,7 @@ describe('TransferTransactionFields', () => {
       />
     );
 
-    const payeeSelect = screen.getByTestId('combobox-select-Payee (Optional)');
+    const payeeSelect = screen.getByTestId('combobox-select-Payee (optional)');
     fireEvent.change(payeeSelect, { target: { value: 'p1' } });
 
     expect(defaultProps.setTransferPayeeId).toHaveBeenCalledWith('p1');

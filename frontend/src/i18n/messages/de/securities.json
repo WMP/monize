@@ -11,6 +11,7 @@
     "subtitle": "Verwalten Sie Ihre Aktien, ETFs, Investmentfonds und sonstigen Wertpapiere",
     "newSecurity": "+ Neues Wertpapier",
     "searchPlaceholder": "Nach Symbol oder Name suchen...",
+    "statusFilterLabel": "Status",
     "statusAll": "Alle ({count})",
     "statusActive": "Aktiv ({count})",
     "statusInactive": "Inaktiv ({count})",
@@ -65,10 +66,7 @@
       "inactive": "Inaktiv",
       "inactiveShort": "Ina"
     },
-    "providerTitle": {
-      "override": "Wertpapierspezifische Anbieterüberschreibung",
-      "inherited": "Übernommen von Ihrer Standard-Kursanbieter-Einstellung"
-    },
+    "providerInherited": "{provider} (Standard)",
     "columnTitles": {
       "shares": "Aktuell gehaltene Anteile über alle Konten",
       "value": "Über alle Konten gehaltene Anteile zum zuletzt abgerufenen Kurs, in der Währung des Wertpapiers",
@@ -218,11 +216,10 @@
   "priceForm": {
     "dateLabel": "Datum",
     "closePriceLabel": "Schlusskurs",
-    "openPriceLabel": "Eröffnungskurs",
-    "highPriceLabel": "Tageshoch",
-    "lowPriceLabel": "Tagestief",
-    "volumeLabel": "Volumen",
-    "optionalPlaceholder": "Optional",
+    "openPriceLabel": "Eröffnungskurs (optional)",
+    "highPriceLabel": "Tageshoch (optional)",
+    "lowPriceLabel": "Tagestief (optional)",
+    "volumeLabel": "Volumen (optional)",
     "submitCreate": "Kurs hinzufügen",
     "submitUpdate": "Kurs aktualisieren"
   },

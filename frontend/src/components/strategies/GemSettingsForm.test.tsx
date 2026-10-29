@@ -220,7 +220,7 @@ describe("GemSettingsForm", () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Save/ })).toBeNull();
     expect(
-      screen.getByRole("button", { name: "Try again" }),
+      screen.getByRole("button", { name: "Try Again" }),
     ).toBeInTheDocument();
   });
 
@@ -230,12 +230,12 @@ describe("GemSettingsForm", () => {
     await act(async () => {});
     await waitFor(() =>
       expect(
-        screen.getByRole("button", { name: "Try again" }),
+        screen.getByRole("button", { name: "Try Again" }),
       ).toBeInTheDocument(),
     );
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+      fireEvent.click(screen.getByRole("button", { name: "Try Again" }));
     });
 
     await waitFor(() =>

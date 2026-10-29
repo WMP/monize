@@ -19,6 +19,7 @@ import type { AccountType } from '@/types/account';
 import type { Transaction } from '@/types/transaction';
 import type { LoanScenario } from '@/types/loan-scenario';
 import type { LoanRateChange } from '@/types/loan-rate-change';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 const DEBT_ACCOUNT_TYPES: AccountType[] = ['LOAN', 'MORTGAGE', 'LINE_OF_CREDIT'];
 
@@ -129,9 +130,7 @@ export function LoanOverpaymentSimulatorReport() {
   if (accounts.length === 0) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-        <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-          {t('loanOverpayment.empty')}
-        </p>
+        <EmptyState title={t('loanOverpayment.empty')} />
       </div>
     );
   }

@@ -175,7 +175,6 @@
       "viewPayeeTitle": "[XX-View {name} details-XX]",
       "investmentLabel": "[XX-Investment-XX]",
       "linkedInvestmentTitle": "[XX-View in Investments-XX]",
-      "linkedInvestmentBadgeTitle": "[XX-This transaction is linked to an investment transaction-XX]",
       "filterByDate": "[XX-Filter by date \"{date}\"-XX]",
       "filterByAccount": "[XX-Filter by \"{name}\"-XX]",
       "filterByPayee": "[XX-Filter by \"{name}\"-XX]",
@@ -223,10 +222,10 @@
       "show": "[XX-Show filters-XX]"
     },
     "accounts": {
-      "label": "[XX-Show accounts:-XX]",
-      "all": "[XX-All-XX]",
-      "active": "[XX-Active-XX]",
-      "closed": "[XX-Closed-XX]"
+      "label": "[XX-Show Accounts-XX]",
+      "allCount": "[XX-All ({count})-XX]",
+      "activeCount": "[XX-Active ({count})-XX]",
+      "closedCount": "[XX-Closed ({count})-XX]"
     },
     "fields": {
       "accounts": "[XX-Accounts-XX]",
@@ -320,7 +319,7 @@
     },
     "modal": {
       "title": "[XX-Bulk Update Transactions-XX]",
-      "subtitle": "[XX-Update {count, plural, one {# selected transaction} other {# selected transactions}}. Toggle the fields you want to change.-XX]",
+      "help": "[XX-Toggle the fields you want to change.-XX]",
       "submitLabel": "[XX-Update {count, plural, one {# Transaction} other {# Transactions}}-XX]",
       "payee": "[XX-Payee-XX]",
       "category": "[XX-Category-XX]",
@@ -368,10 +367,9 @@
       "fromAccount": "[XX-From Account-XX]",
       "toAccount": "[XX-To Account-XX]",
       "transferAmount": "[XX-Transfer Amount-XX]",
-      "transferAmountWithCurrency": "[XX-Transfer Amount ({currency})-XX]",
-      "amountReceived": "[XX-Amount Received ({currency})-XX]",
-      "payeeOptional": "[XX-Payee (Optional)-XX]",
-      "categoryOptional": "[XX-Category (Optional)-XX]"
+      "amountReceivedLabel": "[XX-Amount Received-XX]",
+      "payeeOptional": "[XX-Payee (optional)-XX]",
+      "categoryOptional": "[XX-Category (optional)-XX]"
     },
     "placeholders": {
       "selectAccount": "[XX-Select account...-XX]",
@@ -538,7 +536,7 @@
     "quantityPlaceholder": "[XX-Quantity-XX]",
     "pricePlaceholder": "[XX-Price-XX]",
     "commissionPlaceholder": "[XX-Commission-XX]",
-    "amountPlaceholder": "[XX-Amount ({currency})-XX]",
+    "amountOnlyPlaceholder": "[XX-Amount-XX]",
     "ratePlaceholder": "[XX-{to} per 1 {from}-XX]",
     "ariaRate": "[XX-Exchange rate ({to} per 1 {from})-XX]",
     "rateHint": "[XX-Quantity, price and commission are in {from}; this rate converts the cash impact into {to}.-XX]",

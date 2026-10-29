@@ -11,6 +11,7 @@
     "subtitle": "Quản lý cổ phiếu, ETF, quỹ lẫn nhau và các giấy chứng khoán khác của bạn",
     "newSecurity": "+ Giấy chứng khoán mới",
     "searchPlaceholder": "Tìm kiếm theo ký hiệu hoặc tên...",
+    "statusFilterLabel": "Trạng thái",
     "statusAll": "Tất cả ({count})",
     "statusActive": "Hoạt động ({count})",
     "statusInactive": "Không hoạt động ({count})",
@@ -65,10 +66,7 @@
       "inactive": "Không hoạt động",
       "inactiveShort": "KHĐ"
     },
-    "providerTitle": {
-      "override": "Ghi đè nhà cung cấp theo giấy chứng khoán",
-      "inherited": "Kế thừa từ tùy chọn Nhà cung cấp báo giá mặc định của bạn"
-    },
+    "providerInherited": "{provider} (mặc định)",
     "columnTitles": {
       "shares": "Cổ phiếu hiện đang nắm giữ trên tất cả tài khoản",
       "value": "Số cổ phần nắm giữ trên tất cả tài khoản theo giá gần nhất, tính bằng đồng tiền của chính chứng khoán",
@@ -218,11 +216,10 @@
   "priceForm": {
     "dateLabel": "Ngày",
     "closePriceLabel": "Giá đóng cửa",
-    "openPriceLabel": "Giá mở cửa",
-    "highPriceLabel": "Giá cao nhất",
-    "lowPriceLabel": "Giá thấp nhất",
-    "volumeLabel": "Khối lượng",
-    "optionalPlaceholder": "Tùy chọn",
+    "openPriceLabel": "Giá mở cửa (tùy chọn)",
+    "highPriceLabel": "Giá cao nhất (tùy chọn)",
+    "lowPriceLabel": "Giá thấp nhất (tùy chọn)",
+    "volumeLabel": "Khối lượng (tùy chọn)",
     "submitCreate": "Thêm giá",
     "submitUpdate": "Cập nhật giá"
   },

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@/test/render';
 import { UnsavedChangesDialog } from './UnsavedChangesDialog';
+import { buttonClassName } from './Button';
 
 describe('UnsavedChangesDialog', () => {
   const defaultProps = {
@@ -28,6 +29,13 @@ describe('UnsavedChangesDialog', () => {
     expect(screen.getByText('Save')).toBeInTheDocument();
     expect(screen.getByText('Discard')).toBeInTheDocument();
     expect(screen.getByText('Cancel')).toBeInTheDocument();
+  });
+
+  it('saves with the shared primary Button, not hand-written colour classes', () => {
+    render(<UnsavedChangesDialog {...defaultProps} />);
+    expect(screen.getByRole('button', { name: 'Save' }).className).toContain(
+      buttonClassName('primary'),
+    );
   });
 
   it('calls onSave when Save is clicked', () => {

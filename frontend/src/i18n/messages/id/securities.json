@@ -11,6 +11,7 @@
     "subtitle": "Kelola saham, ETF, reksa dana, dan sekuritas lainnya",
     "newSecurity": "+ Sekuritas Baru",
     "searchPlaceholder": "Cari berdasarkan simbol atau nama...",
+    "statusFilterLabel": "Status",
     "statusAll": "Semua ({count})",
     "statusActive": "Aktif ({count})",
     "statusInactive": "Tidak Aktif ({count})",
@@ -65,10 +66,7 @@
       "inactive": "Tidak Aktif",
       "inactiveShort": "Tdk"
     },
-    "providerTitle": {
-      "override": "Penggantian penyedia per sekuritas",
-      "inherited": "Diwarisi dari preferensi Penyedia Kutipan default Anda"
-    },
+    "providerInherited": "{provider} (bawaan)",
     "columnTitles": {
       "shares": "Lembar saham saat ini yang dimiliki di semua akun",
       "value": "Saham yang dimiliki di semua akun pada harga terbaru, dalam mata uang efek itu sendiri",
@@ -218,11 +216,10 @@
   "priceForm": {
     "dateLabel": "Tanggal",
     "closePriceLabel": "Harga Penutupan",
-    "openPriceLabel": "Harga Pembukaan",
-    "highPriceLabel": "Harga Tertinggi",
-    "lowPriceLabel": "Harga Terendah",
-    "volumeLabel": "Volume",
-    "optionalPlaceholder": "Opsional",
+    "openPriceLabel": "Harga Pembukaan (opsional)",
+    "highPriceLabel": "Harga Tertinggi (opsional)",
+    "lowPriceLabel": "Harga Terendah (opsional)",
+    "volumeLabel": "Volume (opsional)",
     "submitCreate": "Tambah Harga",
     "submitUpdate": "Perbarui Harga"
   },

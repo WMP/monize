@@ -454,10 +454,10 @@ describe('BankSyncPreviewModal', () => {
 
       // Header on top, footer at the bottom, neither one squeezed by the rows.
       const heading = within(dialog).getByRole('heading', { level: 2 });
-      expect(heading.parentElement!.parentElement!.className).toContain('shrink-0');
-      // The header's close icon comes first; the footer's Close button is the last.
-      const closeButton = within(dialog).getAllByRole('button', { name: 'Close' }).at(-1)!;
-      const footer = closeButton.closest('div.border-t') as HTMLElement;
+      expect(heading.parentElement!.className).toContain('shrink-0');
+      // The footer's Close button is the dialog's one way out besides Escape.
+      const closeButton = within(dialog).getByRole('button', { name: 'Close' });
+      const footer = closeButton.parentElement!;
       expect(footer.className).toContain('shrink-0');
       expect(footer.parentElement).toBe(dialog);
       expect(dialog.lastElementChild).toBe(footer);

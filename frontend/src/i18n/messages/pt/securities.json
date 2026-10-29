@@ -11,6 +11,7 @@
     "subtitle": "Gerir as suas ações, ETFs, fundos de investimento e outros títulos",
     "newSecurity": "+ Novo Título",
     "searchPlaceholder": "Pesquisar por símbolo ou nome...",
+    "statusFilterLabel": "Estado",
     "statusAll": "Todos ({count})",
     "statusActive": "Ativos ({count})",
     "statusInactive": "Inativos ({count})",
@@ -65,10 +66,7 @@
       "inactive": "Inativo",
       "inactiveShort": "Ina"
     },
-    "providerTitle": {
-      "override": "Substituição de fornecedor por título",
-      "inherited": "Herdado da preferência de Fornecedor de Cotações predefinido"
-    },
+    "providerInherited": "{provider} (predefinido)",
     "columnTitles": {
       "shares": "Ações atuais detidas em todas as contas",
       "value": "Ações detidas em todas as contas ao preço mais recente, na moeda do próprio título",
@@ -218,11 +216,10 @@
   "priceForm": {
     "dateLabel": "Data",
     "closePriceLabel": "Preço de Fecho",
-    "openPriceLabel": "Preço de Abertura",
-    "highPriceLabel": "Preço Máximo",
-    "lowPriceLabel": "Preço Mínimo",
-    "volumeLabel": "Volume",
-    "optionalPlaceholder": "Opcional",
+    "openPriceLabel": "Preço de Abertura (opcional)",
+    "highPriceLabel": "Preço Máximo (opcional)",
+    "lowPriceLabel": "Preço Mínimo (opcional)",
+    "volumeLabel": "Volume (opcional)",
     "submitCreate": "Adicionar Cotação",
     "submitUpdate": "Atualizar Cotação"
   },

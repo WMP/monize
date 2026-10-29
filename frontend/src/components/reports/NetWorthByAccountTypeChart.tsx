@@ -57,6 +57,10 @@ interface NetWorthByAccountTypeChartProps {
   xTicks?: string[];
   /** Draws a y-axis with these labels; the axis is hidden without it. */
   formatYTick?: (value: number) => string;
+  /**
+   * Tick size; a caller that sets it (the compact dashboard widget) gets the
+   * legend at the same size. Without it the report draws the default legend.
+   */
   fontSize?: number;
   margin?: { top: number; right: number; left: number; bottom: number };
   /** Each month's net worth printed above its bar, upright or rotated. */
@@ -143,7 +147,7 @@ export function NetWorthByAccountTypeChart({
   formatXTick,
   xTicks,
   formatYTick,
-  fontSize = 12,
+  fontSize,
   margin = { top: 10, right: 10, left: 0, bottom: 0 },
   valueLabels,
   formatValueLabel = formatCurrency,
@@ -161,7 +165,7 @@ export function NetWorthByAccountTypeChart({
         <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
         <XAxis
           dataKey="key"
-          tick={{ fill: chartColors.axis, fontSize }}
+          tick={{ fill: chartColors.axis, fontSize: fontSize ?? 12 }}
           tickLine={false}
           {...(xTicks ? { ticks: xTicks } : { interval: 'preserveStartEnd' as const })}
           tickFormatter={formatXTick}
@@ -169,7 +173,7 @@ export function NetWorthByAccountTypeChart({
         <YAxis
           hide={!formatYTick}
           tickFormatter={formatYTick}
-          tick={{ fill: chartColors.axis, fontSize }}
+          tick={{ fill: chartColors.axis, fontSize: fontSize ?? 12 }}
         />
         <Tooltip
           content={
@@ -183,7 +187,7 @@ export function NetWorthByAccountTypeChart({
           }
           cursor={{ fill: chartColors.grid, fillOpacity: 0.35 }}
         />
-        <Legend wrapperStyle={{ fontSize }} />
+        <Legend wrapperStyle={fontSize === undefined ? undefined : { fontSize }} />
         <ReferenceLine y={0} stroke={chartColors.axis} strokeDasharray="3 3" />
         {types.map((type) => (
           <Bar

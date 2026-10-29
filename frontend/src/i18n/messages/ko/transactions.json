@@ -175,7 +175,6 @@
       "viewPayeeTitle": "{name} 상세 보기",
       "investmentLabel": "투자",
       "linkedInvestmentTitle": "투자에서 보기",
-      "linkedInvestmentBadgeTitle": "이 거래는 투자 거래에 연결되어 있습니다",
       "filterByDate": "날짜 \"{date}\"로 필터링",
       "filterByAccount": "\"{name}\"으로 필터링",
       "filterByPayee": "\"{name}\"으로 필터링",
@@ -223,10 +222,10 @@
       "show": "필터 표시"
     },
     "accounts": {
-      "label": "계정 표시:",
-      "all": "전체",
-      "active": "활성",
-      "closed": "마감됨"
+      "label": "계정 표시",
+      "allCount": "전체 ({count})",
+      "activeCount": "활성 ({count})",
+      "closedCount": "마감됨 ({count})"
     },
     "fields": {
       "accounts": "계정",
@@ -320,7 +319,7 @@
     },
     "modal": {
       "title": "거래 일괄 업데이트",
-      "subtitle": "{count, plural, one {# 건의 선택된 거래} other {# 건의 선택된 거래}}를 업데이트합니다. 변경할 필드를 켜세요.",
+      "help": "변경할 필드를 켜세요.",
       "submitLabel": "{count, plural, one {# 건의 거래} other {# 건의 거래}} 업데이트",
       "payee": "수취인",
       "category": "카테고리",
@@ -368,8 +367,7 @@
       "fromAccount": "출금 계정",
       "toAccount": "입금 계정",
       "transferAmount": "이체 금액",
-      "transferAmountWithCurrency": "이체 금액 ({currency})",
-      "amountReceived": "수령 금액 ({currency})",
+      "amountReceivedLabel": "수령 금액",
       "payeeOptional": "수취인 (선택 사항)",
       "categoryOptional": "카테고리(선택사항)"
     },
@@ -538,7 +536,7 @@
     "quantityPlaceholder": "수량",
     "pricePlaceholder": "가격",
     "commissionPlaceholder": "수수료",
-    "amountPlaceholder": "금액 ({currency})",
+    "amountOnlyPlaceholder": "금액",
     "ratePlaceholder": "1 {from}당 {to}",
     "ariaRate": "환율 (1 {from}당 {to})",
     "rateHint": "수량, 가격, 수수료는 {from} 기준입니다. 이 환율이 현금 영향액을 {to}(으)로 환산합니다.",

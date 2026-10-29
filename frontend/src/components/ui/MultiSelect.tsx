@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { useClickOutside } from '@/hooks/useClickOutside';
 import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
+import { ChevronDownIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 export interface MultiSelectOption {
   value: string;
@@ -316,20 +317,10 @@ export function MultiSelect({
           )}>
             {displayText}
           </span>
-          <svg
-            className={cn(
-              'h-5 w-5 text-gray-400 transition-transform',
-              isOpen && 'rotate-180'
-            )}
-            viewBox="0 0 20 20"
-            fill="currentColor"
-          >
-            <path
-              fillRule="evenodd"
-              d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-              clipRule="evenodd"
-            />
-          </svg>
+          <ChevronDownIcon
+            className={cn('h-5 w-5 text-gray-400 transition-transform', isOpen && 'rotate-180')}
+            aria-hidden="true"
+          />
         </div>
         {sizerLabels.length > 0 && (
           /* Invisible, zero-height copies of the widest labels: they give the
@@ -400,11 +391,10 @@ export function MultiSelect({
                       setSearchText('');
                       searchInputRef.current?.focus();
                     }}
+                    aria-label={t('multiSelect.clearSearch')}
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                   >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <XMarkIcon className="w-4 h-4" aria-hidden="true" />
                   </button>
                 )}
               </div>
@@ -510,14 +500,12 @@ export function MultiSelect({
                   setSearchText('');
                 }}
                 className={cn(
-                  'flex items-center w-full px-3 py-2 text-sm',
+                  'flex items-center gap-2 w-full px-3 py-2 text-sm',
                   'text-green-700 dark:text-green-400',
                   'hover:bg-green-50 dark:hover:bg-green-900/30',
                 )}
               >
-                <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
+                <PlusIcon className="w-4 h-4" aria-hidden="true" />
                 {createNewLabel}
               </button>
             </div>
