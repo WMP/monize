@@ -2797,6 +2797,23 @@ export class TransactionsService {
         transaction.isTransfer,
         updateData,
       );
+      // Same refusal as previewUpdate: a new parent amount with the old split
+      // lines would leave the lines not summing to it. Value compare, because
+      // forms resend an unchanged amount.
+      if (
+        locked.isSplit &&
+        splits == null &&
+        updateData.amount !== undefined &&
+        roundMoney(Number(updateData.amount)) !==
+          roundMoney(Number(locked.amount))
+      ) {
+        throw new BadRequestException(
+          tr(
+            "errors.transactions.splitAmountNeedsSplits",
+            "This is a split transaction: its amount must equal the sum of its split lines. Resend the update with both the new amount and the complete splits array (every line: categoryName, amount, optional memo) summing to it.",
+          ),
+        );
+      }
       if (options?.beforeWrite) await options.beforeWrite(m);
 
       const oldAmount = locked.amount;

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Logger } from "@nestjs/common";
-import { getRequestContext } from "../request-context";
+import { getRequestContext, getRequestTimezone } from "../request-context";
 import {
   withPreserveTimestamps,
   withSystemContext,
@@ -14,6 +14,20 @@ describe("withUserContext", () => {
   it("seeds a user context and returns the callback value", () => {
     const seen = withUserContext(VALID_UUID, () => getRequestContext());
     expect(seen).toEqual({ userId: VALID_UUID });
+  });
+
+  it("seeds an optional timezone, visible via getRequestTimezone", () => {
+    const seen = withUserContext(VALID_UUID, () => getRequestTimezone());
+    expect(seen).toBeUndefined();
+    const tz = withUserContext(
+      VALID_UUID,
+      () => getRequestTimezone(),
+      "Australia/Brisbane",
+    );
+    expect(tz).toBe("Australia/Brisbane");
+    // The key is omitted, not set to undefined.
+    const ctx = withUserContext(VALID_UUID, () => getRequestContext());
+    expect(ctx).not.toHaveProperty("timezone");
   });
 
   it("does not seed realUserId (withScopedDb defaults it to userId)", () => {

@@ -65,7 +65,7 @@ export const INVESTMENT_REPORT_COLUMNS: InvestmentColumnDef[] = [
   { key: 'lastUpdated', label: 'Last Updated', type: 'date', description: 'The date of the most recent stored price for this security.' },
   { key: 'fiftyTwoWeekHigh', label: '52-Week High', type: 'currency', description: 'The highest price at which a security traded over the past 52 weeks (from stored price history).' },
   { key: 'fiftyTwoWeekLow', label: '52-Week Low', type: 'currency', description: 'The lowest price at which a security traded over the past 52 weeks (from stored price history).' },
-  { key: 'totalReturn1Week', label: 'Total Return - 1 Week', type: 'percent', description: 'One-week percentage return: current market value plus income, minus beginning market value, divided by beginning market value.' },
+  { key: 'totalReturn1Week', label: 'Total Return - 1 Week', type: 'percent', description: 'One-week percentage return (Modified Dietz): current market value plus income and sales, minus beginning market value and purchases, divided by beginning market value plus purchases and minus sales, each weighted by the days it was invested.' },
   { key: 'totalReturn4Weeks', label: 'Total Return - 4 Weeks', type: 'percent', description: 'Four-week percentage return on investment.' },
   { key: 'totalReturn3Month', label: 'Total Return - 3 Month', type: 'percent', description: 'Three-month percentage return on investment.' },
   { key: 'totalReturn1Year', label: 'Total Return - 1 Year', type: 'percent', description: 'One-year percentage return on investment.' },

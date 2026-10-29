@@ -577,8 +577,9 @@ export class YahooFinanceService implements QuoteProvider {
         const result = data.chart.result[0];
         const meta = result.meta;
         const gbx = isGbxCurrency(meta.currency);
-        const convert = (v: number | undefined) =>
-          v !== undefined && gbx ? convertGbxToGbp(v) : v;
+        // null (JSON) must stay "no value": null / 100 is 0, a bogus price.
+        const convert = (v: number | null | undefined) =>
+          v == null ? undefined : gbx ? convertGbxToGbp(v) : v;
 
         // The chart-endpoint meta omits regularMarketOpen, so fall back to
         // the first non-null open in the indicators series (today's open

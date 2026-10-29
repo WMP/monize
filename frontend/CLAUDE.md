@@ -97,6 +97,7 @@ npm run i18n:check         # Verify the pseudo-locale is up to date (CI gate)
 |---|---|
 | API calls, caching, asynchronous state, ownership of joint accounts | `docs/frontend/api-and-cache.md` |
 | Cards, dialogs, pickers, switchers, rows, links, attachments, tours, settings screens, report toolbars | `docs/frontend/ui-conventions.md` |
+| A new page, dialog or toolbar: the reference screen to copy, dialog chrome, list and detail page layout, labels | `docs/frontend/screens-and-dialogs.md` |
 | Inputs, number and date formatting, phone numbers, text caps, CSV, form modals | `docs/frontend/forms-and-formatting.md` |
 | Tables, registers, density, pagination, phones | `docs/frontend/tables-and-registers.md` |
 | Money figures: scheduled occurrences, loans, portfolio ranges, chart reductions, unknown values | `docs/frontend/financial-figures.md`, then `docs/financial-semantics.md`, `docs/time-series-contract.md`, `docs/system-invariants.md` |
