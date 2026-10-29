@@ -52,7 +52,7 @@ function removeHash(value: string): string {
     .digest("hex");
 }
 
-/** API is intentionally not imported into AppModule until source lifecycle coverage is complete. */
+/** Accrual API is wired through TransactionsModule; reporting reads remain opt-in. */
 @Injectable()
 export class AccrualsService {
   constructor(private readonly dataSource: DataSource) {}
@@ -123,6 +123,8 @@ export class AccrualsService {
       dto.sourceTransactionId,
       dto.sourceSplitId ?? null,
       mutable,
+      true,
+      mutable,
     );
     const family = source.family ?? dto.family;
     if (!family) throw accrualErrors.family();
@@ -146,6 +148,7 @@ export class AccrualsService {
       userId,
       source.snapshot.transactionId,
       source.snapshot.splitId,
+      mutable,
     );
     const fingerprint = accrualPreviewFingerprint(
       source.snapshot,
@@ -200,6 +203,7 @@ export class AccrualsService {
             preset: setting.preset,
             startMonth: setting.startMonth,
             monthCount: setting.monthCount,
+            dateRule: setting.dateRule,
             family:
               (
                 await loadAccrualSource(
@@ -322,12 +326,14 @@ export class AccrualsService {
       rows[0].sourceSplitId,
       mutable,
       false,
+      mutable,
     );
     const schedule = await findAccrual(
       m,
       userId,
       source.snapshot.transactionId,
       source.snapshot.splitId,
+      mutable,
     );
     if (!schedule || schedule.id !== id) throw accrualErrors.missing();
     const plan = await storedAccrualPlan(m, userId, schedule);

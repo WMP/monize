@@ -1,12 +1,10 @@
+import { saveRequiredAccrualHistory } from "./accrual-history-storage";
+import { captureAccrualHistorySnapshots } from "./accrual-history-capture";
 import { isUUID } from "class-validator";
 import type { EntityManager } from "typeorm";
 import { ActionHistory } from "../action-history/entities/action-history.entity";
-import { MAX_JSONB_SIZE_BYTES } from "../action-history/history-limits";
 import { canonical } from "./accrual-source-edit";
-import {
-  captureAccrualHistorySnapshot,
-  assertAccrualStructureRestorable,
-} from "./accrual-history-snapshot";
+import { assertAccrualStructureRestorable } from "./accrual-history-snapshot";
 import { accrualErrors } from "./accrual-errors";
 import { tr } from "../i18n/translate";
 
@@ -25,8 +23,7 @@ export function parseAccrualBulkDelete(value: unknown): AccrualBulkDeleteData {
   if (
     data?.accrualBulkDeleteVersion !== 1 ||
     !Array.isArray(data.transactions) ||
-    !data.transactions.length ||
-    Buffer.byteLength(JSON.stringify(data), "utf8") > MAX_JSONB_SIZE_BYTES
+    !data.transactions.length
   )
     throw accrualErrors.historyUnsupported();
   const ids = new Set<string>();
@@ -76,12 +73,9 @@ export async function captureAccrualBulkDelete(
     [userId, ids],
   );
   if (!accrued.length) return null;
-  const transactions: BulkDeleteSnapshot[] = [];
-  for (const id of [...ids].sort()) {
-    const snapshot: Record<string, unknown> = {};
-    await captureAccrualHistorySnapshot(m, userId, id, snapshot, true);
-    transactions.push(snapshot as BulkDeleteSnapshot);
-  }
+  const transactions = [
+    ...(await captureAccrualHistorySnapshots(m, userId, ids, true)).values(),
+  ] as BulkDeleteSnapshot[];
   const data = parseAccrualBulkDelete({
     accrualBulkDeleteVersion: 1,
     transactions,
@@ -103,23 +97,21 @@ export async function recordRequiredAccrualBulkDelete(
   parseAccrualBulkDelete(data);
   const repo = m.getRepository(ActionHistory);
   await repo.delete({ userId, isUndone: true });
-  await repo.save(
-    repo.create({
-      userId,
-      entityType: "bulk_transaction",
-      entityId: null,
-      action: "bulk_delete",
-      beforeData: { ...data },
-      afterData: null,
-      description: tr(
-        "common.accruals.bulkDeleted",
-        `Deleted ${data.transactions.length} transactions`,
-        { count: data.transactions.length },
-      ),
-      descriptionKey: null,
-      descriptionParams: null,
-    }),
-  );
+  await saveRequiredAccrualHistory(m, {
+    userId,
+    entityType: "bulk_transaction",
+    entityId: null,
+    action: "bulk_delete",
+    beforeData: { ...data },
+    afterData: null,
+    description: tr(
+      "common.accruals.bulkDeleted",
+      `Deleted ${data.transactions.length} transactions`,
+      { count: data.transactions.length },
+    ),
+    descriptionKey: null,
+    descriptionParams: null,
+  });
 }
 
 /** JSON normalization preserves Date values before stable key ordering. */

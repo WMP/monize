@@ -81,7 +81,6 @@ export class AnomalyReportsService {
       m.getRepository(UserPreference).findOne({ where: { userId } }),
     );
     const n = numberFormatterFor(prefs?.numberFormat, prefs?.language);
-    const rateMap = await this.currencyService.buildRateMap(defaultCurrency);
 
     const now = new Date();
     const windowStart = new Date(now);
@@ -116,6 +115,16 @@ export class AnomalyReportsService {
 
     const rawResults: RawExpense[] = await withScopedDb(this.dataSource, (m) =>
       m.query(query, [userId, startDate, endDate]),
+    );
+    const rateMap = await this.currencyService.buildRateMap(
+      defaultCurrency,
+      rawResults.map((row) => ({
+        ...row,
+        conversion_date:
+          row.transaction_date instanceof Date
+            ? row.transaction_date.toISOString().slice(0, 10)
+            : row.transaction_date,
+      })),
     );
 
     // A transaction with no rate into the reporting currency is unknown, never

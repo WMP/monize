@@ -31,6 +31,28 @@ describe("reviewed category hierarchy and reassignment accrual maintenance", () 
         [id],
       )
     )[0].category_id;
+  it("does not lock source transactions when changing only category presentation", async () => {
+    const { tx } = await f.source();
+    await f.accrue(tx.id);
+    const before = await f.states(tx.id);
+    await f.as(() =>
+      withScopedDb(f.h.app, async () => {
+        await f.categories.update(f.user, f.root, {
+          name: "Renamed category",
+          color: "#112233",
+        });
+        await f.h.owner.transaction(async (other) => {
+          expect(
+            await other.query(
+              "SELECT id FROM transactions WHERE id=$1 FOR UPDATE NOWAIT",
+              [tx.id],
+            ),
+          ).toHaveLength(1);
+        });
+      }),
+    );
+    expect(await f.states(tx.id)).toEqual(before);
+  });
   it("previews and refreshes the whole classified subtree while retaining unrelated split schedules", async () => {
     const a = await f.source(),
       b = await f.source({ categoryId: f.child }),
@@ -348,8 +370,8 @@ describe("reviewed category hierarchy and reassignment accrual maintenance", () 
                 return async (sql: string, parameters?: unknown[]) => {
                   if (
                     !inserted &&
-                    sql.includes("FROM categories c") &&
-                    sql.includes("FOR UPDATE OF c")
+                    sql.includes("FROM categories") &&
+                    sql.includes("FOR UPDATE")
                   ) {
                     inserted = true;
                     await f.h.owner.query(

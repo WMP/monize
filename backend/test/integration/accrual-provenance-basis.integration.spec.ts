@@ -19,6 +19,7 @@ import {
 import { Transaction } from "@/transactions/entities/transaction.entity";
 import { TransactionAnalyticsService } from "@/transactions/transaction-analytics.service";
 import { withScopedDb } from "@/common/db/scoped-db";
+import { reportingSql } from "@/accruals/reporting-relations";
 import { reportingQuery, reportingEntities } from "@/accruals/reporting-query";
 import { McpReportsTools } from "@/mcp/tools/reports.tool";
 import { ToolExecutorService } from "@/ai/query/tool-executor.service";
@@ -503,7 +504,7 @@ describe("Accrual source provenance, reconciliation and cross-surface basis unde
     expect(cash.report.data).toHaveLength(1);
     expect(cash.report.summary.total).toBe(1200.0001);
   });
-  it("returns identical real-domain basis and result envelopes through assistant and MCP adapters", async () => {
+  it("returns matching real-domain report payloads through assistant and MCP adapters", async () => {
     const { tx } = await f.source();
     await f.accrue(tx.id);
     await preference("cash");
@@ -539,7 +540,7 @@ describe("Accrual source provenance, reconciliation and cross-surface basis unde
       basis: "accrual",
       currency: "USD",
       fxComplete: true,
-      result: { totalSpending: 200 },
+      totalSpending: 200,
     });
   });
   it("declares anomalies as cash-only and refuses an explicit incompatible basis", async () => {
@@ -600,7 +601,7 @@ describe("Accrual source provenance, reconciliation and cross-surface basis unde
       totalSpent: 1200,
     });
   });
-  it("prices cash-only anomaly statistics at each cash date and refuses missing FX", async () => {
+  it("prices cash-only anomaly statistics at each cash date and discloses missing FX", async () => {
     await euros();
     for (const index of Array.from({ length: 10 }, (_, i) => i))
       await f.as(() =>
@@ -625,14 +626,14 @@ describe("Accrual source provenance, reconciliation and cross-surface basis unde
     await f.h.owner.query(
       "DELETE FROM exchange_rates WHERE from_currency IN ('USD','EUR') AND to_currency IN ('USD','EUR')",
     );
-    await expect(
-      f.as(() =>
-        reports().getLlmReport(f.user, {
-          type: "spending_anomalies",
-          months: 12,
-        }),
-      ),
-    ).rejects.toMatchObject({ response: { code: "REPORTING_FX_INCOMPLETE" } });
+    const incomplete = await f.as(() =>
+      reports().getLlmReport(f.user, {
+        type: "spending_anomalies",
+        months: 12,
+      }),
+    );
+    expect(incomplete.fxComplete).toBe(false);
+    expect(incomplete.result).toMatchObject({ missingCurrencies: ["USD"] });
   });
   it("converts explicit-basis period comparisons using the reporting currency instead of mixing native units", async () => {
     const { tx } = await f.source();
@@ -657,5 +658,131 @@ describe("Accrual source provenance, reconciliation and cross-surface basis unde
       totalChange: 10,
       fxComplete: true,
     });
+  });
+  it("retains the known custom-report subtotal when a recognition currency has no dated rate", async () => {
+    const { tx } = await f.source();
+    await f.accrue(tx.id);
+    await euros();
+    await f.h.owner.query(
+      "DELETE FROM exchange_rates WHERE from_currency IN ('USD','EUR') AND to_currency IN ('USD','EUR')",
+    );
+    const account = await createTestAccount(f.h.owner, f.user, {
+      name: "Known EUR",
+      currencyCode: "EUR",
+    });
+    await f.as(() =>
+      f.transactions.create(f.user, {
+        accountId: account.id,
+        currencyCode: "EUR",
+        transactionDate: "2026-06-15",
+        amount: -80,
+        categoryId: f.root,
+      }),
+    );
+    const custom = await f.h.owner.getRepository(CustomReport).save({
+      userId: f.user,
+      name: "Partial dated FX",
+      timeframeType: TimeframeType.CUSTOM,
+      groupBy: GroupByType.NONE,
+      filters: {},
+      config: {
+        metric: MetricType.TOTAL_AMOUNT,
+        direction: DirectionFilter.EXPENSES_ONLY,
+        customStartDate: "2026-06-01",
+        customEndDate: "2026-07-31",
+      },
+    });
+    const result = await f.as(() =>
+      f.h.module
+        .get(ReportsService)
+        .execute(f.user, custom.id, { basis: "accrual" }),
+    );
+    expect(result).toMatchObject({
+      currency: "EUR",
+      fxComplete: false,
+      missingCurrencies: ["USD"],
+      excludedCount: 2,
+      summary: { total: null, knownTotal: 80, average: null },
+      repair: "currency_rate_history",
+      fetchAttempted: false,
+    });
+    expect(result.data.map((row) => row.value)).toEqual([80]);
+    const summary = await f.as(() =>
+      f.h.module
+        .get(TransactionAnalyticsService)
+        .getSummary(f.user, undefined, "2026-06-01", "2026-07-31"),
+    );
+    expect(summary).toMatchObject({
+      currency: "EUR",
+      fxComplete: false,
+      totalIncome: null,
+      totalExpenses: null,
+      netCashFlow: null,
+      knownIncomeSubtotal: 0,
+      knownExpensesSubtotal: 80,
+      excludedTransactionCount: 2,
+      transactionCount: 3,
+    });
+    expect(summary.missingRatePairs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ from: "USD", to: "EUR", date: "2026-06-30" }),
+      ]),
+    );
+
+    expect(result.missingRatePairs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ from: "USD", to: "EUR", date: "2026-06-30" }),
+        expect.objectContaining({ from: "USD", to: "EUR", date: "2026-07-31" }),
+      ]),
+    );
+  });
+  it.each([
+    [
+      "CTE shadow",
+      "WITH transactions AS (SELECT 7::numeric AS amount) SELECT amount FROM transactions",
+      7,
+    ],
+    [
+      "CTE physical body",
+      "WITH transactions AS (SELECT SUM(amount) AS amount FROM public.transactions WHERE transaction_date='2026-06-30') SELECT amount FROM transactions",
+      -100,
+    ],
+    [
+      "USING",
+      "SELECT COUNT(transaction_splits.id) AS amount FROM transactions JOIN transaction_splits USING (id)",
+      0,
+    ],
+    [
+      "DISTINCT FROM",
+      "SELECT SUM(transactions.amount) AS amount FROM transactions WHERE transactions.transaction_date='2026-06-30' AND transactions.amount IS DISTINCT FROM transactions.original_amount",
+      -100,
+    ],
+  ] as const)(
+    "executes mapped %s SQL under enforced RLS",
+    async (_label, sql, expected) => {
+      const { tx } = await f.source();
+      await f.accrue(tx.id);
+      const rows = await f.as(() =>
+        withScopedDb(f.h.app, (m) =>
+          reportingQuery<{ amount: string }>(m, f.user, sql, [], "accrual"),
+        ),
+      );
+      expect(Number(rows[0].amount)).toBe(expected);
+    },
+  );
+  it("executes unaliased schema-qualified references without an owner wrapper", async () => {
+    const { tx } = await f.source();
+    await f.accrue(tx.id);
+    const rows = await f.as(() =>
+      withScopedDb(f.h.app, (m) =>
+        m.query(
+          reportingSql(
+            "SELECT SUM(public.transactions.amount) AS amount FROM public.transactions WHERE public.transactions.transaction_date='2026-06-30'",
+            "accrual",
+          ),
+        ),
+      ),
+    );
+    expect(Number(rows[0].amount)).toBe(-100);
   });
 });

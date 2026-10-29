@@ -1,3 +1,7 @@
+import {
+  reportingFxColumns,
+  reportingFxGrouping,
+} from "../accruals/reporting-fx-sql";
 import { ReportingRead } from "../accruals/reporting-basis";
 import { reportingQuery } from "../accruals/reporting-query";
 import { Injectable } from "@nestjs/common";
@@ -98,12 +102,11 @@ export class IncomeReportsService {
     const { accountIds } = options;
     const defaultCurrency =
       await this.currencyService.getDefaultCurrency(userId);
-    const rateMap = await this.currencyService.buildRateMap(defaultCurrency);
 
     let query = `
       SELECT
         COALESCE(ts.category_id, t.category_id) as category_id,
-        t.currency_code, TO_CHAR(t.transaction_date, 'YYYY-MM-DD') AS conversion_date, t.original_currency_code, t.exchange_rate,
+        ${reportingFxColumns(userId)},
         SUM(COALESCE(ts.amount, t.amount)) as total
       FROM transactions t
       LEFT JOIN transaction_splits ts ON ts.transaction_id = t.id
@@ -139,11 +142,15 @@ export class IncomeReportsService {
       params.push(accountIds);
     }
 
-    query += ` GROUP BY COALESCE(ts.category_id, t.category_id), t.currency_code, t.transaction_date, t.original_currency_code, t.exchange_rate, t.id, ts.id`;
+    query += ` GROUP BY COALESCE(ts.category_id, t.category_id), ${reportingFxGrouping(userId)}`;
 
     const rawResults: RawCategoryAggregate[] = await withScopedDb(
       this.dataSource,
       (m) => reportingQuery(m, userId, query, params),
+    );
+    const rateMap = await this.currencyService.buildRateMap(
+      defaultCurrency,
+      rawResults,
     );
 
     const categories = await withScopedDb(this.dataSource, (m) =>
@@ -269,7 +276,6 @@ export class IncomeReportsService {
     } = options;
     const defaultCurrency =
       await this.currencyService.getDefaultCurrency(userId);
-    const rateMap = await this.currencyService.buildRateMap(defaultCurrency);
 
     // The week-start offset is a parameter so the grouping expression stays a
     // constant string: see `weekTruncOffsetDays` for what it shifts. It is bound
@@ -291,7 +297,7 @@ export class IncomeReportsService {
     let query = `
       SELECT
         ${bucketStart} as period_start,
-        t.currency_code, TO_CHAR(t.transaction_date, 'YYYY-MM-DD') AS conversion_date, t.original_currency_code, t.exchange_rate,
+        ${reportingFxColumns(userId)},
         SUM(CASE
           WHEN c.is_income = true THEN COALESCE(ts.amount, t.amount)
           WHEN c.is_income = false THEN 0
@@ -335,13 +341,17 @@ export class IncomeReportsService {
     }
 
     query += `
-      GROUP BY ${bucketStart}, t.currency_code, t.transaction_date, t.original_currency_code, t.exchange_rate, t.id, ts.id
+      GROUP BY ${bucketStart}, ${reportingFxGrouping(userId)}
       ORDER BY period_start
     `;
 
     const rawResults: RawPeriodAggregate[] = await withScopedDb(
       this.dataSource,
       (m) => reportingQuery(m, userId, query, params),
+    );
+    const rateMap = await this.currencyService.buildRateMap(
+      defaultCurrency,
+      rawResults,
     );
 
     const { data, totals, missingCurrencies, excludedCount } =
@@ -376,7 +386,6 @@ export class IncomeReportsService {
       { accountIds, bucket, weekStartsOn, transferScopeAccountIds },
       trimmedTagKey,
       defaultCurrency,
-      rateMap,
     );
 
     return { ...response, tagKey: trimmedTagKey, buckets };
@@ -547,7 +556,6 @@ export class IncomeReportsService {
     },
     tagKey: string,
     defaultCurrency: string,
-    rateMap: RateMap,
   ): Promise<IncomeExpenseTagBucket[]> {
     const { accountIds, bucket, weekStartsOn, transferScopeAccountIds } =
       windowOptions;
@@ -579,7 +587,7 @@ export class IncomeReportsService {
       WITH tagged_base AS (
         SELECT
           ${valueBucketStart} as period_start,
-          t.currency_code, TO_CHAR(t.transaction_date, 'YYYY-MM-DD') AS conversion_date, t.original_currency_code, t.exchange_rate,
+          ${reportingFxColumns(userId)},
           CASE
             WHEN c.is_income = true THEN COALESCE(ts.amount, t.amount)
             WHEN c.is_income = false THEN 0
@@ -625,13 +633,13 @@ export class IncomeReportsService {
       )
       SELECT
         tb.period_start,
-        tb.currency_code, tb.conversion_date, tb.original_currency_code, tb.exchange_rate,
+        ${reportingFxGrouping(userId, "tb", true)},
         tv.value,
         SUM(tb.income) as income,
         SUM(tb.expenses) as expenses
       FROM tagged_base tb
       CROSS JOIN UNNEST(COALESCE(tb.tag_values, ARRAY[NULL]::text[])) AS tv(value)
-      GROUP BY tb.period_start, tb.currency_code, tb.conversion_date, tb.original_currency_code, tb.exchange_rate, tv.value
+      GROUP BY tb.period_start, ${reportingFxGrouping(userId, "tb", true)}, tv.value
     `;
 
     const valueRows: RawTagValuePeriodAggregate[] = await withScopedDb(
@@ -680,7 +688,7 @@ export class IncomeReportsService {
       WITH transfer_rows AS (
         SELECT
           ${wholeFlowBucketStart} as period_start,
-t.currency_code, TO_CHAR(t.transaction_date, 'YYYY-MM-DD') AS conversion_date, t.original_currency_code, t.exchange_rate,
+${reportingFxColumns(userId)},
           t.amount as leg_amount,
           ${transactionTagValuesArrayExpr("t", wholeFlowKeyParam)} as tag_values
         FROM transactions t
@@ -715,12 +723,12 @@ t.currency_code, TO_CHAR(t.transaction_date, 'YYYY-MM-DD') AS conversion_date, t
       SELECT
         tr.period_start,
         tv.value,
-        tr.currency_code, tr.conversion_date, tr.original_currency_code, tr.exchange_rate,
+        ${reportingFxGrouping(userId, "tr", true)},
         SUM(CASE WHEN tr.leg_amount > 0 THEN tr.leg_amount ELSE 0 END) as inflow,
         SUM(CASE WHEN tr.leg_amount < 0 THEN ABS(tr.leg_amount) ELSE 0 END) as outflow
       FROM transfer_rows tr
       CROSS JOIN UNNEST(tr.tag_values) AS tv(value)
-      GROUP BY tr.period_start, tv.value, tr.currency_code, tr.conversion_date, tr.original_currency_code, tr.exchange_rate
+      GROUP BY tr.period_start, tv.value, ${reportingFxGrouping(userId, "tr", true)}
     `;
 
     const splitFlowParams: (string | string[] | number)[] = [
@@ -742,7 +750,7 @@ t.currency_code, TO_CHAR(t.transaction_date, 'YYYY-MM-DD') AS conversion_date, t
       WITH transfer_rows AS (
         SELECT
           ${splitFlowBucketStart} as period_start,
-t.currency_code, TO_CHAR(t.transaction_date, 'YYYY-MM-DD') AS conversion_date, t.original_currency_code, t.exchange_rate,
+${reportingFxColumns(userId)},
           ts.amount as leg_amount,
           ${tagValuesArrayExpr("t", "ts", splitFlowKeyParam)} as tag_values
         FROM transactions t
@@ -774,12 +782,12 @@ t.currency_code, TO_CHAR(t.transaction_date, 'YYYY-MM-DD') AS conversion_date, t
       SELECT
         tr.period_start,
         tv.value,
-        tr.currency_code, tr.conversion_date, tr.original_currency_code, tr.exchange_rate,
+        ${reportingFxGrouping(userId, "tr", true)},
         SUM(CASE WHEN tr.leg_amount > 0 THEN tr.leg_amount ELSE 0 END) as inflow,
         SUM(CASE WHEN tr.leg_amount < 0 THEN ABS(tr.leg_amount) ELSE 0 END) as outflow
       FROM transfer_rows tr
       CROSS JOIN UNNEST(tr.tag_values) AS tv(value)
-      GROUP BY tr.period_start, tv.value, tr.currency_code, tr.conversion_date, tr.original_currency_code, tr.exchange_rate
+      GROUP BY tr.period_start, tv.value, ${reportingFxGrouping(userId, "tr", true)}
     `;
 
     const [wholeFlowRows, splitFlowRows]: RawTagFlowAggregate[][] =
@@ -788,6 +796,10 @@ t.currency_code, TO_CHAR(t.transaction_date, 'YYYY-MM-DD') AS conversion_date, t
         await reportingQuery(m, userId, splitFlowQuery, splitFlowParams),
       ]);
     const flowRows = [...wholeFlowRows, ...splitFlowRows];
+    const rateMap = await this.currencyService.buildRateMap(defaultCurrency, [
+      ...valueRows,
+      ...flowRows,
+    ]);
 
     // ---- Assemble one bucket per discovered value, plus the untagged bucket ----
     const rowsByValue = new Map<string, RawTagValuePeriodAggregate[]>();

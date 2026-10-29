@@ -1065,7 +1065,7 @@ describe("ToolExecutorService", () => {
       expect(result.sources[0].type).toBe("report");
       // data must be the bare array returned by getLlmHistory so it matches the
       // MCP server's generate_report net_worth_history payload exactly.
-      expect((result.data as any).result).toEqual([
+      expect(result.data as any).toEqual([
         {
           month: "2026-01",
           assets: 19000,
@@ -1677,13 +1677,12 @@ describe("ToolExecutorService", () => {
       expect(result.summary).toContain(
         "Total withheld: no exchange rate for JPY->USD, CHF->USD; add it under Currencies.",
       );
-      expect(result.isError).toBe(true);
+      expect(result.isError).toBeUndefined();
       expect(result.data).toMatchObject({
-        error: {
-          code: "REPORTING_FX_INCOMPLETE",
-          missingRatePairs: ["JPY", "CHF"],
-          repair: "currency_rate_history",
-        },
+        totalSpending: null,
+        knownSpending: 50,
+        missingCurrencies: ["JPY", "CHF"],
+        excludedCount: 2,
       });
     });
 
@@ -1749,7 +1748,7 @@ describe("ToolExecutorService", () => {
         6,
       );
       expect(result.sources[0].type).toBe("report");
-      expect((result.data as any).result.anomalies).toHaveLength(2);
+      expect((result.data as any).anomalies).toHaveLength(2);
     });
 
     it("generate_report type month_comparison delegates to getMonthlyComparison", async () => {
@@ -1763,7 +1762,7 @@ describe("ToolExecutorService", () => {
         "2026-04",
       );
       expect(result.sources[0].type).toBe("report");
-      expect((result.data as any).result.currentMonthLabel).toBe("April 2026");
+      expect((result.data as any).currentMonthLabel).toBe("April 2026");
       expect(result.summary).not.toContain("withheld");
     });
 
@@ -1786,13 +1785,16 @@ describe("ToolExecutorService", () => {
         month: "2026-04",
       });
 
-      expect(result.isError).toBe(true);
+      expect(result.isError).toBeUndefined();
       expect(result.data).toMatchObject({
-        error: {
-          code: "REPORTING_FX_INCOMPLETE",
+        netWorth: {
+          currentNetWorth: null,
+          netWorthChange: null,
+          fxComplete: false,
           missingRatePairs: ["ZZZ->USD"],
         },
       });
+      expect(result.summary).toContain("ZZZ->USD");
     });
 
     it("calculate runs locally without hitting any service", async () => {

@@ -49,12 +49,7 @@ import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { validateSplitAmountSum } from "../common/split-amount.util";
 import { tr } from "../i18n/translate";
 import { withScopedDb } from "../common/db/scoped-db";
-import {
-  lockTransactionRow,
-  lockTransactionRows,
-  acquireAdvisoryLock,
-  LockScope,
-} from "../common/db/locks";
+import { lockTransactionRow, lockTransactionRows } from "../common/db/locks";
 import { assertReconciledRowsMutable } from "./reconciled-lock.util";
 import { removeLockedTransactionLeg } from "./remove-transaction-leg";
 
@@ -1120,9 +1115,10 @@ export class TransactionSplitService {
       await this.validateCategoryOwnership(userId, command.split.categoryId);
     }
     return withScopedDb(this.dataSource, async (m) => {
-      await acquireAdvisoryLock(m, LockScope.AccrualBulkHistory, userId);
-      await this.lockEmbeddedInvestmentScopes(m, userId, [transaction.id]);
-      const parent = await lockTransactionRow(m, transaction.id, userId);
+      // Preview reads current facts only; add/remove re-read and lock at commit.
+      const parent = await m.findOne(Transaction, {
+        where: { id: transaction.id, userId },
+      });
       if (!parent)
         throw new NotFoundException(
           tr(
@@ -1181,7 +1177,6 @@ export class TransactionSplitService {
     // transaction's parent never named (recheck RR5-002).
     let addedTransferAccountId: string | null = null;
     const savedSplitId = await withScopedDb(this.dataSource, async (m) => {
-      await acquireAdvisoryLock(m, LockScope.AccrualBulkHistory, userId);
       await this.lockEmbeddedInvestmentScopes(m, userId, [transaction.id]);
       // The aggregate check and the insert are one serialized unit.
       //
@@ -1407,7 +1402,6 @@ export class TransactionSplitService {
     const affectedAccountIds = new Set<string>();
     const touchedSecurityIds = new Set<string>();
     await withScopedDb(this.dataSource, async (m) => {
-      await acquireAdvisoryLock(m, LockScope.AccrualBulkHistory, userId);
       await this.lockEmbeddedInvestmentScopes(m, userId, [transaction.id]);
       // The parent first, so a concurrent split mutation on the same parent
       // serializes behind this one, and so the split below is read from a state

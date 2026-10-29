@@ -1,3 +1,5 @@
+import { lockSourceFamily } from "../common/db/source-family-lock";
+import { accrualErrors } from "../accruals/accrual-errors";
 import { In, type EntityManager } from "typeorm";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { refreshSourceAccruals } from "../accruals/accrual-lifecycle";
@@ -14,12 +16,22 @@ export async function lockPayeeSources(
   payeeIds: readonly string[],
 ): Promise<PayeeSourceRow[]> {
   if (!payeeIds.length) return [];
-  return m.query(
-    `SELECT id,payee_id AS "payeeId" FROM transactions
-     WHERE user_id=$1 AND payee_id=ANY($2::uuid[])
-     ORDER BY id FOR UPDATE`,
-    [userId, [...new Set(payeeIds)].sort()],
-  );
+  const query = `SELECT id,payee_id AS "payeeId" FROM transactions
+     WHERE user_id=$1 AND payee_id=ANY($2::uuid[]) ORDER BY id`;
+  const selected = [...new Set(payeeIds)].sort();
+  const initial: PayeeSourceRow[] = await m.query(query, [userId, selected]);
+  if (
+    !(await lockSourceFamily(
+      m,
+      userId,
+      initial.map((row) => row.id),
+    ))
+  )
+    throw accrualErrors.conflict();
+  const current: PayeeSourceRow[] = await m.query(query, [userId, selected]);
+  if (JSON.stringify(initial) !== JSON.stringify(current))
+    throw accrualErrors.conflict();
+  return current;
 }
 
 /** Metadata only: amounts, allocation periods, bank balances and split IDs stay put. */

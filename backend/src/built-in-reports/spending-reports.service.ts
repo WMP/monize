@@ -1,3 +1,7 @@
+import {
+  reportingFxColumns,
+  reportingFxGrouping,
+} from "../accruals/reporting-fx-sql";
 import { ReportingRead } from "../accruals/reporting-basis";
 import { reportingQuery } from "../accruals/reporting-query";
 import { Injectable } from "@nestjs/common";
@@ -120,12 +124,11 @@ export class SpendingReportsService {
     const { rollupToParent = true, accountIds, tagKey, tagValue } = options;
     const defaultCurrency =
       await this.currencyService.getDefaultCurrency(userId);
-    const rateMap = await this.currencyService.buildRateMap(defaultCurrency);
 
     let query = `
       SELECT
         COALESCE(ts.category_id, t.category_id) as category_id,
-        t.currency_code, TO_CHAR(t.transaction_date, 'YYYY-MM-DD') AS conversion_date, t.original_currency_code, t.exchange_rate,
+        ${reportingFxColumns(userId)},
         SUM(${NET_SPEND_AMOUNT}) as total
       FROM transactions t
       LEFT JOIN transaction_splits ts ON ts.transaction_id = t.id
@@ -177,11 +180,15 @@ export class SpendingReportsService {
       params.push(tagKey, tagValue);
     }
 
-    query += ` GROUP BY COALESCE(ts.category_id, t.category_id), t.currency_code, t.transaction_date, t.original_currency_code, t.exchange_rate, t.id, ts.id`;
+    query += ` GROUP BY COALESCE(ts.category_id, t.category_id), ${reportingFxGrouping(userId)}`;
 
     const rawResults: RawCategoryAggregate[] = await withScopedDb(
       this.dataSource,
       (m) => reportingQuery(m, userId, query, params),
+    );
+    const rateMap = await this.currencyService.buildRateMap(
+      defaultCurrency,
+      rawResults,
     );
 
     const categories = await withScopedDb(this.dataSource, (m) =>
@@ -297,13 +304,12 @@ export class SpendingReportsService {
   ): Promise<SpendingByPayeeResponse> {
     const defaultCurrency =
       await this.currencyService.getDefaultCurrency(userId);
-    const rateMap = await this.currencyService.buildRateMap(defaultCurrency);
 
     let query = `
       SELECT
         t.payee_id,
         t.payee_name,
-        t.currency_code, TO_CHAR(t.transaction_date, 'YYYY-MM-DD') AS conversion_date, t.original_currency_code, t.exchange_rate,
+        ${reportingFxColumns(userId)},
         SUM(-COALESCE(ts.amount,t.amount)) as total
       FROM transactions t
       LEFT JOIN transaction_splits ts ON ts.transaction_id=t.id
@@ -331,11 +337,15 @@ export class SpendingReportsService {
       params.push(startDate);
     }
 
-    query += ` GROUP BY t.payee_id, t.payee_name, t.currency_code, t.transaction_date, t.original_currency_code, t.exchange_rate, t.id, ts.id`;
+    query += ` GROUP BY t.payee_id, t.payee_name, ${reportingFxGrouping(userId)}`;
 
     const rawResults: RawPayeeAggregate[] = await withScopedDb(
       this.dataSource,
       (m) => reportingQuery(m, userId, query, params),
+    );
+    const rateMap = await this.currencyService.buildRateMap(
+      defaultCurrency,
+      rawResults,
     );
 
     const payeeIds = rawResults
@@ -415,13 +425,12 @@ export class SpendingReportsService {
   ): Promise<MonthlySpendingTrendResponse> {
     const defaultCurrency =
       await this.currencyService.getDefaultCurrency(userId);
-    const rateMap = await this.currencyService.buildRateMap(defaultCurrency);
 
     let query = `
       SELECT
         TO_CHAR(t.transaction_date, 'YYYY-MM') as month,
         COALESCE(ts.category_id, t.category_id) as category_id,
-        t.currency_code, TO_CHAR(t.transaction_date, 'YYYY-MM-DD') AS conversion_date, t.original_currency_code, t.exchange_rate,
+        ${reportingFxColumns(userId)},
         SUM(${NET_SPEND_AMOUNT}) as total
       FROM transactions t
       LEFT JOIN transaction_splits ts ON ts.transaction_id = t.id
@@ -450,13 +459,17 @@ export class SpendingReportsService {
     }
 
     query += `
-      GROUP BY TO_CHAR(t.transaction_date, 'YYYY-MM'), COALESCE(ts.category_id, t.category_id), t.currency_code, t.transaction_date, t.original_currency_code, t.exchange_rate, t.id, ts.id
+      GROUP BY TO_CHAR(t.transaction_date, 'YYYY-MM'), COALESCE(ts.category_id, t.category_id), ${reportingFxGrouping(userId)}
       ORDER BY month
     `;
 
     const rawResults: RawMonthlyCategoryAggregate[] = await withScopedDb(
       this.dataSource,
       (m) => reportingQuery(m, userId, query, params),
+    );
+    const rateMap = await this.currencyService.buildRateMap(
+      defaultCurrency,
+      rawResults,
     );
 
     const categories = await withScopedDb(this.dataSource, (m) =>

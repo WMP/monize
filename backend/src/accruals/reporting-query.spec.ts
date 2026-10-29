@@ -1,3 +1,4 @@
+import { requestContextStorage } from "../common/request-context";
 import type { EntityManager, ObjectLiteral, SelectQueryBuilder } from "typeorm";
 import { reportingQuery, reportingEntities } from "./reporting-query";
 import { reportingSql } from "./reporting-relations";
@@ -48,10 +49,10 @@ describe("explicit recognition reader boundaries", () => {
         "accrual",
       );
       const [sql, params] = (m.query as jest.Mock).mock.calls.slice(-1)[0];
-      expect(sql).toContain("FROM public.transactions __owned");
+      expect(sql).toBe("SELECT t.id FROM transactions t WHERE t.amount=$1");
       expect(sql).not.toContain("accrual_reporting_transactions");
-      expect(sql).toContain("__owned.user_id=$2");
-      expect(params).toEqual([7, "owner"]);
+      expect(sql).not.toContain("__owned");
+      expect(params).toEqual([7]);
     },
   );
   it("does not add an unused binding to unrelated SQL", async () => {
@@ -80,6 +81,56 @@ describe("explicit recognition reader boundaries", () => {
       ),
     ).toContain(') "transactions" WHERE');
   });
+  it("preserves an unaliased qualifier without an owner wrapper", () => {
+    expect(
+      reportingSql("SELECT transactions.amount FROM transactions", "accrual"),
+    ).toBe(
+      'SELECT transactions.amount FROM public.accrual_reporting_transactions "transactions"',
+    );
+  });
+  it("does not redirect a CTE that shadows a ledger relation", () => {
+    const sql =
+      "WITH transactions AS (SELECT 1 AS amount) SELECT amount FROM transactions";
+    expect(reportingSql(sql, "accrual", "$1")).toBe(sql);
+  });
+  it("maps a physical table inside a nonrecursive same-name CTE but preserves its consumers", () => {
+    const sql = reportingSql(
+      "WITH transactions AS (SELECT amount FROM public.transactions), totals AS (SELECT amount FROM transactions) SELECT * FROM transactions",
+      "accrual",
+      "$1",
+    );
+    expect(sql.match(/public.accrual_reporting_transactions/g)).toHaveLength(1);
+    expect(sql).toContain("totals AS (SELECT amount FROM transactions)");
+    expect(sql.endsWith("SELECT * FROM transactions")).toBe(true);
+  });
+  it("keeps USING as join syntax rather than an alias", () => {
+    expect(
+      reportingSql(
+        "SELECT * FROM transactions JOIN transaction_splits USING (id)",
+        "accrual",
+        "$1",
+      ),
+    ).toContain(') "transaction_splits" USING (id)');
+  });
+  it("does not interpret DISTINCT FROM as a relation declaration", () => {
+    const sql = reportingSql(
+      "SELECT t.id FROM transactions t WHERE t.amount IS DISTINCT FROM transactions.amount",
+      "accrual",
+      "$1",
+    );
+    expect(sql).toContain("IS DISTINCT FROM transactions.amount");
+    expect(sql.match(/__owned.user_id/g)).toHaveLength(1);
+  });
+  it("normalizes schema-qualified column references when a mapped relation needs an alias", () => {
+    expect(
+      reportingSql(
+        "SELECT public.transactions.amount FROM public.transactions",
+        "accrual",
+        "$1",
+      ),
+    ).toMatch(/^SELECT "transactions".amount FROM/);
+  });
+
   it.each([false, true])(
     "projects source-linked recognition copies without mutating cash entities (%s)",
     (preserve) => {
@@ -144,4 +195,23 @@ it("scopes indirect recognition relations by their owner without recursively joi
   );
   expect(sql.match(/__owned.reporting_user_id=\$1/g)).toHaveLength(2);
   expect(sql).not.toContain("__owner");
+});
+
+it("retains original Cash SQL and params while refusing a conflicting effective owner", async () => {
+  const m = manager(false, false);
+  const sql =
+    "WITH transactions AS (SELECT $1::text AS value) SELECT * FROM transactions";
+  const params = ["native"];
+  await requestContextStorage.run(
+    { userId: "owner", realUserId: "delegate" },
+    async () => {
+      await reportingQuery(m, "owner", sql, params, "cash");
+      expect(m.query).toHaveBeenCalledWith(sql, params);
+      jest.mocked(m.query).mockClear();
+      await expect(
+        reportingQuery(m, "other", sql, params, "cash"),
+      ).rejects.toMatchObject({ status: 403 });
+      expect(m.query).not.toHaveBeenCalled();
+    },
+  );
 });

@@ -1,3 +1,8 @@
+import {
+  withPartialBudgetRead,
+  stopIncompleteBudgetRead,
+  type PartialBudgetResult,
+} from "../accruals/reporting-partial-budget";
 import { reportingFailure } from "../accruals/reporting-errors";
 import {
   ReportingRead,
@@ -259,6 +264,18 @@ export class BudgetReportsService {
     period: string = "CURRENT",
     budgetName?: string,
     _basis?: ReportingBasis,
+  ): Promise<
+    LlmBudgetStatusResult | LlmBudgetStatusError | PartialBudgetResult
+  > {
+    return withPartialBudgetRead(this.dataSource!, userId, () =>
+      this.computeLlmBudgetStatus(userId, period, budgetName),
+    );
+  }
+
+  private async computeLlmBudgetStatus(
+    userId: string,
+    period: string,
+    budgetName?: string,
   ): Promise<LlmBudgetStatusResult | LlmBudgetStatusError> {
     const allBudgets = await this.budgetsService.findAll(userId);
     const activeBudgets = allBudgets.filter((b) => b.isActive);
@@ -296,6 +313,8 @@ export class BudgetReportsService {
       return { error: "Failed to retrieve budget summary" };
     }
 
+    // Actuals are incomplete: the outer boundary will return components, not advice.
+    stopIncompleteBudgetRead(userId);
     const current = getCurrentMonthPeriodDates();
     const isCurrent =
       periodStart === current.periodStart && periodEnd === current.periodEnd;

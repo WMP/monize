@@ -61,10 +61,11 @@ export function reportingFailure(
 /** A model must not narrate legacy subtotals as complete totals. Child flags
  * remain authoritative; success without a flag does not manufacture one.
  */
-export function assertReportingComplete(value: unknown): void {
+export function reportingCompleteness(value: unknown) {
   const gaps: unknown[] = [];
   const prices: unknown[] = [];
   let incomplete = false;
+  let fxIncomplete = false;
   const visit = (item: unknown, depth: number) => {
     if (!item || typeof item !== "object" || depth > 12) return;
     if (Array.isArray(item)) {
@@ -72,6 +73,7 @@ export function assertReportingComplete(value: unknown): void {
       return;
     }
     const row = item as Record<string, unknown>;
+    if (row.fxComplete === false) fxIncomplete = true;
     if (
       row.fxComplete === false ||
       row.pricesComplete === false ||
@@ -82,6 +84,7 @@ export function assertReportingComplete(value: unknown): void {
       if (Array.isArray(row[key]) && row[key].length) {
         gaps.push(...row[key]);
         incomplete = true;
+        fxIncomplete = true;
       }
     if (Array.isArray(row.unpricedSymbols) && row.unpricedSymbols.length) {
       prices.push(...row.unpricedSymbols);
@@ -90,6 +93,10 @@ export function assertReportingComplete(value: unknown): void {
     for (const child of Object.values(row)) visit(child, depth + 1);
   };
   visit(value, 0);
+  return { incomplete, fxIncomplete, gaps, prices };
+}
+export function assertReportingComplete(value: unknown): void {
+  const { incomplete, gaps, prices } = reportingCompleteness(value);
   if (incomplete)
     throw new ServiceUnavailableException({
       code: prices.length

@@ -168,22 +168,30 @@ describe("Reporting recognition facts (enforced PostgreSQL)", () => {
     expect(rows[0].count).toBe("1");
     expect(await read("accrual")).toHaveLength(12);
   });
-  it("does not expose another owner when a valid foreign user ID is supplied", async () => {
-    const { tx } = await f.source();
-    await f.accrue(tx.id);
-    const rows = await f.as(() =>
-      withScopedDb(f.h.app, (m) =>
-        reportingQuery(
-          m,
-          randomUUID(),
-          "SELECT id FROM transactions",
-          [],
-          "accrual",
+  it.each(["cash", "accrual"] as const)(
+    "rejects a conflicting owner before executing %s reporting SQL",
+    async (basis) => {
+      const { tx } = await f.source();
+      await f.accrue(tx.id);
+      await expect(
+        f.as(() =>
+          withScopedDb(f.h.app, (m) =>
+            reportingQuery(
+              m,
+              randomUUID(),
+              "SELECT id FROM transactions",
+              [],
+              basis,
+            ),
+          ),
         ),
-      ),
-    );
-    expect(rows).toEqual([]);
-  });
+      ).rejects.toMatchObject({
+        response: { code: "REPORTING_OWNER_MISMATCH" },
+        status: 403,
+      });
+    },
+  );
+
   it("actual category, payee and income-expense services agree and explicit cash still reads the payment", async () => {
     const { tx } = await f.source();
     await f.accrue(tx.id);

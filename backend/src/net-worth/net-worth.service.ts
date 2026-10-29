@@ -982,6 +982,7 @@ export class NetWorthService {
           snapshots,
           defaultCurrency,
           await this.buildRateIndex(currencies, defaultCurrency, start, end),
+          accrual,
         ),
       // A monthly point's `month` is its month-first date, which is the month
       // the fill fetches; the conversion happens at that month's end.
@@ -1020,6 +1021,7 @@ export class NetWorthService {
     snapshots: MonthlySnapshotRow[],
     defaultCurrency: string,
     rateIndex: RateIndex,
+    accrual = false,
   ): {
     month: string;
     assets: number;
@@ -1112,7 +1114,7 @@ export class NetWorthService {
       }
     }
 
-    const rounded = roundMoney;
+    const rounded = accrual ? roundMoney : Math.round;
     return Array.from(monthMap.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([month, data]) => {

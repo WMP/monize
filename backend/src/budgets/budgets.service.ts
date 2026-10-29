@@ -1,6 +1,10 @@
+import { stopIncompleteBudgetRead } from "../accruals/reporting-partial-budget";
 import { BudgetPeriod } from "./entities/budget-period.entity";
 import { reportingMoneyOne } from "../accruals/reporting-money";
-import { ReportingRead } from "../accruals/reporting-basis";
+import {
+  reportingExecutionBasis,
+  ReportingRead,
+} from "../accruals/reporting-basis";
 import {
   Injectable,
   NotFoundException,
@@ -79,6 +83,26 @@ export interface UpcomingBill {
 
 @Injectable()
 export class BudgetsService {
+  private categoryActualsCache = new Map<
+    string,
+    {
+      data: Promise<
+        Array<{
+          budgetCategoryId: string;
+          categoryId: string | null;
+          categoryName: string;
+          budgeted: number;
+          spent: number;
+          remaining: number;
+          percentUsed: number;
+          isIncome: boolean;
+          percentage: number | null;
+        }>
+      >;
+      timestamp: number;
+    }
+  >();
+
   constructor(
     private dataSource: DataSource,
     private actionHistoryService: ActionHistoryService,
@@ -583,6 +607,7 @@ export class BudgetsService {
     const currentSpent = sumMoney(expenseCategories.map((c) => c.spent));
     const budgetTotal = sumMoney(expenseCategories.map((c) => c.budgeted));
 
+    stopIncompleteBudgetRead(userId);
     const upcomingBills = await this.getUpcomingBills(userId, periodEnd);
     // Today on the caller's own clock, so the rate is the one the bills list is
     // showing rather than one from the container's timezone.
@@ -1023,8 +1048,38 @@ export class BudgetsService {
     periodStart: string,
     periodEnd: string,
   ) {
-    // Recognition is retroactive. Read current facts rather than a cross-request TTL cache.
-    return this.computeCategoryActuals(userId, budget, periodStart, periodEnd);
+    if (reportingExecutionBasis(userId) === "accrual")
+      return this.computeCategoryActuals(
+        userId,
+        budget,
+        periodStart,
+        periodEnd,
+      );
+    const key = `${budget.id}:${periodStart}:${periodEnd}`;
+    const cached = this.categoryActualsCache.get(key);
+    const now = Date.now();
+
+    if (cached && now - cached.timestamp < 10_000) {
+      return cached.data;
+    }
+
+    // Store the promise itself so concurrent callers share the same in-flight request
+    const promise = this.computeCategoryActuals(
+      userId,
+      budget,
+      periodStart,
+      periodEnd,
+    );
+    this.categoryActualsCache.set(key, { data: promise, timestamp: now });
+
+    // Clean up stale entries
+    if (this.categoryActualsCache.size > 50) {
+      for (const [k, v] of this.categoryActualsCache) {
+        if (now - v.timestamp > 30_000) this.categoryActualsCache.delete(k);
+      }
+    }
+
+    return promise;
   }
 
   @ReportingRead()

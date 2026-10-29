@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS accrual_allocations (
 );
 CREATE INDEX IF NOT EXISTS idx_accrual_allocation_user_date ON accrual_allocations(user_id, recognition_date);
 
-ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS reporting_basis VARCHAR(10) NOT NULL DEFAULT 'accrual';
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS reporting_basis VARCHAR(10) NOT NULL DEFAULT 'cash';
 ALTER TABLE user_preferences DROP CONSTRAINT IF EXISTS ck_user_preferences_reporting_basis;
 ALTER TABLE user_preferences ADD CONSTRAINT ck_user_preferences_reporting_basis CHECK (reporting_basis IN ('cash', 'accrual'));
 

@@ -1,3 +1,4 @@
+import type { ReportFxGap } from "../report-row-converter";
 import type { ReportingProvenance } from "../../accruals/reporting-provenance";
 import type { ReportingBasis } from "../../accruals/reporting-basis";
 import { IsOptional, IsDateString, IsEnum, IsIn } from "class-validator";
@@ -76,6 +77,13 @@ export interface ReportSummary {
 }
 
 export interface ReportResult {
+  /** Bounded selection: every displayed figure is partial when false. */
+  dataComplete?: false;
+  truncated?: true;
+  rowLimit?: number;
+  missingRatePairs?: ReportFxGap[];
+  repair?: "currency_rate_history";
+  fetchAttempted?: false;
   basis?: ReportingBasis;
   fxComplete?: boolean;
   reportId: string;

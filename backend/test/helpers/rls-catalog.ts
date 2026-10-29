@@ -218,6 +218,11 @@ const REQUIRED_NULLABLE_PARENTS = new Set([
  * other kind needs one (`ck_ai_review_requests_transaction_required`).
  */
 const PRODUCTION_SHAPED_VALUES: Record<string, Record<string, unknown>> = {
+  accrual_history_chunks: {
+    side: "before",
+    part_index: 0,
+    payload: Buffer.from("{}"),
+  },
   ai_review_requests: { kind: "email_trade" },
   backup_offsite_uploads: {
     destination: "s3",

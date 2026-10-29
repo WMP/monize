@@ -12,9 +12,19 @@ export async function executeReportingRead<T>(
   read: () => Promise<T>,
 ): Promise<T> {
   if (basis === "cash") return read();
-  const [setting] = await manager.query("SELECT current_setting('jit') AS jit");
-  if (setting.jit !== "on") return read();
-  await manager.query("SELECT set_config('jit','off',true)");
+  const [setting] = await manager.query(
+    "SELECT current_setting('jit') AS jit, (SELECT setting FROM pg_settings WHERE name='statement_timeout') AS \"timeoutMs\"",
+  );
+  const previousTimeout = Number(setting.timeoutMs ?? 0);
+  const timeout =
+    previousTimeout > 0 && previousTimeout < 8000 ? previousTimeout : 8000;
+  const previousJit = setting.jit ?? "off";
+  const jit = previousJit === "on" ? "off" : previousJit;
+  if (jit === previousJit && timeout === previousTimeout) return read();
+  await manager.query(
+    "SELECT set_config('jit',$1,true),set_config('statement_timeout',$2,true)",
+    [jit, `${timeout}ms`],
+  );
   let succeeded = false;
   try {
     const result = await read();
@@ -22,6 +32,9 @@ export async function executeReportingRead<T>(
     return result;
   } finally {
     if (succeeded)
-      await manager.query("SELECT set_config('jit',$1,true)", [setting.jit]);
+      await manager.query(
+        "SELECT set_config('jit',$1,true),set_config('statement_timeout',$2,true)",
+        [previousJit, `${previousTimeout}ms`],
+      );
   }
 }

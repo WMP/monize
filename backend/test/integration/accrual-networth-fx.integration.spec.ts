@@ -11,6 +11,7 @@ import {
   BudgetPeriod,
   PeriodStatus,
 } from "@/budgets/entities/budget-period.entity";
+import { BudgetPeriodCategory } from "@/budgets/entities/budget-period-category.entity";
 import { BudgetTrendReportsService } from "@/budgets/budget-trend-reports.service";
 import { ReportsService } from "@/reports/reports.service";
 import {
@@ -81,7 +82,8 @@ describe("Accrual net-worth and dated budget/custom-report FX, enforced PostgreS
         "cash",
       ),
     );
-    expect(cash[0].netWorth).toBe(-200.0001);
+    // Native Cash output retains the pre-feature whole-unit contract.
+    expect(cash[0].netWorth).toBe(-200);
     const patch = { amount: -2400.0001 };
     const preview = await f.as(() =>
       f.accruals.previewSourceEdit(f.user, tx.id, patch),
@@ -197,7 +199,8 @@ describe("Accrual net-worth and dated budget/custom-report FX, enforced PostgreS
         expectedRevision: detail.schedule.revision,
       }),
     );
-    expect((await readWorth())[0].netWorth).toBe(-200.0001);
+    // With no schedules left, the native Cash execution path is restored.
+    expect((await readWorth())[0].netWorth).toBe(-200);
     expect(await f.bank()).toBe(bank);
   });
   it("excluded originating accounts contribute neither cash nor timing balances", async () => {
@@ -333,20 +336,35 @@ describe("Accrual net-worth and dated budget/custom-report FX, enforced PostgreS
       currencyCode: "EUR",
       periodStart: "2026-06-01",
     });
-    await f.h.owner
+    const budgetCategory = await f.h.owner
       .getRepository(BudgetCategory)
       .save({ budgetId: budget.id, categoryId: f.root, amount: 150 });
     for (const [start, end] of [
       ["2026-06-01", "2026-06-30"],
       ["2026-07-01", "2026-07-31"],
-    ])
-      await f.h.owner.getRepository(BudgetPeriod).save({
+    ]) {
+      const period = await f.h.owner.getRepository(BudgetPeriod).save({
         budgetId: budget.id,
         periodStart: start,
         periodEnd: end,
         status: PeriodStatus.CLOSED,
         actualExpenses: 999,
       });
+      // Accrual closed-period actuals revalue the snapshotted membership
+      // (BudgetTrendReportsService#computePeriodActuals), not budget.categories
+      // directly, so a closed period under test needs its own periodCategories
+      // row -- without one, categoryIds is empty and the actual is silently 0.
+      await f.h.owner.getRepository(BudgetPeriodCategory).save({
+        budgetPeriodId: period.id,
+        budgetCategoryId: budgetCategory.id,
+        categoryId: f.root,
+        budgetedAmount: 150,
+        rolloverIn: 0,
+        effectiveBudget: 150,
+        actualAmount: 999,
+        rolloverOut: 0,
+      });
+    }
     const report = await f.h.owner.getRepository(CustomReport).save({
       userId: f.user,
       name: "Dated EUR",
@@ -393,6 +411,10 @@ describe("Accrual net-worth and dated budget/custom-report FX, enforced PostgreS
       f.h.module.get(BudgetTrendReportsService).getTrend(f.user, budget.id, 12),
     );
     expect(closed[0].actual).toBe(60);
+    await f.h.owner.query(
+      "DELETE FROM budget_period_categories WHERE budget_period_id IN (SELECT id FROM budget_periods WHERE budget_id=$1)",
+      [budget.id],
+    );
     await f.h.owner.query("DELETE FROM budget_periods WHERE budget_id=$1", [
       budget.id,
     ]);
@@ -434,9 +456,23 @@ describe("Accrual net-worth and dated budget/custom-report FX, enforced PostgreS
           .getTrend(f.user, budget.id, 12),
       ),
     ).rejects.toMatchObject({ response: { code: "REPORTING_FX_INCOMPLETE" } });
-    await expect(
-      f.as(() => f.h.module.get(ReportsService).execute(f.user, report.id)),
-    ).rejects.toMatchObject({ response: { code: "REPORTING_FX_INCOMPLETE" } });
+    // A custom report never throws on missing FX: it excludes the affected
+    // rows and reports the gap, so a plain budget total doesn't misread a
+    // withheld figure as a page error (report-row-converter.ts).
+    const custom = await f.as(() =>
+      f.h.module.get(ReportsService).execute(f.user, report.id),
+    );
+    expect(custom).toMatchObject({
+      fxComplete: false,
+      data: [],
+      repair: "currency_rate_history",
+      summary: { total: null, knownTotal: 0 },
+    });
+    expect(custom.missingRatePairs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ from: "USD", to: "EUR" }),
+      ]),
+    );
     await f.h.owner.getRepository(CustomReport).update(report.id, {
       config: { ...report.config, metric: MetricType.COUNT },
     });

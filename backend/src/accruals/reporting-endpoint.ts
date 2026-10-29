@@ -3,13 +3,17 @@ import { ApiQuery } from "@nestjs/swagger";
 import { ReportingBasisInterceptor } from "./reporting-basis.interceptor";
 export const REPORTING_FIXED_BASIS = "reportingFixedBasis";
 /** Add the basis declaration without replacing an endpoint's existing response schema. */
-export function ReportingEndpoint(fixed?: "cash"): MethodDecorator {
+export function ReportingEndpoint(
+  fixed?: "cash",
+  options?: { partialBudget?: boolean },
+): MethodDecorator {
   return (target, key, descriptor) => {
     const method = descriptor.value as unknown as object;
     const responses = Reflect.getMetadata("swagger/apiResponse", method) ?? {};
     const success = responses[200] ?? {};
     applyDecorators(
       SetMetadata(REPORTING_FIXED_BASIS, fixed),
+      SetMetadata("reportingPartialBudget", options?.partialBudget === true),
       UseInterceptors(ReportingBasisInterceptor),
       ApiQuery({
         name: "basis",

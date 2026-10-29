@@ -237,6 +237,16 @@ describe("PayeesService", () => {
 
     // Stored cash-only source fixtures for the locked metadata writer.
     txManager.query.mockImplementation((sql: string, args?: unknown[]) => {
+      // These fixtures are ordinary roots; the separate leg-lock phase is empty.
+      if (
+        sql.includes("SELECT t.id FROM transactions t") &&
+        sql.includes("t.id=ANY($2")
+      )
+        return Promise.resolve(
+          sql.includes("NOT (t.parent_transaction_id")
+            ? []
+            : (args?.[1] as string[]).map((id) => ({ id })),
+        );
       if (sql.includes('payee_id AS "payeeId"')) {
         return Promise.resolve(
           (args?.[1] as string[]).flatMap((payeeId) =>

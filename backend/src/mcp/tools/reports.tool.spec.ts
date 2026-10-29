@@ -83,7 +83,7 @@ describe("McpReportsTools", () => {
       expect(result.isError).toBeUndefined();
     });
 
-    it("refuses an incomplete report and names its gap (INV-FX-001)", async () => {
+    it("returns partial report data with its existing completeness fields (INV-FX-001)", async () => {
       ctx.setUser({ userId: "u1", scopes: "read" });
       const report = {
         data: [],
@@ -104,13 +104,12 @@ describe("McpReportsTools", () => {
         ctx,
       );
 
-      expect(result.isError).toBe(true);
+      expect(result.isError).toBeUndefined();
       expect(result.structuredContent).toMatchObject({
-        error: {
-          code: "REPORTING_FX_INCOMPLETE",
-          missingRatePairs: ["JPY"],
-          repair: "currency_rate_history",
-        },
+        totalSpending: null,
+        knownSpending: 50,
+        missingCurrencies: ["JPY"],
+        excludedCount: 1,
       });
     });
 
@@ -225,7 +224,7 @@ describe("McpReportsTools", () => {
           "u1",
           "2026-01",
         );
-        const parsed = (result.structuredContent as any).result;
+        const parsed = result.structuredContent as any;
         expect(parsed.currentMonth).toBe("2026-01");
       });
 
@@ -323,7 +322,7 @@ describe("McpReportsTools", () => {
         );
         // A bare array is wrapped under `items`: structured content must be an
         // object, and this report type is the one that returns a plain list.
-        const parsed = (result.structuredContent as any).result;
+        const parsed = (result.structuredContent as any).items;
         expect(parsed).toHaveLength(2);
       });
 

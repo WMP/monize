@@ -2881,13 +2881,16 @@ export class TransactionsService {
           ? accrualImpactFingerprint
           : (editorImpact ?? undefined),
       );
-      await captureAccrualHistorySnapshot(
-        m,
-        userId,
-        id,
-        beforeSnapshot,
-        Boolean(options?.afterSourceWrite),
-      );
+      const maintainsAccrual =
+        accrualEdit.impacts.length > 0 || Boolean(options?.afterSourceWrite);
+      if (maintainsAccrual)
+        await captureAccrualHistorySnapshot(
+          m,
+          userId,
+          id,
+          beforeSnapshot,
+          Boolean(options?.afterSourceWrite),
+        );
       if (options?.beforeWrite) await options.beforeWrite(m);
       await removeReviewedAccruals(m, userId, accrualEdit);
       if (deferredPayeeName) {
@@ -3201,15 +3204,16 @@ export class TransactionsService {
           await this.accountsService.touchAccount(userId, newAccountId);
         }
       }
-      await refreshSourceAccruals(m, userId, id);
+      if (maintainsAccrual) await refreshSourceAccruals(m, userId, id);
       if (options?.afterSourceWrite) await options.afterSourceWrite(m);
-      await captureAccrualHistorySnapshot(
-        m,
-        userId,
-        id,
-        afterAccrualSnapshot,
-        Boolean(beforeSnapshot.accrualState?.schedules.length),
-      );
+      if (maintainsAccrual)
+        await captureAccrualHistorySnapshot(
+          m,
+          userId,
+          id,
+          afterAccrualSnapshot,
+          Boolean(beforeSnapshot.accrualState?.schedules.length),
+        );
     });
 
     const finalTransaction = await this.findOne(userId, id);

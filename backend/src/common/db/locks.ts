@@ -111,7 +111,7 @@ export enum LockScope {
    * (INV-BOND-001, INV-BOND-006).
    */
   BondSeriesFetch = 8,
-  /** Versioned accrual bulk delete/restore, keyed by user; taken before row locks. */
+  /** Versioned accrual history replay, keyed by user; taken before row locks. */
   AccrualBulkHistory = 9,
 }
 

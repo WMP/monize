@@ -7,6 +7,8 @@ import {
   settlePendingHistoryWrites,
 } from "@/action-history/action-history.service";
 import { withUserContext } from "@/common/db/with-context";
+import { withScopedDb } from "@/common/db/scoped-db";
+import { LockScope } from "@/common/db/locks";
 import type { IncrementalSplitPreviewDto } from "@/transactions/dto/incremental-split.dto";
 import { createTestAccount } from "../helpers/test-factories";
 import {
@@ -142,6 +144,109 @@ describe("individual split accrual mutations through actual services", () => {
       [category, user],
     );
   });
+  it.each(["add", "remove"] as const)(
+    "keeps the %s split preview free of row and advisory write locks",
+    async (operation) => {
+      const source = await create(operation === "add" ? 0 : 3);
+      const parts = await lines(source.id);
+      const saved = await accrue(
+        source.id,
+        operation === "remove" ? parts[0].id : undefined,
+      );
+      const command: IncrementalSplitPreviewDto =
+        operation === "add"
+          ? { operation, split: { amount: -600, categoryId: category } }
+          : { operation, splitId: parts[0].id };
+      await as(() =>
+        withScopedDb(h.app, async (m) => {
+          const query = jest.spyOn(m, "query");
+          await transactions.previewIncrementalSplit(user, source.id, command);
+          const statements = query.mock.calls.map(([sql]) => String(sql));
+          expect(
+            statements.filter((sql) =>
+              /FOR (?:UPDATE|SHARE)|pg_advisory/i.test(sql),
+            ),
+          ).toEqual([]);
+          await expect(
+            h.owner.query(
+              "SELECT id FROM transactions WHERE id=$1 FOR UPDATE NOWAIT",
+              [source.id],
+            ),
+          ).resolves.toHaveLength(1);
+          await expect(
+            h.owner.query(
+              "SELECT id FROM accrual_schedules WHERE id=$1 FOR UPDATE NOWAIT",
+              [saved.id],
+            ),
+          ).resolves.toHaveLength(1);
+          const [lock] = await h.owner.query(
+            "SELECT pg_try_advisory_xact_lock($1::int,hashtext($2)) AS acquired",
+            [LockScope.AccrualBulkHistory, user],
+          );
+          expect(lock.acquired).toBe(true);
+        }),
+      );
+    },
+  );
+
+  it.each([
+    ["add", false],
+    ["add", true],
+    ["remove", false],
+    ["remove", true],
+  ] as const)(
+    "does not serialize %s writes on unrelated bulk history (accrued=%s)",
+    async (operation, accrued) => {
+      const source = await create(operation === "add" ? 0 : 3);
+      const parts = await lines(source.id);
+      if (accrued)
+        await accrue(
+          source.id,
+          operation === "remove" ? parts[0].id : undefined,
+        );
+      const command: IncrementalSplitPreviewDto =
+        operation === "add"
+          ? { operation, split: { amount: -600, categoryId: category } }
+          : { operation, splitId: parts[0].id };
+      const view = await preview(source.id, command);
+      const blocker = h.owner.createQueryRunner();
+      await blocker.connect();
+      await blocker.startTransaction();
+      try {
+        await blocker.query(
+          "SELECT pg_advisory_xact_lock($1::int,hashtext($2))",
+          [LockScope.AccrualBulkHistory, user],
+        );
+        await as(() =>
+          withScopedDb(h.app, async (m) => {
+            await m.query("SET LOCAL lock_timeout='250ms'");
+            if (operation === "add")
+              await transactions.addSplit(
+                user,
+                source.id,
+                command.split!,
+                view.fingerprint ?? undefined,
+              );
+            else
+              await transactions.removeSplit(
+                user,
+                source.id,
+                parts[0].id,
+                view.fingerprint ?? undefined,
+              );
+          }),
+        );
+        expect(await lines(source.id)).toHaveLength(
+          operation === "add" ? 1 : 2,
+        );
+        expect(await balance()).toBe("-200.0000");
+      } finally {
+        if (blocker.isTransactionActive) await blocker.rollbackTransaction();
+        await blocker.release();
+      }
+    },
+  );
+
   it("reviews unsplit conversion, preserves the first partial line, and restores each stage through history", async () => {
     const source = await create();
     const original = await accrue(source.id);

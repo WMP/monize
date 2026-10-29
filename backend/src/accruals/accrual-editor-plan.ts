@@ -18,7 +18,7 @@ export async function previewAccrualEditor(
   dto: AccrualEditorPreviewDto,
 ) {
   requireAccrualOwner(userId);
-  const base = await loadAccrualSource(m, userId, id, null, true, false);
+  const base = await loadAccrualSource(m, userId, id, null, true, false, false);
   const revisions = await m.query(
     "SELECT id,source_split_id,revision FROM accrual_schedules WHERE user_id=$1 AND source_transaction_id=$2 ORDER BY id",
     [userId, id],
@@ -47,9 +47,9 @@ export async function previewAccrualEditor(
       throw accrualErrors.ineligible();
     seen.add(key);
     const loaded = splitId
-      ? await loadAccrualSource(m, userId, id, splitId, true, false)
+      ? await loadAccrualSource(m, userId, id, splitId, true, false, false)
       : base;
-    const existing = await findAccrual(m, userId, id, splitId);
+    const existing = await findAccrual(m, userId, id, splitId, false);
     const before = existing
       ? await storedAccrualPlan(m, userId, existing)
       : null;

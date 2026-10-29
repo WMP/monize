@@ -35,8 +35,16 @@ export async function loadAccrualSource(
   splitId: string | null,
   mutable = false,
   eligible = true,
+  lock = true,
 ): Promise<AccrualSource> {
-  const locked = await lockTransactionRow(m, transactionId, userId);
+  const locked = lock
+    ? await lockTransactionRow(m, transactionId, userId)
+    : (
+        await m.query(
+          "SELECT id,status FROM transactions WHERE id=$1 AND user_id=$2",
+          [transactionId, userId],
+        )
+      )[0];
   if (!locked) throw accrualErrors.missing();
   if (mutable) await assertReconciledRowsMutable(m, userId, [locked]);
   // includes VOID: this is an investment-record identity check, not a sum of financial effects.

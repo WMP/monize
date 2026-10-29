@@ -1112,7 +1112,7 @@ export class TransactionsController {
     );
   }
 
-  @ReportingEndpoint()
+  @ReportingEndpoint(undefined, { partialBudget: true })
   @Get("monthly-totals")
   @ApiOperation({ summary: "Get monthly transaction totals" })
   @ApiQuery({

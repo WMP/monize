@@ -1,3 +1,4 @@
+import { cteScopes } from "./reporting-cte-scope";
 import type { ObjectLiteral, SelectQueryBuilder } from "typeorm";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { TransactionSplit } from "../transactions/entities/transaction-split.entity";
@@ -31,7 +32,9 @@ export function reportingSql(
       /--[^\n]*(?:\n|$)|\/\*[\s\S]*?\*\/|'(?:''|[^'])*'|"(?:""|[^"])*"|[A-Za-z_][A-Za-z_0-9]*|\s+|./g,
     ) ?? [];
   const name = (token: string) =>
-    token.startsWith('"') ? token.slice(1, -1).replace(/""/g, '"') : token;
+    token.startsWith('"')
+      ? token.slice(1, -1).replace(/""/g, '"')
+      : token.toLowerCase();
   const next = (index: number) => {
     while (
       index < tokens.length &&
@@ -42,8 +45,25 @@ export function reportingSql(
       index++;
     return index;
   };
+  const ctes = cteScopes(tokens, next, name);
+  const unaliased = new Set<string>();
+  const previous = (index: number) => {
+    while (
+      index >= 0 &&
+      (/^\s+$/.test(tokens[index]) ||
+        tokens[index].startsWith("--") ||
+        tokens[index].startsWith("/*"))
+    )
+      index--;
+    return tokens[index];
+  };
   for (let index = 0; index < tokens.length; index++) {
     if (!/^(FROM|JOIN)$/i.test(tokens[index])) continue;
+    if (
+      /^FROM$/i.test(tokens[index]) &&
+      /^DISTINCT$/i.test(previous(index - 1) ?? "")
+    )
+      continue;
     const first = next(index + 1);
     let table = first;
     if (
@@ -51,13 +71,33 @@ export function reportingSql(
       tokens[next(first + 1)] === "."
     )
       table = next(next(first + 1) + 1);
-    let tableName = name(tokens[table] ?? "");
+    const originalTableName = name(tokens[table] ?? "");
+    if (
+      table === first &&
+      ctes.some(
+        (cte) =>
+          cte.name === originalTableName &&
+          cte.start <= index &&
+          index < cte.end,
+      )
+    )
+      continue;
+    let tableName = originalTableName;
     const recognized = tableName.startsWith("accrual_reporting_");
     if (recognized) tableName = tableName.slice("accrual_reporting_".length);
     if (!tables.has(tableName)) continue;
     const relation =
       basis === "accrual" ? `accrual_reporting_${tableName}` : tableName;
     const qualified = pageRelations?.[tableName] ?? `public.${relation}`;
+    const after = next(table + 1);
+    const hasAlias =
+      /^AS$/i.test(tokens[after] ?? "") ||
+      (/^(?:"[^"].*"|[A-Za-z_][A-Za-z_0-9]*)$/.test(tokens[after] ?? "") &&
+        !/^(WHERE|JOIN|LEFT|RIGHT|INNER|FULL|CROSS|NATURAL|ON|USING|GROUP|ORDER|LIMIT|OFFSET|UNION|EXCEPT|INTERSECT|HAVING|FETCH|FOR|WINDOW|TABLESAMPLE)$/i.test(
+          tokens[after],
+        ));
+    if (!hasAlias) unaliased.add(originalTableName);
+    const alias = hasAlias ? "" : ` "${originalTableName.replace(/"/g, '""')}"`;
     if (ownerParameter) {
       const root =
         basis === "accrual"
@@ -76,32 +116,44 @@ export function reportingSql(
                 tableName === "transaction_tags"
               ? `EXISTS(SELECT 1 FROM ${root} __owner WHERE __owner.id=__owned.transaction_id AND __owner.user_id=${ownerParameter})`
               : `EXISTS(SELECT 1 FROM ${split} __split JOIN ${root} __owner ON __owner.id=__split.transaction_id WHERE __split.id=__owned.transaction_split_id AND __owner.user_id=${ownerParameter})`;
-      const after = next(table + 1);
-      const hasAlias =
-        /^(AS)$/i.test(tokens[after] ?? "") ||
-        (/^(?:"[^"].*"|[A-Za-z_][A-Za-z_0-9]*)$/.test(tokens[after] ?? "") &&
-          !/^(WHERE|JOIN|LEFT|RIGHT|INNER|FULL|CROSS|ON|GROUP|ORDER|LIMIT|OFFSET|UNION|EXCEPT|INTERSECT|HAVING|FETCH|FOR|WINDOW)$/i.test(
-            tokens[after],
-          ));
       tokens[first] =
-        `(SELECT __owned.* FROM ${qualified} __owned WHERE ${predicate})${hasAlias ? "" : ` "${tableName}"`}`;
-    } else tokens[first] = qualified;
+        `(SELECT __owned.* FROM ${qualified} __owned WHERE ${predicate})${alias}`;
+    } else tokens[first] = qualified + alias;
     for (let part = first + 1; part <= table; part++) tokens[part] = "";
     index = table;
+  }
+  // A derived or renamed relation cannot retain public.table.column syntax.
+  for (let index = 0; index < tokens.length; index++) {
+    if (name(tokens[index]) !== "public") continue;
+    const dot = next(index + 1),
+      table = next(dot + 1),
+      columnDot = next(table + 1);
+    if (
+      tokens[dot] !== "." ||
+      tokens[columnDot] !== "." ||
+      !unaliased.has(name(tokens[table] ?? ""))
+    )
+      continue;
+    tokens[index] = `"${name(tokens[table]).replace(/"/g, '""')}"`;
+    for (let part = index + 1; part <= table; part++) tokens[part] = "";
   }
   return tokens.join("");
 }
 
 function mappedTarget(target: unknown, basis: ReportingBasis): unknown {
-  for (const [name, pair] of Object.entries(entities))
-    if (
-      pair.includes(target as never) ||
-      target === name ||
-      target === `public.${name}` ||
-      target === `accrual_reporting_${name}` ||
-      target === `public.accrual_reporting_${name}`
-    )
-      return pair[basis === "accrual" ? 1 : 0];
+  if (typeof target === "string") {
+    const table = target
+      .replace(/^public\./, "")
+      .replace(/^accrual_reporting_/, "");
+    if (Object.prototype.hasOwnProperty.call(entities, table))
+      return entities[table as keyof typeof entities][
+        basis === "accrual" ? 1 : 0
+      ];
+  } else {
+    for (const pair of Object.values(entities))
+      if (pair.includes(target as never))
+        return pair[basis === "accrual" ? 1 : 0];
+  }
   return target;
 }
 function condition(value: any, basis: ReportingBasis): any {

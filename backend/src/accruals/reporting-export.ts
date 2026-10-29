@@ -15,6 +15,7 @@ export function exportReport(report: ReportResult) {
     "effectiveDate",
     "nativeAmount",
     "sourceAmount",
+    ...(report.truncated ? ["dataComplete", "truncated", "rowLimit"] : []),
   ];
   const rows = report.data.length
     ? report.data
@@ -35,6 +36,9 @@ export function exportReport(report: ReportResult) {
         row.reportingProvenance?.effectiveDate,
         row.reportingProvenance?.nativeAmount,
         row.reportingProvenance?.sourceAmount,
+        ...(report.truncated
+          ? [report.dataComplete, report.truncated, report.rowLimit]
+          : []),
       ]
         .map((value) =>
           escapeCsvCell(
@@ -46,6 +50,13 @@ export function exportReport(report: ReportResult) {
   ].join("\r\n");
   return {
     format: "monize-report-v1",
+    ...(report.truncated
+      ? {
+          dataComplete: false as const,
+          truncated: true as const,
+          rowLimit: report.rowLimit,
+        }
+      : {}),
     basis: report.basis,
     currency: report.currency,
     fxComplete: report.fxComplete,

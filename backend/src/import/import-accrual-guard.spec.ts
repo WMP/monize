@@ -14,7 +14,8 @@ function setup(scheduled = false) {
       return scheduled ? [{ id: "schedule" }] : [];
     if (sql.includes("transaction_date=$2"))
       return [{ id: "parent", linked: "leg" }];
-    return sql.includes("AND NOT EXISTS")
+    if (!sql.includes("FOR UPDATE")) return [{ id: "parent" }, { id: "leg" }];
+    return !sql.includes("NOT (t.parent_transaction_id")
       ? [{ id: "parent" }]
       : [{ id: "leg" }];
   });
@@ -28,31 +29,29 @@ function setup(scheduled = false) {
 }
 
 describe("import accrual source protection", () => {
-  it("freezes parents and legs once per manager and refuses a different owner", async () => {
+  it("prepares an empty per-import memo without scanning or locking the ledger", async () => {
     const { manager, query } = setup();
     expect(await prepareImportAccrualSources(manager, "owner")).toEqual(
-      new Set(["parent", "leg"]),
+      new Set(),
     );
     await prepareImportAccrualSources(manager, "owner");
-    expect(query).toHaveBeenCalledTimes(2);
-    expect(query.mock.calls[0][0]).toContain("FOR UPDATE");
-    expect(query.mock.calls[1][0]).toContain("FOR UPDATE");
+    expect(query).not.toHaveBeenCalled();
     await expect(
       prepareImportAccrualSources(manager, "other"),
     ).rejects.toBeInstanceOf(ConflictException);
-    expect(query).toHaveBeenCalledTimes(2);
   });
-
-  it("ignores empty references but refuses an unfrozen existing match", async () => {
+  it("ignores empty references and locks only the named matches before schedule discovery", async () => {
     const { manager, query } = setup();
     await assertImportAccrualIds(manager, "owner", [null, undefined]);
-    expect(query).toHaveBeenCalledTimes(2);
+    expect(query).not.toHaveBeenCalled();
+    await assertImportAccrualIds(manager, "owner", ["parent"]);
+    expect(query).toHaveBeenCalledTimes(4);
+    expect(query.mock.calls[0][0]).toContain("t.id=ANY($2::uuid[])");
+    expect(query.mock.calls[1][0]).toContain("t.id=ANY($2::uuid[])");
     await expect(
       assertImportAccrualIds(manager, "owner", ["unknown"]),
     ).rejects.toBeInstanceOf(ConflictException);
-    expect(query).toHaveBeenCalledTimes(2);
   });
-
   it("deduplicates the parent/leg matches and refuses their existing schedule", async () => {
     const { manager, query } = setup(true);
     await expect(
@@ -111,4 +110,25 @@ describe("import accrual source protection", () => {
       );
     },
   );
+});
+
+it("refuses a newly required parent after queueing before schedule discovery", async () => {
+  const query = jest
+    .fn()
+    .mockResolvedValueOnce([{ id: "parent" }])
+    .mockResolvedValueOnce([{ id: "leg" }])
+    .mockResolvedValueOnce([
+      { id: "parent" },
+      { id: "leg" },
+      { id: "new-parent" },
+    ]);
+  await expect(
+    assertImportAccrualIds({ query } as unknown as EntityManager, "owner", [
+      "leg",
+    ]),
+  ).rejects.toBeInstanceOf(ConflictException);
+  expect(query).toHaveBeenCalledTimes(3);
+  expect(
+    query.mock.calls.some(([sql]) => sql.includes("FROM accrual_schedules")),
+  ).toBe(false);
 });

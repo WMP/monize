@@ -26,6 +26,7 @@ export async function findAccrual(
   userId: string,
   transactionId: string,
   splitId: string | null,
+  lock = true,
 ): Promise<StoredAccrual | null> {
   const rows = await m.query(
     `SELECT id, source_transaction_id AS "sourceTransactionId",
@@ -33,7 +34,7 @@ export async function findAccrual(
       recognition_date_rule AS "recognitionDateRule",
       TO_CHAR(start_month, 'YYYY-MM') AS "startMonth", month_count AS "monthCount", revision, source_fingerprint AS "sourceFingerprint"
      FROM accrual_schedules WHERE user_id=$1 AND source_transaction_id=$2
-       AND source_split_id IS NOT DISTINCT FROM $3::uuid FOR UPDATE`,
+       AND source_split_id IS NOT DISTINCT FROM $3::uuid${lock ? " FOR UPDATE" : ""}`,
     [userId, transactionId, splitId],
   );
   return rows[0] ?? null;

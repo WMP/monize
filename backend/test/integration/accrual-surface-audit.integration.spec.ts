@@ -141,38 +141,101 @@ describe("Final accrual reporting surface audit under enforced RLS", () => {
       byCurrency: { USD: { transactionCount: 2, totalExpenses: 200 } },
     });
   });
-  it("withholds summary, monthly and grouped figures with dated FX repair metadata", async () => {
+  it("preserves partial summary/tool figures and refuses a monthly chart without dated FX", async () => {
     const { tx } = await f.source();
     await f.accrue(tx.id);
     await euros();
     await f.h.owner.query(
       "DELETE FROM exchange_rates WHERE from_currency IN ('USD','EUR') AND to_currency IN ('USD','EUR')",
     );
-    for (const read of [
-      () =>
-        analytics().getSummary(f.user, undefined, "2026-06-01", "2026-07-31"),
-      () =>
+    const euro = await createTestAccount(f.h.owner, f.user, {
+      name: "Known EUR",
+      currencyCode: "EUR",
+    });
+    await f.as(() =>
+      f.transactions.create(f.user, {
+        accountId: euro.id,
+        currencyCode: "EUR",
+        transactionDate: "2026-06-15",
+        amount: -80,
+        categoryId: f.root,
+      }),
+    );
+    const summary = await f.as(() =>
+      analytics().getSummary(f.user, undefined, "2026-06-01", "2026-07-31"),
+    );
+    expect(summary).toMatchObject({
+      fxComplete: false,
+      currency: "EUR",
+      totalIncome: null,
+      totalExpenses: null,
+      netCashFlow: null,
+      knownExpensesSubtotal: 80,
+      excludedTransactionCount: 2,
+      repair: "currency_rate_history",
+      fetchAttempted: false,
+    });
+    expect(summary.missingRatePairs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ from: "USD", to: "EUR", date: "2026-06-30" }),
+        expect.objectContaining({ from: "USD", to: "EUR", date: "2026-07-31" }),
+      ]),
+    );
+    await expect(
+      f.as(() =>
         analytics().getMonthlyTotals(
           f.user,
           undefined,
           "2026-06-01",
           "2026-07-31",
         ),
-      () =>
-        analytics().getLlmQueryTransactions(f.user, {
-          startDate: "2026-06-01",
-          endDate: "2026-07-31",
-          groupBy: "category",
-        }),
-    ])
-      await expect(f.as<unknown>(read)).rejects.toMatchObject({
-        response: {
-          code: "REPORTING_FX_INCOMPLETE",
-          fxComplete: false,
-          repair: "currency_rate_history",
-        },
-      });
+      ),
+    ).rejects.toMatchObject({
+      response: {
+        code: "REPORTING_FX_INCOMPLETE",
+        fxComplete: false,
+        repair: "currency_rate_history",
+      },
+    });
+    const grouped = await f.as(() =>
+      analytics().getLlmQueryTransactions(f.user, {
+        startDate: "2026-06-01",
+        endDate: "2026-07-31",
+        groupBy: "category",
+      }),
+    );
+    expect(grouped).toMatchObject({
+      fxComplete: false,
+      currency: "EUR",
+      totalExpenses: null,
+      netCashFlow: null,
+      knownExpensesSubtotal: 80,
+      breakdown: [{ categoryId: f.root, total: null, knownSubtotal: 80 }],
+    });
+    expect(grouped.missingRatePairs).toEqual(["USD->EUR"]);
+    await f.h.owner.query(
+      "INSERT INTO exchange_rates(from_currency,to_currency,rate,rate_date) VALUES('USD','EUR',0.8,'2026-06-30'),('USD','EUR',0.9,'2026-07-31')",
+    );
+    expect(
+      await f.as(() =>
+        analytics().getSummary(f.user, undefined, "2026-06-01", "2026-07-31"),
+      ),
+    ).toMatchObject({ fxComplete: true, totalExpenses: 250 });
+    expect(
+      await f.as(() =>
+        analytics().getMonthlyTotals(
+          f.user,
+          undefined,
+          "2026-06-01",
+          "2026-07-31",
+        ),
+      ),
+    ).toEqual([
+      { month: "2026-06", total: -160, count: 2 },
+      { month: "2026-07", total: -90, count: 1 },
+    ]);
   });
+
   it("converts cash transfer rollup totals without relabeling native per-account balances", async () => {
     await euros("cash");
     const euroAccount = await createTestAccount(f.h.owner, f.user, {

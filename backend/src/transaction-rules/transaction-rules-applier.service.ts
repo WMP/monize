@@ -620,7 +620,11 @@ export class TransactionRulesApplierService {
         source === "import" ? "import" : "create",
       ));
     if (rules.length === 0) return [];
-    await assertAutomaticRuleSources(m, userId, ids);
+    const checkedAutomaticSources = await assertAutomaticRuleSources(
+      m,
+      userId,
+      ids,
+    );
 
     const rows = chronological(
       await m.find(Transaction, { where: { id: In(ids), userId } }),
@@ -680,6 +684,7 @@ export class TransactionRulesApplierService {
         source,
         affected,
         settled,
+        checkedAutomaticSources,
       );
       // A payee this row created answers the lookups of the rows after it.
       if (planned.changes.createPayee !== undefined) lookups.clear();
@@ -1045,6 +1050,7 @@ export class TransactionRulesApplierService {
     source: RuleApplicationSource,
     affectedAccountIds?: Set<string>,
     settledScheduleIds?: Set<string>,
+    checkedAutomaticSources?: ReadonlySet<string>,
   ): Promise<RuleEffects> {
     const refreshAccrual = await assertRuleAccrualWrite(
       m,
@@ -1052,6 +1058,7 @@ export class TransactionRulesApplierService {
       transactionId,
       planned,
       source,
+      checkedAutomaticSources,
     );
     const resolved = await this.resolveCreatedPayee(m, userId, planned);
     const { changes } = resolved;

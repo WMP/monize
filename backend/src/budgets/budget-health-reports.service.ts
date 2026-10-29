@@ -525,6 +525,14 @@ export class BudgetHealthReportsService {
     const recentPeriods = await withScopedDb(this.dataSource, (m) =>
       m.getRepository(BudgetPeriod).find({
         where: { budgetId: budget.id, status: PeriodStatus.CLOSED },
+        ...(reportingExecutionBasis(userId) === "accrual"
+          ? {
+              relations: [
+                "periodCategories",
+                "periodCategories.budgetCategory",
+              ],
+            }
+          : {}),
         order: { periodStart: "DESC" },
         take: 2,
       }),
@@ -581,9 +589,14 @@ export class BudgetHealthReportsService {
     budget: Budget,
     period: BudgetPeriod,
   ) {
-    const categories = (budget.categories ?? []).filter(
-      (category) => !category.isIncome,
-    );
+    const members =
+      period.status === PeriodStatus.CLOSED
+        ? (period.periodCategories ?? []).map((row) => ({
+            ...row.budgetCategory,
+            categoryId: row.categoryId,
+          }))
+        : (budget.categories ?? []);
+    const categories = members.filter((category) => !category.isIncome);
     const actuals = await this.periodSpending(
       userId,
       categories,

@@ -1,3 +1,5 @@
+import { reportingQuery } from "./reporting-query";
+import { requestContextStorage } from "../common/request-context";
 import type { DataSource, EntityManager } from "typeorm";
 import {
   currentReportingRead,
@@ -82,11 +84,96 @@ describe("selected basis and physical execution", () => {
     await read();
     expect(f.query).toHaveBeenCalledTimes(4);
   });
+  it("preserves Map responses and leaves disabled-user payloads unchanged", async () => {
+    const map = new Map([["category", { spent: 5 }]]);
+    expect(
+      await withReportingRead(
+        fixture(true, true, "accrual").source,
+        "owner",
+        async () => map,
+      ),
+    ).toBe(map);
+    const payload = { total: 5 };
+    expect(
+      await withReportingRead(
+        fixture(false).source,
+        "owner",
+        async () => payload,
+      ),
+    ).toBe(payload);
+  });
   it("validates basis input before opening a read", async () => {
     const f = fixture(true);
     await expect(
       withReportingRead(f.source, "owner", async () => 0, "invalid" as "cash"),
     ).rejects.toThrow();
     expect(f.query).not.toHaveBeenCalled();
+  });
+});
+
+describe("reporting owner scope", () => {
+  it.each(["cash", "accrual"] as const)(
+    "refuses conflicting raw %s reads before preferences or SQL",
+    async (basis) => {
+      const f = fixture(true, true);
+      await requestContextStorage.run({ userId: "authenticated" }, async () => {
+        await expect(
+          reportingQuery(
+            f.manager,
+            "other",
+            "SELECT * FROM transactions",
+            [],
+            basis,
+          ),
+        ).rejects.toMatchObject({
+          response: { code: "REPORTING_OWNER_MISMATCH" },
+        });
+      });
+      expect(f.query).not.toHaveBeenCalled();
+    },
+  );
+  it("uses the effective owner for a delegate and permits explicitly system-scoped reads", async () => {
+    const f = fixture(false);
+    await requestContextStorage.run(
+      { userId: "owner", realUserId: "delegate" },
+      async () => {
+        expect(
+          await withReportingRead(f.source, "owner", async () => "ok", "cash"),
+        ).toBe("ok");
+        await expect(
+          reportingQuery(
+            f.manager,
+            "delegate",
+            "SELECT * FROM transactions",
+            [],
+            "cash",
+          ),
+        ).rejects.toMatchObject({ status: 403 });
+      },
+    );
+    await requestContextStorage.run({ system: true }, async () => {
+      expect(
+        await withReportingRead(
+          f.source,
+          "owner",
+          async () => "system",
+          "cash",
+        ),
+      ).toBe("system");
+    });
+  });
+});
+
+it("does not apply the raw-SQL mismatch policy to account-scoped joint readers", async () => {
+  const f = fixture(false);
+  await requestContextStorage.run({ userId: "joint-member" }, async () => {
+    expect(
+      await withReportingRead(
+        f.source,
+        "authorized-owner",
+        async () => "account-scoped",
+        "cash",
+      ),
+    ).toBe("account-scoped");
   });
 });

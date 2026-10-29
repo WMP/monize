@@ -1,3 +1,7 @@
+import {
+  reportingFxColumns,
+  reportingFxGrouping,
+} from "../accruals/reporting-fx-sql";
 import { ReportingRead } from "../accruals/reporting-basis";
 import { reportingQuery } from "../accruals/reporting-query";
 import { Injectable } from "@nestjs/common";
@@ -92,7 +96,6 @@ export class MonthlyCategoryBreakdownService {
     const { accountIds } = options;
     const defaultCurrency =
       await this.currencyService.getDefaultCurrency(userId);
-    const rateMap = await this.currencyService.buildRateMap(defaultCurrency);
 
     // Aggregate deposits (amount > 0) and withdrawals (amount < 0) per
     // category, month and currency. Transfers, voided rows, child rows of a
@@ -104,7 +107,7 @@ export class MonthlyCategoryBreakdownService {
       SELECT
         TO_CHAR(t.transaction_date, 'YYYY-MM') as month,
         COALESCE(ts.category_id, t.category_id) as category_id,
-        t.currency_code, TO_CHAR(t.transaction_date, 'YYYY-MM-DD') AS conversion_date, t.original_currency_code, t.exchange_rate,
+        ${reportingFxColumns(userId)},
         SUM(CASE WHEN COALESCE(ts.amount, t.amount) > 0
               THEN COALESCE(ts.amount, t.amount) ELSE 0 END) as deposits,
         SUM(CASE WHEN COALESCE(ts.amount, t.amount) < 0
@@ -161,13 +164,17 @@ export class MonthlyCategoryBreakdownService {
 
     query += `
       GROUP BY TO_CHAR(t.transaction_date, 'YYYY-MM'),
-               COALESCE(ts.category_id, t.category_id), t.currency_code, t.transaction_date, t.original_currency_code, t.exchange_rate
+               COALESCE(ts.category_id, t.category_id), ${reportingFxGrouping(userId)}
       ORDER BY month
     `;
 
     const rawResults: RawBreakdownAggregate[] = await withScopedDb(
       this.dataSource,
       (m) => reportingQuery(m, userId, query, params),
+    );
+    const rateMap = await this.currencyService.buildRateMap(
+      defaultCurrency,
+      rawResults,
     );
 
     const categories = await withScopedDb(this.dataSource, (m) =>
@@ -244,7 +251,6 @@ export class MonthlyCategoryBreakdownService {
       startDate,
       endDate,
       defaultCurrency,
-      rateMap,
       monthSet,
       gaps,
       accountIds,
@@ -280,7 +286,6 @@ export class MonthlyCategoryBreakdownService {
     startDate: string | undefined,
     endDate: string,
     defaultCurrency: string,
-    rateMap: Map<string, number>,
     monthSet: Set<string>,
     gaps: ConversionGaps,
     accountIds?: string[],
@@ -290,7 +295,7 @@ export class MonthlyCategoryBreakdownService {
         TO_CHAR(t.transaction_date, 'YYYY-MM') as month,
         t.account_id,
         a.name as account_name,
-        t.currency_code, TO_CHAR(t.transaction_date, 'YYYY-MM-DD') AS conversion_date, t.original_currency_code, t.exchange_rate,
+        ${reportingFxColumns(userId)},
         SUM(CASE WHEN t.amount < 0 THEN ABS(t.amount) ELSE 0 END) as outflow,
         SUM(CASE WHEN t.amount > 0 THEN t.amount ELSE 0 END) as inflow
       FROM transactions t
@@ -321,13 +326,17 @@ export class MonthlyCategoryBreakdownService {
 
     query += `
       GROUP BY TO_CHAR(t.transaction_date, 'YYYY-MM'),
-               t.account_id, a.name, t.currency_code, t.transaction_date, t.original_currency_code, t.exchange_rate
+               t.account_id, a.name, ${reportingFxGrouping(userId)}
       ORDER BY month
     `;
 
     const rawResults: RawTransferAggregate[] = await withScopedDb(
       this.dataSource,
       (m) => reportingQuery(m, userId, query, params),
+    );
+    const rateMap = await this.currencyService.buildRateMap(
+      defaultCurrency,
+      rawResults,
     );
 
     // Accumulate the signed flow per (account, direction) across currencies.

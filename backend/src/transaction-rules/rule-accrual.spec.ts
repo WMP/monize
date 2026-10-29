@@ -14,8 +14,8 @@ import type { PlannedUnit, RowSnapshot } from "./rule-run-snapshot";
 import type { RuleEffects } from "./rule-effects";
 import { Transaction } from "../transactions/entities/transaction.entity";
 
-jest.mock("../common/db/locks", () => ({
-  lockTransactionRows: jest.fn().mockResolvedValue(new Map()),
+jest.mock("../common/db/source-family-lock", () => ({
+  lockSourceFamily: jest.fn().mockResolvedValue(true),
 }));
 jest.mock("../accruals/accrual-source", () => ({
   requireAccrualOwner: jest.fn(),
@@ -30,7 +30,7 @@ jest.mock("../accruals/accrual-history-snapshot", () => ({
   restoreAccrualHistoryState: jest.fn(),
 }));
 
-import { lockTransactionRows } from "../common/db/locks";
+import { lockSourceFamily } from "../common/db/source-family-lock";
 import { requireAccrualOwner } from "../accruals/accrual-source";
 import { resolveSourceAccrualEdit } from "../accruals/accrual-source-edit";
 import {
@@ -403,11 +403,52 @@ describe("assertAutomaticRuleSources", () => {
   it("locks the rows before checking, and passes when none are accrued", async () => {
     const { m } = harness({ accruedIds: [] });
     await assertAutomaticRuleSources(m, USER, ["t1"]);
-    expect(lockTransactionRows).toHaveBeenCalledWith(m, ["t1"], USER);
+    expect(lockSourceFamily).toHaveBeenCalledWith(m, USER, ["t1"]);
   });
 
   it("refuses an automatic batch that includes an accrued source", async () => {
     const { m } = harness({ accruedIds: ["t1"] });
     await expect(assertAutomaticRuleSources(m, USER, ["t1"])).rejects.toThrow();
   });
+});
+
+describe("locked automatic accrual discovery reuse", () => {
+  it("checks a locked batch once rather than probing every written row", async () => {
+    const { m, query } = harness();
+    const checked = await assertAutomaticRuleSources(m, USER, ["t1", "t2"]);
+    await expect(
+      assertRuleAccrualWrite(m, USER, "t1", effects({}), "import", checked),
+    ).resolves.toBe(false);
+    await expect(
+      assertRuleAccrualWrite(m, USER, "t2", effects({}), "import", checked),
+    ).resolves.toBe(false);
+    expect(query).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not let a checked batch bypass an unknown or manual source", async () => {
+    const { m, query } = harness({ accruedIds: ["other", "manual"] });
+    const checked = await assertAutomaticRuleSources(m, USER, ["t1"]);
+    await expect(
+      assertRuleAccrualWrite(m, USER, "other", effects({}), "import", checked),
+    ).rejects.toThrow();
+    await expect(
+      assertRuleAccrualWrite(
+        m,
+        USER,
+        "manual",
+        effects({}),
+        "manual",
+        new Set(["manual"]),
+      ),
+    ).resolves.toBe(true);
+    expect(query).toHaveBeenCalledTimes(3);
+    expect(requireAccrualOwner).toHaveBeenCalledWith(USER);
+  });
+});
+
+it("refuses an automatic batch after its required source family changes before schedule discovery", async () => {
+  const { m, query } = harness();
+  jest.mocked(lockSourceFamily).mockResolvedValueOnce(false);
+  await expect(assertAutomaticRuleSources(m, USER, ["t1"])).rejects.toThrow();
+  expect(query).not.toHaveBeenCalled();
 });

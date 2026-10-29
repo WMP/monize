@@ -1,4 +1,8 @@
-import { assertImportAccrualMatch } from "@/import/import-accrual-guard";
+import {
+  prepareImportAccrualSources,
+  assertImportAccrualIds,
+  assertImportAccrualMatch,
+} from "@/import/import-accrual-guard";
 import { randomUUID } from "node:crypto";
 import { withScopedDb } from "@/common/db/scoped-db";
 import {
@@ -28,6 +32,25 @@ describe("Accrued imports and relationship history (enforced PostgreSQL)", () =>
   });
   beforeEach(async () => f.reset());
   afterAll(async () => f?.close());
+  it("locks matched sources without blocking an unrelated transaction", async () => {
+    const { tx: matched } = await f.source();
+    const { tx: unrelated } = await f.source();
+    await f.as(() =>
+      withScopedDb(f.h.app, async (m) => {
+        await prepareImportAccrualSources(m, f.user);
+        await assertImportAccrualIds(m, f.user, [matched.id]);
+        // This is a second real connection. The original whole-ledger freeze
+        // makes NOWAIT throw 55P03 here, even though the row cannot be matched.
+        await f.h.owner.transaction(async (other) => {
+          const rows = await other.query(
+            "SELECT id FROM transactions WHERE id=$1 FOR UPDATE NOWAIT",
+            [unrelated.id],
+          );
+          expect(rows).toHaveLength(1);
+        });
+      }),
+    );
+  });
   async function clearHistory() {
     await settlePendingHistoryWrites();
     await f.h.owner.query("DELETE FROM action_history WHERE user_id=$1", [
@@ -183,10 +206,24 @@ describe("Accrued imports and relationship history (enforced PostgreSQL)", () =>
     expect(await f.graph()).toEqual(graph);
   });
 
-  it("refuses legacy category and payee history after sources acquire accruals", async () => {
+  it("allows legacy category label history after sources acquire accruals", async () => {
     const { tx } = await f.source();
     await clearHistory();
     await categoryUpdate(f.root, { name: "Old history name" });
+    await settlePendingHistoryWrites();
+    await f.accrue(tx.id);
+    const before = await f.states(tx.id);
+    await f.as(() => history.undo(f.user));
+    expect(await f.states(tx.id)).toEqual(before);
+  });
+
+  it("refuses legacy category and payee history after sources acquire accruals", async () => {
+    const { tx } = await f.source();
+    await categoryUpdate(f.root, { isIncome: true });
+    await settlePendingHistoryWrites();
+    await clearHistory();
+    // The legacy change leaves an expense category eligible for this source.
+    await categoryUpdate(f.root, { isIncome: false });
     await settlePendingHistoryWrites();
     await f.accrue(tx.id);
     await expect(f.as(() => history.undo(f.user))).rejects.toMatchObject({

@@ -471,9 +471,20 @@ export class TransactionAnalyticsService {
   ): Promise<{
     currency?: string;
     fxComplete?: boolean;
-    totalIncome: number;
-    totalExpenses: number;
-    netCashFlow: number;
+    knownIncomeSubtotal?: number;
+    knownExpensesSubtotal?: number;
+    missingRatePairs?: {
+      from: string;
+      to: string;
+      date: string;
+      reason: string | null;
+    }[];
+    excludedTransactionCount?: number;
+    repair?: string;
+    fetchAttempted?: boolean;
+    totalIncome: number | null;
+    totalExpenses: number | null;
+    netCashFlow: number | null;
     transactionCount: number;
     firstTransactionDate: string | null;
     lastTransactionDate: string | null;
@@ -540,6 +551,17 @@ export class TransactionAnalyticsService {
         nativeCurrencyBuckets,
       );
 
+      // A plain Cash summary still folds several currencies into one total
+      // (reportingSummaryRows converts for both bases now); only an explicit
+      // native-bucket request skips it.
+      const converted = !nativeCurrencyBuckets;
+      const incomeFx = new FxAggregate(),
+        expensesFx = new FxAggregate();
+      const missingPairs = new Map<
+        string,
+        { from: string; to: string; date: string; reason: string | null }
+      >();
+      let excludedTransactionCount = 0;
       let totalIncome = 0;
       let totalExpenses = 0;
       let transactionCount = 0;
@@ -560,13 +582,29 @@ export class TransactionAnalyticsService {
         const income = Number(row.totalIncome) || 0;
         const expenses = Number(row.totalExpenses) || 0;
         const count = Number(row.transactionCount) || 0;
+        if (converted) {
+          incomeFx.add(
+            row.convertedIncome,
+            row.currencyCode,
+            currentReportingRead(userId)!.currency,
+          );
+          expensesFx.add(
+            row.convertedExpenses,
+            row.currencyCode,
+            currentReportingRead(userId)!.currency,
+          );
+          if (row.convertedIncome === null || row.convertedExpenses === null)
+            excludedTransactionCount += count;
+          for (const pair of row.missingRatePairs ?? [])
+            missingPairs.set(JSON.stringify(pair), pair);
+        }
         totalIncome = sumMoney([
           totalIncome,
-          Number(row.convertedIncome ?? income),
+          converted ? (row.convertedIncome ?? 0) : income,
         ]);
         totalExpenses = sumMoney([
           totalExpenses,
-          Number(row.convertedExpenses ?? expenses),
+          converted ? (row.convertedExpenses ?? 0) : expenses,
         ]);
         const identity = row.__sourceId ?? String(index);
         const increment = seen.has(identity) ? 0 : count;
@@ -602,12 +640,30 @@ export class TransactionAnalyticsService {
         }
       }
 
+      const fxComplete =
+        !converted || (incomeFx.isComplete && expensesFx.isComplete);
       return {
-        currency: currentReportingRead(userId)!.currency,
-        fxComplete: true,
-        totalIncome,
-        totalExpenses,
-        netCashFlow: roundMoney(totalIncome - totalExpenses),
+        ...(converted
+          ? {
+              currency: currentReportingRead(userId)!.currency,
+              fxComplete,
+              ...(!fxComplete
+                ? {
+                    knownIncomeSubtotal: totalIncome,
+                    knownExpensesSubtotal: totalExpenses,
+                    missingRatePairs: [...missingPairs.values()],
+                    excludedTransactionCount,
+                    repair: "currency_rate_history",
+                    fetchAttempted: false,
+                  }
+                : {}),
+            }
+          : {}),
+        totalIncome: fxComplete ? totalIncome : null,
+        totalExpenses: fxComplete ? totalExpenses : null,
+        netCashFlow: fxComplete
+          ? roundMoney(totalIncome - totalExpenses)
+          : null,
         transactionCount,
         firstTransactionDate,
         lastTransactionDate,
@@ -2174,7 +2230,7 @@ export class TransactionAnalyticsService {
         });
       }
 
-      const rows = await this.llmFlowRows(m, userId, qb);
+      const rows = await reportingRawMany(m, userId, qb);
       // Qualified so a recurring charge on "Business: Cell Phone" is not
       // reported against "Bills: Cell Phone" in an insight or a forecast.
       const names = await loadQualifiedCategoryNames(m, userId);

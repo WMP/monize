@@ -1,4 +1,4 @@
-import { lockTransactionRows } from "../common/db/locks";
+import { lockSourceFamily } from "../common/db/source-family-lock";
 import { createHash } from "node:crypto";
 import { tokenHashesEqual } from "../auth/crypto.util";
 import type { EntityManager } from "typeorm";
@@ -158,7 +158,11 @@ export async function assertRuleAccrualWrite(
   id: string,
   effects: RuleEffects,
   source: string,
+  checkedAutomaticSources?: ReadonlySet<string>,
 ): Promise<boolean> {
+  // Only the same transaction's locked batch discovery can supply this set.
+  // Unknown IDs and manual writes retain the fresh per-source check.
+  if (source !== "manual" && checkedAutomaticSources?.has(id)) return false;
   const accrued = (await accruedRuleSources(m, userId, [id])).has(id);
   if (!accrued) return false;
   requireAccrualOwner(userId);
@@ -301,8 +305,9 @@ export async function assertAutomaticRuleSources(
   m: EntityManager,
   userId: string,
   ids: readonly string[],
-): Promise<void> {
-  await lockTransactionRows(m, ids, userId);
+): Promise<ReadonlySet<string>> {
+  if (!(await lockSourceFamily(m, userId, ids))) throw accrualErrors.conflict();
   const accrued = await accruedRuleSources(m, userId, ids);
   if (accrued.size) throw accrualErrors.conflict();
+  return new Set(ids);
 }

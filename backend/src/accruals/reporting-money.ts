@@ -1,4 +1,14 @@
-import { reportingResultCurrency } from "./reporting-basis";
+import { createHash } from "node:crypto";
+import {
+  currentBudgetPartialScope,
+  recordBudgetComponent,
+} from "./reporting-partial-budget";
+import { reportingExecutionBasis } from "./reporting-basis";
+import { reportingPreference } from "./reporting-preference";
+import {
+  currentReportingRead,
+  reportingResultCurrency,
+} from "./reporting-basis";
 import { ServiceUnavailableException } from "@nestjs/common";
 import type { EntityManager, SelectQueryBuilder } from "typeorm";
 import { UserPreference } from "../users/entities/user-preference.entity";
@@ -22,8 +32,12 @@ export async function reportingCurrency(
   manager: EntityManager,
   userId: string,
 ): Promise<string> {
+  const context = currentReportingRead(userId);
+  if (context) return context.currency;
   return preferredCurrency(
-    await manager.getRepository(UserPreference).findOne({ where: { userId } }),
+    await reportingPreference(userId, () =>
+      manager.getRepository(UserPreference).findOne({ where: { userId } }),
+    ),
   );
 }
 /** A bounded, stored-only historical read: summaries/tools never fetch providers inline. */
@@ -47,7 +61,7 @@ export async function reportingRates(
     dates[dates.length - 1],
   );
 }
-export function reportingConversion(
+export function tryReportingConversion(
   amount: number | string,
   source: ReportingMoneySource,
   currency: string,
@@ -76,20 +90,18 @@ export function reportingConversion(
       ? 1 / entered
       : resolution.rate;
   if (rate === null)
-    throw new ServiceUnavailableException({
-      code: "REPORTING_FX_INCOMPLETE",
-      fxComplete: false,
-      missingRatePairs: [
-        {
-          from: source.currencyCode,
-          to: currency,
-          date: source.transactionDate,
-          reason: resolution.reason,
-        },
-      ],
-      repair: "currency_rate_history",
-      fetchAttempted: false,
-    });
+    return {
+      amount: null,
+      rate: null,
+      source: "missing" as const,
+      observedOn: null,
+      missingRatePair: {
+        from: source.currencyCode,
+        to: currency,
+        date: source.transactionDate,
+        reason: resolution.reason,
+      },
+    };
   return {
     amount: applyFxConversion(value, rate).amount,
     rate,
@@ -108,6 +120,25 @@ export function reportingConversion(
         ? null
         : resolution.observedOn,
   };
+}
+
+/** Strict consumers keep their refusal until their public nullable-total contract is wired. */
+export function reportingConversion(
+  amount: number | string,
+  source: ReportingMoneySource,
+  currency: string,
+  rates: RateIndex,
+) {
+  const result = tryReportingConversion(amount, source, currency, rates);
+  if (result.amount === null)
+    throw new ServiceUnavailableException({
+      code: "REPORTING_FX_INCOMPLETE",
+      fxComplete: false,
+      missingRatePairs: [result.missingRatePair],
+      repair: "currency_rate_history",
+      fetchAttempted: false,
+    });
+  return { ...result, amount: result.amount };
 }
 
 export function reportingAmount(
@@ -130,6 +161,15 @@ export async function reportingMoneyMany<T = any>(
   currency: string,
   absolute = false,
 ): Promise<T[]> {
+  if (reportingExecutionBasis(userId) !== "accrual") {
+    const rows = await query.getRawMany();
+    return absolute
+      ? rows.map((row) => ({
+          ...row,
+          total: String(Math.abs(Number(row.total))),
+        }))
+      : rows;
+  }
   reportingResultCurrency(userId, currency);
   const keys = query.expressionMap.selects
     .filter(
@@ -147,18 +187,10 @@ export async function reportingMoneyMany<T = any>(
     .addSelect(`${transactionAlias}.currency_code`, "__moneyCurrency")
     .addSelect(`${transactionAlias}.original_currency_code`, "__moneyOriginal")
     .addSelect(`${transactionAlias}.exchange_rate`, "__moneyRate")
-    .addGroupBy(`${transactionAlias}.id`)
     .addGroupBy(`${transactionAlias}.transaction_date`)
     .addGroupBy(`${transactionAlias}.currency_code`)
     .addGroupBy(`${transactionAlias}.original_currency_code`)
     .addGroupBy(`${transactionAlias}.exchange_rate`);
-  for (const join of query.expressionMap.joinAttributes)
-    if (
-      join.alias.hasMetadata &&
-      join.alias.metadata.tableName === "transaction_splits"
-    )
-      qb.addGroupBy(`${join.alias.name}.id`);
-  if (query.alias === "s") qb.addGroupBy("s.id");
   const rows = await reportingRawMany(manager, userId, qb);
   const sources: ReportingMoneySource[] = rows.map((row) => ({
     transactionDate: row.__moneyDate,
@@ -167,6 +199,13 @@ export async function reportingMoneyMany<T = any>(
     exchangeRate: row.__moneyRate,
   }));
   const rates = await reportingRates(manager, sources, currency);
+  const partial = currentBudgetPartialScope(userId);
+  const queryKey = partial
+    ? createHash("sha256")
+        .update(query.getQuery())
+        .update(JSON.stringify(query.getParameters()))
+        .digest("hex")
+    : "";
   const buckets = new Map<
     string,
     { row: Record<string, unknown>; values: number[]; count: number }
@@ -182,9 +221,29 @@ export async function reportingMoneyMany<T = any>(
       values: [],
       count: 0,
     };
-    bucket.values.push(
-      reportingAmount(row.total, sources[index], currency, rates),
-    );
+    if (partial) {
+      const value = tryReportingConversion(
+        row.total,
+        sources[index],
+        currency,
+        rates,
+      );
+      const id = createHash("sha256")
+        .update(JSON.stringify([queryKey, row]))
+        .digest("hex");
+      recordBudgetComponent(
+        userId,
+        id,
+        currency,
+        sources[index].transactionDate,
+        value.amount,
+        value.missingRatePair,
+      );
+      bucket.values.push(value.amount ?? 0);
+    } else
+      bucket.values.push(
+        reportingAmount(row.total, sources[index], currency, rates),
+      );
     bucket.count += Number(row.count ?? 0);
     buckets.set(key, bucket);
   }

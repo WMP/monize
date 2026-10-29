@@ -3,7 +3,7 @@ import {
   currentReportingRead,
   withReportingRead,
 } from "../accruals/reporting-basis";
-import { assertReportingComplete } from "../accruals/reporting-errors";
+import { reportingCompleteness } from "../accruals/reporting-errors";
 import { NetWorthService } from "../net-worth/net-worth.service";
 import {
   getDefaultDateRange,
@@ -126,12 +126,24 @@ export class BuiltInReportsService {
       default:
         throw new BadRequestException({ code: "REPORTING_TYPE_INVALID" });
     }
-    assertReportingComplete(result);
+    const completeness = reportingCompleteness(result);
+    const context = currentReportingRead(userId)!;
+    if (
+      context.accrualEnabled &&
+      result &&
+      typeof result === "object" &&
+      !Array.isArray(result)
+    )
+      result = {
+        ...result,
+        basis: context.basis,
+        fxComplete: !completeness.fxIncomplete,
+      };
     return {
       type: input.type,
       basis: currentReportingRead(userId)!.basis,
       currency: currentReportingRead(userId)!.currency,
-      fxComplete: true,
+      fxComplete: !completeness.fxIncomplete,
       result,
     };
   }

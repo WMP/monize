@@ -1,13 +1,13 @@
 import type { EntityManager } from "typeorm";
 import { accrualErrors } from "../accruals/accrual-errors";
-import { LEDGER_TOP_LEVEL_ONLY } from "../common/ledger-balance.sql";
+import { lockSourceFamily } from "../common/db/source-family-lock";
 import type { ImportContext } from "./import-context";
 
 const prepared = new WeakMap<
   EntityManager,
   { userId: string; ids: Set<string> }
 >();
-/** Import entry points call this after holdings advisory locks, before any row writes. */
+/** Per-import lock memo; preparation performs no ledger scan or row locking. */
 export async function prepareImportAccrualSources(
   m: EntityManager,
   userId: string,
@@ -17,15 +17,9 @@ export async function prepareImportAccrualSources(
     if (previous.userId !== userId) throw accrualErrors.conflict();
     return previous.ids;
   }
-  const parents: { id: string }[] = await m.query(
-    `SELECT t.id FROM transactions t WHERE t.user_id=$1 AND ${LEDGER_TOP_LEVEL_ONLY} AND NOT EXISTS(SELECT 1 FROM transaction_splits leg_split WHERE leg_split.linked_transaction_id=t.id) ORDER BY t.id FOR UPDATE`,
-    [userId],
-  );
-  const legs: { id: string }[] = await m.query(
-    `SELECT t.id FROM transactions t WHERE t.user_id=$1 AND (NOT (${LEDGER_TOP_LEVEL_ONLY}) OR EXISTS(SELECT 1 FROM transaction_splits leg_split WHERE leg_split.linked_transaction_id=t.id)) ORDER BY t.id FOR UPDATE`,
-    [userId],
-  );
-  const ids = new Set([...parents, ...legs].map((row) => row.id));
+  // Presence is not a safe write fence: a first schedule can be created while
+  // an import is running. Lock only actual matches, below, before checking them.
+  const ids = new Set<string>();
   prepared.set(m, { userId, ids });
   return ids;
 }
@@ -38,12 +32,21 @@ export async function assertImportAccrualIds(
 ): Promise<void> {
   const frozen = await prepareImportAccrualSources(m, userId);
   const selected = [...new Set(ids.filter((id): id is string => !!id))].sort();
-  if (selected.some((id) => !frozen.has(id))) throw accrualErrors.conflict();
   if (!selected.length) return;
+  const pending = selected.filter((id) => !frozen.has(id));
+  if (pending.length) {
+    if (!(await lockSourceFamily(m, userId, pending)))
+      throw accrualErrors.conflict();
+    for (const id of pending) frozen.add(id);
+  }
+
+  // Fresh statement after source/parent locks: schedule creation uses those
+  // same source locks, so an import cannot miss a schedule committed while queued.
   const schedules: { id: string }[] = await m.query(
     `SELECT a.id FROM accrual_schedules a JOIN transactions t ON t.id=a.source_transaction_id
      WHERE a.user_id=$1 AND (t.id=ANY($2::uuid[]) OR t.id IN
-       (SELECT parent_transaction_id FROM transactions WHERE user_id=$1 AND id=ANY($2::uuid[])))
+       (SELECT parent_transaction_id FROM transactions WHERE user_id=$1 AND id=ANY($2::uuid[])) OR t.id IN
+       (SELECT transaction_id FROM transaction_splits WHERE linked_transaction_id=ANY($2::uuid[])))
      LIMIT 1`,
     [userId, selected],
   );

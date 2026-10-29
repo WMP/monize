@@ -3,6 +3,7 @@ import type { BuiltInReportRequest } from "../../built-in-reports/report-tool.ty
 import {
   reportingFailure,
   reportingFailureNote,
+  reportingCompleteness,
 } from "../../accruals/reporting-errors";
 import {
   Injectable,
@@ -2802,6 +2803,17 @@ export class ToolExecutorService {
       input.basis as "cash" | "accrual" | undefined,
     );
 
+    if ("result" in data)
+      return {
+        data,
+        summary:
+          reportingFailureNote({
+            ...data,
+            code: "REPORTING_FX_INCOMPLETE",
+          }) ?? "",
+        sources: [],
+      };
+
     if ("error" in data) {
       return {
         data,
@@ -2996,12 +3008,19 @@ export class ToolExecutorService {
       userId,
       input as unknown as BuiltInReportRequest,
     );
+    const note =
+      this.missingRateNote(data.result) ||
+      reportingFailureNote({
+        code: "REPORTING_FX_INCOMPLETE",
+        currency: data.currency,
+        missingRatePairs: reportingCompleteness(data.result).gaps,
+      });
     return {
-      data,
+      data: data.result,
       summary:
         input.type === "spending_anomalies"
-          ? `Spending anomaly report over the last ${input.months ?? SPENDING_ANOMALY_DEFAULT_MONTHS} months on ${data.basis} basis in ${data.currency}.`
-          : `${data.type} report on ${data.basis} basis in ${data.currency}.`,
+          ? `Spending anomaly report over the last ${input.months ?? SPENDING_ANOMALY_DEFAULT_MONTHS} months on ${data.basis} basis in ${data.currency}.${note}`
+          : `${data.type} report on ${data.basis} basis in ${data.currency}.${note}`,
       sources: [
         { type: "report", description: `Built-in report: ${data.type}` },
       ],

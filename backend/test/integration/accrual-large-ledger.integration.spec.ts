@@ -8,6 +8,8 @@ import { performance } from "node:perf_hooks";
 import { createAccrualTaxonomyFixture } from "../helpers/accrual-taxonomy-fixture";
 import { createTestAccount } from "../helpers/test-factories";
 import { withScopedDb } from "@/common/db/scoped-db";
+import { seedAccrualLedgerRelations } from "../helpers/accrual-large-ledger-relations";
+import { TransactionAnalyticsService } from "@/transactions/transaction-analytics.service";
 import type { TransactionsService } from "@/transactions/transactions.service";
 
 describe("accrual register on a realistic ledger (PostgreSQL, enforced RLS)", () => {
@@ -52,6 +54,15 @@ describe("accrual register on a realistic ledger (PostgreSQL, enforced RLS)", ()
       FROM seeded t CROSS JOIN LATERAL generate_series(1,CASE WHEN t.description='Background 5141' THEN 1 ELSE 2 END) leg
       WHERE t.is_split`,
       [f.user, background.id, f.root],
+    );
+    await seedAccrualLedgerRelations(f.h.owner.manager, f.user, background.id);
+    const [{ rolbypassrls, rolsuper }] = await f.h.app.query(
+      "SELECT rolbypassrls,rolsuper FROM pg_roles WHERE rolname=current_user",
+    );
+    expect(rolbypassrls).toBe(false);
+    expect(rolsuper).toBe(false);
+    expect(await f.h.app.query("SELECT id FROM transactions LIMIT 1")).toEqual(
+      [],
     );
     const [source] = await f.h.owner.query(
       "SELECT id FROM transactions WHERE account_id=$1 ORDER BY id LIMIT 1",
@@ -162,6 +173,47 @@ describe("accrual register on a realistic ledger (PostgreSQL, enforced RLS)", ()
         expect(
           await manager.query("SELECT current_setting('jit') AS jit"),
         ).toEqual([setting]);
+      }),
+    );
+  });
+  it("bounds transfer/investment identity projections under enforced RLS", async () => {
+    await f.as(() =>
+      withScopedDb(f.h.app, async (m) => {
+        await m.query("SET LOCAL statement_timeout='8s'");
+        await m.query("SET LOCAL jit=off");
+        const began = performance.now();
+        const [links] = await m.query(
+          "SELECT count(linked_transaction_id)::int AS count FROM accrual_reporting_transactions WHERE user_id=$1 AND is_transfer",
+          [f.user],
+        );
+        expect(links.count).toBe(7000);
+        const [investments] = await m.query(
+          "SELECT count(transaction_id)::int AS whole,count(transaction_split_id)::int AS split FROM accrual_reporting_investment_transactions WHERE user_id=$1",
+          [f.user],
+        );
+        expect(investments).toEqual({ whole: 2250, split: 2250 });
+        expect(performance.now() - began).toBeLessThan(5000);
+      }),
+    );
+  });
+  it("bounds real summary, payee/category grouping and monthly endpoints with transfers and investments", async () => {
+    const analytics = f.h.module.get(TransactionAnalyticsService);
+    await f.as(() =>
+      withScopedDb(f.h.app, async (m) => {
+        await m.query("SET LOCAL statement_timeout='8s'");
+        const began = performance.now();
+        const summary = await analytics.getSummary(f.user);
+        expect(summary.transactionCount).toBeGreaterThan(0);
+        for (const groupBy of ["category", "payee"] as const) {
+          const groups = await analytics.getGroupedTotals(f.user, { groupBy });
+          expect(groups.length).toBeGreaterThan(0);
+        }
+        const months = await analytics.getMonthlyTotals(f.user);
+        expect(months.length).toBeGreaterThan(0);
+        expect(months.reduce((sum, row) => sum + row.count, 0)).toBe(
+          summary.transactionCount,
+        );
+        expect(performance.now() - began).toBeLessThan(5000);
       }),
     );
   });

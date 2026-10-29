@@ -1,3 +1,8 @@
+import {
+  loadAccrualHistoryPayload,
+  replaceAccrualHistorySide,
+  presentAccrualHistoryAction,
+} from "../accruals/accrual-history-storage";
 import { replayTaxonomyOperation } from "../accruals/accrual-taxonomy-operation";
 import {
   guardAccruedTagDeletion,
@@ -679,13 +684,14 @@ export class ActionHistoryService {
     userId: string,
     limit: number = 50,
   ): Promise<ActionHistory[]> {
-    return withScopedDb(this.dataSource, (manager) =>
+    const actions = await withScopedDb(this.dataSource, (manager) =>
       manager.getRepository(ActionHistory).find({
         where: { userId },
         order: { createdAt: "DESC" },
         take: limit,
       }),
     );
+    return actions.map(presentAccrualHistoryAction);
   }
 
   async undo(userId: string): Promise<UndoRedoResult> {
@@ -722,7 +728,10 @@ export class ActionHistoryService {
     );
     await this.publishBondEffects(userId, afterCommit);
 
-    return { action, description: `Undone: ${action.description}` };
+    return {
+      action: presentAccrualHistoryAction(action),
+      description: `Undone: ${action.description}`,
+    };
   }
 
   async redo(userId: string): Promise<UndoRedoResult> {
@@ -750,13 +759,17 @@ export class ActionHistoryService {
     invalidatePortfolioSummary(userId);
     await this.publishBondEffects(userId, afterCommit);
 
-    return { action, description: `Redone: ${action.description}` };
+    return {
+      action: presentAccrualHistoryAction(action),
+      description: `Redone: ${action.description}`,
+    };
   }
 
   private async executeUndo(
-    action: ActionHistory,
+    input: ActionHistory,
     manager: EntityManager,
   ): Promise<UndoAfterCommit> {
+    const action = await loadAccrualHistoryPayload(manager, input);
     switch (action.entityType) {
       case "accrual_relationship_operation":
         await replayTaxonomyOperation(manager, action);
@@ -834,9 +847,10 @@ export class ActionHistoryService {
   }
 
   private async executeRedo(
-    action: ActionHistory,
+    input: ActionHistory,
     manager: EntityManager,
   ): Promise<UndoAfterCommit> {
+    const action = await loadAccrualHistoryPayload(manager, input);
     if (
       action.entityType === "bulk_transaction" &&
       action.action === "bulk_delete" &&
@@ -1836,7 +1850,7 @@ export class ActionHistoryService {
     });
     if (!current || current.isUndone !== isUndone)
       throw accrualErrors.conflict();
-    return current;
+    return loadAccrualHistoryPayload(manager, current);
   }
 
   private async undoAccrualBulkDelete(
@@ -1899,16 +1913,10 @@ export class ActionHistoryService {
     }
     // Conditional history write is last: a concurrent redo-stack clear must
     // produce a conflict/rollback rather than an untracked source restoration.
-    const result = await manager
-      .createQueryBuilder()
-      .update(ActionHistory)
-      .set({ beforeData: { ...data, transactions: restored } })
-      .where("id=:id AND user_id=:userId AND is_undone=false", {
-        id: action.id,
-        userId: action.userId,
-      })
-      .execute();
-    if (result.affected !== 1) throw accrualErrors.conflict();
+    await replaceAccrualHistorySide(manager, current, "beforeData", {
+      ...data,
+      transactions: restored,
+    });
   }
 
   private async redoAccrualBulkDelete(

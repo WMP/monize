@@ -7,6 +7,9 @@ import {
   settlePendingHistoryWrites,
 } from "@/action-history/action-history.service";
 import { withUserContext } from "@/common/db/with-context";
+import { withScopedDb } from "@/common/db/scoped-db";
+import { lockTransactionRows } from "@/common/db/locks";
+import { captureAccrualHistorySnapshots } from "@/accruals/accrual-history-capture";
 import type { UpdateTransactionDto } from "@/transactions/dto/update-transaction.dto";
 import type { AccrualPreviewDto } from "@/accruals/dto/accrual-command.dto";
 import { createTestAccount } from "../helpers/test-factories";
@@ -57,10 +60,16 @@ describe("accrual structural history through actual services", () => {
       }),
     );
   }
-  async function accrue(id: string, splitId?: string, custom = false) {
+  async function accrue(
+    id: string,
+    splitId?: string,
+    custom = false,
+    dateRule?: AccrualPreviewDto["dateRule"],
+  ) {
     const input: AccrualPreviewDto = {
       sourceTransactionId: id,
       sourceSplitId: splitId,
+      dateRule,
       ...(custom
         ? { preset: "CUSTOM", startMonth: "2025-01", monthCount: 24 }
         : { preset: "NTM" }),
@@ -124,6 +133,164 @@ describe("accrual structural history through actual services", () => {
       [category, user],
     );
   });
+  it("preserves first-business-day dates across source-edit and deletion undo/redo", async () => {
+    const source = await create();
+    const { saved } = await accrue(
+      source.id,
+      undefined,
+      false,
+      "FIRST_BUSINESS_DAY",
+    );
+    const original = await as(() => accruals.detail(user, saved.id));
+    await update(source.id, { amount: -2400 });
+    await as(() => history.undo(user));
+    expect(
+      (await as(() => accruals.detail(user, saved.id))).plan.allocations,
+    ).toEqual(original.plan.allocations);
+    await as(() => history.redo(user));
+    expect(
+      (await as(() => accruals.detail(user, saved.id))).plan.allocations[0]
+        .recognitionDate,
+    ).toBe("2026-06-01");
+    await as(() => transactions.remove(user, source.id));
+    await settlePendingHistoryWrites();
+    await as(() => history.undo(user));
+    const [restored] = await rows(source.id);
+    expect(
+      (await as(() => accruals.detail(user, restored.id))).plan.allocations[0]
+        .recognitionDate,
+    ).toBe("2026-06-01");
+    await as(() => history.redo(user));
+    expect(await rows(source.id)).toHaveLength(0);
+  });
+  async function omitLegacyRule(id: string, action: "update" | "delete") {
+    const [entry] = await h.owner.query(
+      "SELECT id,before_data,after_data FROM action_history WHERE user_id=$1 AND entity_id=$2 AND action=$3 ORDER BY created_at DESC LIMIT 1",
+      [user, id, action],
+    );
+    const withoutRule = (value: Record<string, any> | null) =>
+      value?.accrualState
+        ? {
+            ...value,
+            accrualState: {
+              ...value.accrualState,
+              schedules: value.accrualState.schedules.map(
+                ({
+                  recognitionDateRule: _rule,
+                  ...row
+                }: Record<string, unknown>) => row,
+              ),
+            },
+          }
+        : value;
+    await h.owner.query(
+      "UPDATE action_history SET before_data=$1::jsonb,after_data=$2::jsonb WHERE id=$3",
+      [
+        JSON.stringify(withoutRule(entry.before_data)),
+        JSON.stringify(withoutRule(entry.after_data)),
+        entry.id,
+      ],
+    );
+  }
+
+  it.each(["MONTH_END", "FIRST_BUSINESS_DAY"] as const)(
+    "recovers legacy %s history without guessing month-end",
+    async (dateRule) => {
+      const source = await create();
+      const { saved } = await accrue(source.id, undefined, false, dateRule);
+      const original = (await as(() => accruals.detail(user, saved.id))).plan
+        .allocations;
+      await update(source.id, { amount: -2400 });
+      await omitLegacyRule(source.id, "update");
+      await as(() => history.undo(user));
+      expect(
+        (await as(() => accruals.detail(user, saved.id))).plan.allocations,
+      ).toEqual(original);
+      await as(() => history.redo(user));
+      const edited = (await as(() => accruals.detail(user, saved.id))).plan
+        .allocations;
+      await as(() => transactions.remove(user, source.id));
+      await settlePendingHistoryWrites();
+      await omitLegacyRule(source.id, "delete");
+      await as(() => history.undo(user));
+      const [restored] = await rows(source.id);
+      expect(
+        (await as(() => accruals.detail(user, restored.id))).plan.allocations,
+      ).toEqual(edited);
+      await as(() => history.redo(user));
+      expect(await rows(source.id)).toHaveLength(0);
+    },
+  );
+
+  it("refuses unmatchable legacy history without partially restoring the source", async () => {
+    const source = await create();
+    await accrue(source.id, undefined, false, "FIRST_BUSINESS_DAY");
+    await as(() => transactions.remove(user, source.id));
+    await settlePendingHistoryWrites();
+    await omitLegacyRule(source.id, "delete");
+    await h.owner.query(
+      "UPDATE action_history SET before_data=jsonb_set(before_data,'{accrualState,schedules,0,sourceFingerprint}',to_jsonb($3::text)) WHERE user_id=$1 AND entity_id=$2 AND action='delete'",
+      [user, source.id, "0".repeat(64)],
+    );
+    await expect(as(() => history.undo(user))).rejects.toMatchObject({
+      status: 409,
+    });
+    expect(
+      await h.owner.query("SELECT id FROM transactions WHERE id=$1", [
+        source.id,
+      ]),
+    ).toHaveLength(0);
+    expect(await rows(source.id)).toHaveLength(0);
+    expect(await balance()).toBe("1000.0000");
+    const [entry] = await h.owner.query(
+      "SELECT is_undone FROM action_history WHERE user_id=$1 AND entity_id=$2 AND action='delete'",
+      [user, source.id],
+    );
+    expect(entry.is_undone).toBe(false);
+  });
+
+  it("captures a large mixed source set in bounded database round trips", async () => {
+    const source = await create();
+    await accrue(source.id);
+    const cash: { id: string }[] = await h.owner.query(
+      "INSERT INTO transactions(user_id,account_id,transaction_date,amount,currency_code,category_id) SELECT $1,$2,'2026-06-15'::date,-1,'USD',$3 FROM generate_series(1,500) RETURNING id",
+      [user, account, category],
+    );
+    await h.owner.query(
+      "UPDATE accounts SET current_balance=-700 WHERE id=$1",
+      [account],
+    );
+    const ids = [source.id, ...cash.map((row) => row.id)];
+    await as(() =>
+      withScopedDb(h.app, async (m) => {
+        await lockTransactionRows(m, ids, user);
+        const queries = jest.spyOn(m, "query");
+        const snapshots = await captureAccrualHistorySnapshots(
+          m,
+          user,
+          ids,
+          true,
+        );
+        expect(queries.mock.calls.length).toBeLessThanOrEqual(3);
+        expect(snapshots.size).toBe(501);
+        expect(snapshots.get(source.id)).toMatchObject({
+          amount: "-1200.0000",
+          accountId: account,
+          accrualState: {
+            schedules: [
+              expect.objectContaining({ sourceTransactionId: source.id }),
+            ],
+          },
+        });
+        expect(snapshots.get(cash[0].id)).toMatchObject({
+          amount: "-1.0000",
+          accountId: account,
+          accrualState: { schedules: [] },
+        });
+      }),
+    );
+  });
+
   it("round-trips an amount/date edit repeatedly without reviving stale schedule revisions", async () => {
     const source = await create();
     const { saved } = await accrue(source.id);

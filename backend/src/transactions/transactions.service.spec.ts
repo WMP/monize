@@ -6119,7 +6119,7 @@ describe("TransactionsService", () => {
       );
     });
 
-    it("refuses to value nonzero rows with an unknown currency", async () => {
+    it("withholds the total for nonzero rows with an unknown currency, never values them 1:1", async () => {
       const mockQb = createMockQueryBuilder();
       mockQb.getRawMany.mockResolvedValue([
         {
@@ -6132,9 +6132,18 @@ describe("TransactionsService", () => {
       ]);
       transactionsRepository.createQueryBuilder.mockReturnValue(mockQb);
 
-      await expect(service.getSummary("user-1")).rejects.toMatchObject({
-        response: expect.objectContaining({ code: "REPORTING_FX_INCOMPLETE" }),
+      const result = await service.getSummary("user-1");
+      expect(result).toMatchObject({
+        fxComplete: false,
+        totalIncome: null,
+        totalExpenses: null,
+        netCashFlow: null,
+        excludedTransactionCount: 3,
+        repair: "currency_rate_history",
       });
+      expect(result.missingRatePairs).toEqual([
+        expect.objectContaining({ from: null, reason: "unknown_currency" }),
+      ]);
     });
   });
 

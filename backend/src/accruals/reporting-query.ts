@@ -1,3 +1,6 @@
+import { getRequestContext } from "../common/request-context";
+import { ForbiddenException } from "@nestjs/common";
+import { tr } from "../i18n/translate";
 import { executeReportingRead } from "./reporting-execution";
 import { readReportingEntities } from "./reporting-entity-reader";
 import {
@@ -12,6 +15,16 @@ import {
 } from "./reporting-basis";
 import { prepareReportingRelations, reportingSql } from "./reporting-relations";
 
+/** The effective owner includes delegation; system jobs may explicitly choose an owner. */
+function assertReportingOwner(userId: string): void {
+  const context = getRequestContext();
+  if (context?.userId && context.userId !== userId && !context.system)
+    throw new ForbiddenException({
+      code: "REPORTING_OWNER_MISMATCH",
+      message: tr("errors.http.forbidden", "Access denied"),
+    });
+}
+
 /** Native-currency recognition facts. This helper never touches ledger writers or their managers. */
 export async function reportingQuery<T = any>(
   m: EntityManager,
@@ -20,7 +33,9 @@ export async function reportingQuery<T = any>(
   params: any[] = [],
   basis?: ReportingBasis,
 ): Promise<T[]> {
+  assertReportingOwner(userId);
   const resolved = await resolveReportingExecution(m, userId, basis);
+  if (resolved === "cash") return m.query(sql, params);
   const statement = reportingSql(sql, resolved, `$${params.length + 1}`);
   return executeReportingRead(m, statement === sql ? "cash" : resolved, () =>
     m.query(statement, statement === sql ? params : [...params, userId]),

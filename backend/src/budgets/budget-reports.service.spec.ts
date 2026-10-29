@@ -352,18 +352,6 @@ describe("BudgetReportsService", () => {
       periodsRepository.find.mockResolvedValueOnce(closedPeriods);
       periodsRepository.findOne.mockResolvedValueOnce(null);
 
-      // Closed actuals are current reads too, rather than the materialized snapshot.
-      transactionsRepository.createQueryBuilder
-        .mockReturnValueOnce(
-          createMockQueryBuilder({
-            getRawOne: jest.fn().mockResolvedValue({ total: "-750" }),
-          }),
-        )
-        .mockReturnValueOnce(
-          createMockQueryBuilder({
-            getRawOne: jest.fn().mockResolvedValue({ total: "-820" }),
-          }),
-        );
       const result = await service.getTrend("user-1", "budget-1", 6);
 
       expect(result).toHaveLength(2);
@@ -409,20 +397,8 @@ describe("BudgetReportsService", () => {
         getRawOne: jest.fn().mockResolvedValue({ total: "-50" }),
       });
 
-      transactionsRepository.createQueryBuilder
-        .mockReturnValueOnce(
-          createMockQueryBuilder({
-            getRawOne: jest.fn().mockResolvedValue({ total: "-700" }),
-          }),
-        )
-        .mockReturnValueOnce(directQb);
-      splitsRepository.createQueryBuilder
-        .mockReturnValueOnce(
-          createMockQueryBuilder({
-            getRawOne: jest.fn().mockResolvedValue({ total: "0" }),
-          }),
-        )
-        .mockReturnValueOnce(splitQb);
+      transactionsRepository.createQueryBuilder.mockReturnValueOnce(directQb);
+      splitsRepository.createQueryBuilder.mockReturnValueOnce(splitQb);
 
       const result = await service.getTrend("user-1", "budget-1", 6);
 
@@ -2514,7 +2490,8 @@ describe("BudgetReportsService", () => {
     it("returns a full status payload for the first active budget when no name given", async () => {
       const result = await service.getLlmBudgetStatus("user-1");
 
-      if ("error" in result) throw new Error("unexpected error payload");
+      if ("error" in result || "result" in result)
+        throw new Error("unexpected incomplete/error payload");
       expect(result.budgetName).toBe("Monthly Household");
       expect(result.totalBudgeted).toBe(3000);
       expect(result.overBudgetCategories).toHaveLength(1);
@@ -2555,7 +2532,8 @@ describe("BudgetReportsService", () => {
 
       const result = await service.getLlmBudgetStatus("user-1");
 
-      if ("error" in result) throw new Error("unexpected error payload");
+      if ("error" in result || "result" in result)
+        throw new Error("unexpected incomplete/error payload");
       expect(result.velocity).toBeUndefined();
       expect(result.healthScore).toBeUndefined();
       expect(result.totalBudgeted).toBe(3000);

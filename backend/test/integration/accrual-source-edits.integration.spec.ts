@@ -1,3 +1,8 @@
+import { withScopedDb } from "@/common/db/scoped-db";
+import {
+  readAccrualHistoryState,
+  assertAccrualHistoryState,
+} from "@/accruals/accrual-history-snapshot";
 import { randomUUID } from "node:crypto";
 import { TransactionStatus } from "@/transactions/entities/transaction.entity";
 import { TransactionsModule } from "@/transactions/transactions.module";
@@ -745,5 +750,26 @@ describe("accruals through actual transaction edit services", () => {
       ),
     ).toEqual([]);
     expect(await balance()).toBe("1000.0000");
+  });
+  it("refreshes schedule fingerprints after bulk reconciliation", async () => {
+    const source = await create();
+    const saved = await accrue(source.id);
+    const before = await as(() => accruals.detail(user, saved.id));
+    const initial = await balance();
+    await as(() =>
+      transactions.bulkReconcile(user, account, [source.id], "2026-06-30"),
+    );
+    await as(() =>
+      withScopedDb(h.app, async (m) => {
+        const state = await readAccrualHistoryState(m, user, source.id);
+        await expect(
+          assertAccrualHistoryState(m, user, source.id, state),
+        ).resolves.toEqual(state);
+      }),
+    );
+    expect(
+      (await as(() => accruals.detail(user, saved.id))).plan.allocations,
+    ).toEqual(before.plan.allocations);
+    expect(await balance()).toBe(initial);
   });
 });

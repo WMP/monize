@@ -48,9 +48,7 @@ describe("Reporting basis and repair metadata through the real MCP SDK", () => {
         arguments: { type: "net_worth_history", basis: "cash" },
       });
       expect(result.structuredContent).toMatchObject({
-        basis: "cash",
-        currency: "EUR",
-        result: [{ month: "2026-06-01", netWorth: 100 }],
+        items: [{ month: "2026-06-01", netWorth: 100 }],
       });
       expect(getLlmReport).toHaveBeenCalledWith("owner", {
         type: "net_worth_history",

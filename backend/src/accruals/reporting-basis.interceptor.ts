@@ -1,3 +1,4 @@
+import { withPartialBudgetRead } from "./reporting-partial-budget";
 import {
   BadRequestException,
   CallHandler,
@@ -50,7 +51,13 @@ export class ReportingBasisInterceptor implements NestInterceptor {
         });
       let selectedCurrency: string | undefined;
       let selectedBasis: ReportingBasis | undefined;
-      const result = await withReportingRead(
+      const read = Reflect.getMetadata(
+        "reportingPartialBudget",
+        context.getHandler(),
+      )
+        ? withPartialBudgetRead
+        : withReportingRead;
+      const result = await read(
         this.dataSource,
         request.user.id,
         async () => {

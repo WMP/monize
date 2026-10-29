@@ -1960,7 +1960,7 @@ describe("NetWorthService", () => {
       const result = await service.getMonthlyNetWorth("user-1");
 
       // 1000 EUR / 0.92 = ~1087
-      expect(result[0].assets).toBe(1086.9565);
+      expect(result[0].assets).toBe(1087);
     });
 
     it("returns amount unconverted when no rate exists", async () => {
@@ -2124,7 +2124,7 @@ describe("NetWorthService", () => {
       expect(result[2].month).toBe("2024-03-01");
     });
 
-    it("preserves money precision until display formatting", async () => {
+    it("preserves upstream whole-unit Cash rounding", async () => {
       mabRepository.count.mockResolvedValue(5);
       prefRepository.findOne.mockResolvedValue({
         defaultCurrency: "USD",
@@ -2145,9 +2145,9 @@ describe("NetWorthService", () => {
       const result = await service.getMonthlyNetWorth("user-1");
 
       expect(result[0]).toMatchObject({
-        assets: 1000.567,
+        assets: 1001,
         liabilities: 0,
-        netWorth: 1000.567,
+        netWorth: 1001,
         fxComplete: true,
         missingRatePairs: [],
       });

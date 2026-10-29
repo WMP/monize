@@ -1,7 +1,11 @@
+import {
+  saveRequiredAccrualHistory,
+  replaceAccrualHistorySide,
+} from "./accrual-history-storage";
+import { captureAccrualHistorySnapshots } from "./accrual-history-capture";
 import { requireAccrualOwner } from "./accrual-source";
 import { type EntityManager } from "typeorm";
 import { ActionHistory } from "../action-history/entities/action-history.entity";
-import { MAX_JSONB_SIZE_BYTES } from "../action-history/history-limits";
 import { Category } from "../categories/entities/category.entity";
 import { Payee } from "../payees/entities/payee.entity";
 import { PayeeAlias } from "../payees/entities/payee-alias.entity";
@@ -9,10 +13,8 @@ import { Transaction } from "../transactions/entities/transaction.entity";
 import { TransactionSplit } from "../transactions/entities/transaction-split.entity";
 import { ScheduledTransaction } from "../scheduled-transactions/entities/scheduled-transaction.entity";
 import { ScheduledTransactionSplit } from "../scheduled-transactions/entities/scheduled-transaction-split.entity";
-import { lockTransactionRows } from "../common/db/locks";
 import { assertReconciledRowsMutable } from "../transactions/reconciled-lock.util";
 import {
-  captureAccrualHistorySnapshot,
   assertAccrualHistoryState,
   restoreAccrualHistoryState,
 } from "./accrual-history-snapshot";
@@ -20,13 +22,10 @@ import { equalAccrualSnapshots as same } from "./accrual-source-edit";
 import { accrualErrors } from "./accrual-errors";
 
 type Row = Record<string, any>;
-interface Scope {
-  kind: "category" | "payee";
-  ids: string[];
-  sourceIds: string[];
-  payeeIds: string[];
-  scheduledIds: string[];
-}
+import {
+  freezeTaxonomyScope,
+  type TaxonomyScope as Scope,
+} from "./accrual-taxonomy-scope";
 export interface TaxonomyOperation {
   version: 2;
   scope: Scope;
@@ -36,78 +35,6 @@ export interface TaxonomyOperation {
   sources: Row[];
   scheduled: Row[];
   scheduledSplits: Row[];
-}
-function bounded(v: unknown) {
-  if (Buffer.byteLength(JSON.stringify(v), "utf8") > MAX_JSONB_SIZE_BYTES)
-    throw accrualErrors.historyUnsupported();
-}
-
-/** Freeze parents before legs and taxonomy before inspecting FK membership. Rare destructive operations deliberately use a closed owner set. */
-async function freeze(m: EntityManager, userId: string) {
-  const rows: { id: string }[] = await m.query(
-    "SELECT id FROM transactions WHERE user_id=$1 AND parent_transaction_id IS NULL AND NOT EXISTS(SELECT 1 FROM transaction_splits leg_split WHERE leg_split.linked_transaction_id=transactions.id) ORDER BY id FOR UPDATE",
-    [userId],
-  );
-  await m.query(
-    "SELECT id FROM transactions WHERE user_id=$1 AND (parent_transaction_id IS NOT NULL OR EXISTS(SELECT 1 FROM transaction_splits leg_split WHERE leg_split.linked_transaction_id=transactions.id)) ORDER BY id FOR UPDATE",
-    [userId],
-  );
-  await m.query(
-    "SELECT id FROM payees WHERE user_id=$1 ORDER BY id FOR UPDATE",
-    [userId],
-  );
-  await m.query(
-    "SELECT id FROM categories WHERE user_id=$1 ORDER BY id FOR UPDATE",
-    [userId],
-  );
-  await m.query(
-    "SELECT id FROM scheduled_transactions WHERE user_id=$1 ORDER BY id FOR UPDATE",
-    [userId],
-  );
-  await m.query(
-    "SELECT s.id FROM scheduled_transaction_splits s JOIN scheduled_transactions t ON t.id=s.scheduled_transaction_id WHERE t.user_id=$1 ORDER BY s.id FOR UPDATE OF s",
-    [userId],
-  );
-  await m.query(
-    "SELECT id FROM payee_aliases WHERE user_id=$1 ORDER BY id FOR UPDATE",
-    [userId],
-  );
-  const fresh = await m.query(
-    "SELECT id FROM transactions WHERE user_id=$1 AND parent_transaction_id IS NULL AND NOT EXISTS(SELECT 1 FROM transaction_splits leg_split WHERE leg_split.linked_transaction_id=transactions.id) ORDER BY id",
-    [userId],
-  );
-  if (!same(rows, fresh)) throw accrualErrors.conflict();
-}
-async function discover(
-  m: EntityManager,
-  userId: string,
-  kind: Scope["kind"],
-  ids: string[],
-) {
-  const sources: { id: string }[] = await m.query(
-    kind === "payee"
-      ? "SELECT id FROM transactions WHERE user_id=$1 AND payee_id=ANY($2::uuid[]) ORDER BY id"
-      : "SELECT t.id FROM transactions t WHERE t.user_id=$1 AND (t.category_id=ANY($2::uuid[]) OR EXISTS(SELECT 1 FROM transaction_splits s WHERE s.transaction_id=t.id AND s.category_id=ANY($2::uuid[]))) ORDER BY t.id",
-    [userId, ids],
-  );
-  const scheduled: { id: string }[] = await m.query(
-    kind === "payee"
-      ? "SELECT id FROM scheduled_transactions WHERE user_id=$1 AND payee_id=ANY($2::uuid[]) ORDER BY id"
-      : "SELECT t.id FROM scheduled_transactions t WHERE t.user_id=$1 AND (t.category_id=ANY($2::uuid[]) OR EXISTS(SELECT 1 FROM scheduled_transaction_splits s WHERE s.scheduled_transaction_id=t.id AND s.category_id=ANY($2::uuid[]))) ORDER BY t.id",
-    [userId, ids],
-  );
-  const payees: { id: string }[] =
-    kind === "payee"
-      ? ids.map((id) => ({ id }))
-      : await m.query(
-          "SELECT id FROM payees WHERE user_id=$1 AND default_category_id=ANY($2::uuid[]) ORDER BY id",
-          [userId, ids],
-        );
-  return {
-    sourceIds: sources.map((r) => r.id),
-    scheduledIds: scheduled.map((r) => r.id),
-    payeeIds: payees.map((r) => r.id).sort(),
-  };
 }
 async function capture(
   m: EntityManager,
@@ -137,12 +64,11 @@ async function capture(
       [userId, scope.scheduledIds],
     )
   ).map((r: { row: Row }) => r.row);
-  const sources: Row[] = [];
-  for (const id of scope.sourceIds) {
-    const row: Row = {};
-    await captureAccrualHistorySnapshot(m, userId, id, row, true);
-    sources.push(row);
-  }
+  const sources = [
+    ...(
+      await captureAccrualHistorySnapshots(m, userId, scope.sourceIds, true)
+    ).values(),
+  ];
   const state = JSON.parse(
     JSON.stringify({
       version: 2,
@@ -155,7 +81,6 @@ async function capture(
       scheduledSplits,
     }),
   ) as TaxonomyOperation;
-  bounded(state);
   return state;
 }
 export async function beginTaxonomyOperation(
@@ -164,18 +89,24 @@ export async function beginTaxonomyOperation(
   kind: Scope["kind"],
   selected: string[],
 ): Promise<TaxonomyOperation | undefined> {
-  // Cash-only installations retain their existing mutation/history contract.
-  const accrued = await m.query(
-    "SELECT id FROM accrual_schedules WHERE user_id=$1 LIMIT 1",
-    [userId],
+  // Lock affected sources even with no schedules: a first schedule may be
+  // committed while those locks queue. Never reuse an earlier absence probe.
+  const scope = await freezeTaxonomyScope(m, userId, kind, selected);
+  const affected = await m.query(
+    "SELECT id FROM accrual_schedules WHERE user_id=$1 AND source_transaction_id=ANY($2::uuid[]) LIMIT 1",
+    [userId, scope.sourceIds],
   );
+  if (affected.length) requireAccrualOwner(userId);
+  // Preserve versioned undo for ordinary taxonomy changes alongside existing
+  // accruals, without making unrelated schedules an owner-only write fence.
+  const accrued = affected.length
+    ? affected
+    : await m.query(
+        "SELECT id FROM accrual_schedules WHERE user_id=$1 LIMIT 1",
+        [userId],
+      );
   if (!accrued.length) return undefined;
-  requireAccrualOwner(userId);
-  await freeze(m, userId);
-  const ids = [...new Set(selected)].sort();
-  const scope = { kind, ids, ...(await discover(m, userId, kind, ids)) };
   const state = await capture(m, userId, scope);
-  bounded([state, state]);
   return state;
 }
 export async function recordTaxonomyOperation(
@@ -185,27 +116,22 @@ export async function recordTaxonomyOperation(
 ): Promise<void> {
   if (!before) return;
   const after = await capture(m, userId, before.scope);
-  bounded([before, after]);
   const repo = m.getRepository(ActionHistory);
   await repo.delete({ userId, isUndone: true });
-  await repo.save(
-    repo.create({
-      userId,
-      entityType: "accrual_relationship_operation",
-      entityId: before.scope.ids[0],
-      action: "update",
-      beforeData: { taxonomyOperation: before },
-      afterData: { taxonomyOperation: after },
-      description: `Updated ${before.scope.kind} relationships`,
-      descriptionKey:
-        before.scope.kind === "payee" ? "updatedPayee" : "updatedCategory",
-      descriptionParams: {
-        name: String(
-          before.payees[0]?.name ?? before.categories[0]?.name ?? "",
-        ),
-      },
-    }),
-  );
+  await saveRequiredAccrualHistory(m, {
+    userId,
+    entityType: "accrual_relationship_operation",
+    entityId: before.scope.ids[0],
+    action: "update",
+    beforeData: { taxonomyOperation: before },
+    afterData: { taxonomyOperation: after },
+    description: `Updated ${before.scope.kind} relationships`,
+    descriptionKey:
+      before.scope.kind === "payee" ? "updatedPayee" : "updatedCategory",
+    descriptionParams: {
+      name: String(before.payees[0]?.name ?? before.categories[0]?.name ?? ""),
+    },
+  });
 }
 function parse(value: unknown, action: ActionHistory): TaxonomyOperation {
   const s = value as TaxonomyOperation;
@@ -248,7 +174,6 @@ function parse(value: unknown, action: ActionHistory): TaxonomyOperation {
     )
   )
     throw accrualErrors.conflict();
-  bounded(s);
   return s;
 }
 function fields(m: EntityManager, entity: any, row: Row): Row {
@@ -278,17 +203,58 @@ export async function replayTaxonomyOperation(
   const target = parse(action.beforeData?.taxonomyOperation, action),
     expected = parse(action.afterData?.taxonomyOperation, action);
   if (!same(target.scope, expected.scope)) throw accrualErrors.conflict();
-  await freeze(m, action.userId);
-  const scope = target.scope,
-    refs = await discover(m, action.userId, scope.kind, scope.ids);
+  const scope = target.scope;
+  const refs = await freezeTaxonomyScope(
+    m,
+    action.userId,
+    scope.kind,
+    scope.ids,
+    scope,
+    {
+      payeeIds: target.sources
+        .flatMap((r) => (r.payeeId ? [r.payeeId] : []))
+        .concat(
+          target.scheduled.flatMap((r) => (r.payee_id ? [r.payee_id] : [])),
+        ),
+      categoryIds: target.categories
+        .flatMap((r) => (r.parent_id ? [r.parent_id] : []))
+        .concat(
+          target.payees.flatMap((r) =>
+            r.default_category_id ? [r.default_category_id] : [],
+          ),
+        )
+        .concat(
+          target.sources.flatMap((r) =>
+            [
+              r.categoryId,
+              ...(r.splits ?? []).map((s: Row) => s.categoryId),
+            ].filter(Boolean),
+          ),
+        )
+        .concat(
+          target.scheduled.flatMap((r) =>
+            r.category_id ? [r.category_id] : [],
+          ),
+        )
+        .concat(
+          target.scheduledSplits.flatMap((r) =>
+            r.category_id ? [r.category_id] : [],
+          ),
+        ),
+    },
+  );
   for (const key of ["sourceIds", "scheduledIds", "payeeIds"] as const)
     if (refs[key].some((id) => !scope[key].includes(id)))
       throw accrualErrors.conflict();
   if (!same(await capture(m, action.userId, scope), expected))
     throw accrualErrors.conflict();
-  const locked = await lockTransactionRows(m, scope.sourceIds, action.userId);
-  if (locked.size !== scope.sourceIds.length) throw accrualErrors.conflict();
-  await assertReconciledRowsMutable(m, action.userId, [...locked.values()]);
+  const locked: { id: string; status: string; isSplit: boolean }[] =
+    await m.query(
+      'SELECT id,status,is_split AS "isSplit" FROM transactions WHERE user_id=$1 AND id=ANY($2::uuid[]) ORDER BY id',
+      [action.userId, scope.sourceIds],
+    );
+  if (locked.length !== scope.sourceIds.length) throw accrualErrors.conflict();
+  await assertReconciledRowsMutable(m, action.userId, locked);
   for (const row of expected.sources)
     await assertAccrualHistoryState(m, action.userId, row.id, row.accrualState);
   // Validate all external references before writes; recreated roots are the only permitted missing targets.
@@ -431,17 +397,8 @@ export async function replayTaxonomyOperation(
     if (!target.categories.some((r) => r.id === row.id))
       await m.delete(Category, { id: row.id, userId: action.userId });
   const actual = await capture(m, action.userId, scope);
-  bounded([actual, expected]);
   const side = action.isUndone ? "afterData" : "beforeData";
-  const result = await m
-    .createQueryBuilder()
-    .update(ActionHistory)
-    .set({ [side]: { taxonomyOperation: actual } })
-    .where("id=:id AND user_id=:userId AND is_undone=:isUndone", {
-      id: action.id,
-      userId: action.userId,
-      isUndone: action.isUndone ?? false,
-    })
-    .execute();
-  if (result.affected !== 1) throw accrualErrors.conflict();
+  await replaceAccrualHistorySide(m, action, side, {
+    taxonomyOperation: actual,
+  });
 }

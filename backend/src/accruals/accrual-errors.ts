@@ -15,6 +15,14 @@ export const accrualErrors = {
       ),
     ),
 
+  historyIncomplete: () =>
+    new ConflictException({
+      code: "ACCRUAL_HISTORY_INCOMPLETE",
+      message: tr(
+        "errors.accruals.historyIncomplete",
+        "Saved undo data is incomplete. This action was not applied. Edit the affected entries manually.",
+      ),
+    }),
   historyUnsupported: () =>
     new ConflictException(
       tr(
@@ -44,12 +52,13 @@ export const accrualErrors = {
       ),
     ),
   conflict: () =>
-    new ConflictException(
-      tr(
+    new ConflictException({
+      code: "ACCRUAL_REVIEW_REQUIRED",
+      message: tr(
         "errors.accruals.changed",
         "The transaction or schedule changed. Review a fresh preview before saving.",
       ),
-    ),
+    }),
   owner: () =>
     new ForbiddenException(
       tr(

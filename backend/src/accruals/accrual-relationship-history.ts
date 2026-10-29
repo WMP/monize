@@ -1,6 +1,10 @@
+import {
+  saveRequiredAccrualHistory,
+  replaceAccrualHistorySide,
+} from "./accrual-history-storage";
+import { captureAccrualHistorySnapshots } from "./accrual-history-capture";
 import { type EntityManager } from "typeorm";
 import { ActionHistory } from "../action-history/entities/action-history.entity";
-import { MAX_JSONB_SIZE_BYTES } from "../action-history/history-limits";
 import { Category } from "../categories/entities/category.entity";
 import { Payee } from "../payees/entities/payee.entity";
 import { Transaction } from "../transactions/entities/transaction.entity";
@@ -11,7 +15,6 @@ import { prepareCategoryMutation } from "../categories/category-mutation";
 import { lockPayeeCategoryBatch } from "../payees/payee-category-batch";
 import { assertReconciledRowsMutable } from "../transactions/reconciled-lock.util";
 import {
-  captureAccrualHistorySnapshot,
   assertAccrualHistoryState,
   restoreAccrualHistoryState,
 } from "./accrual-history-snapshot";
@@ -30,11 +33,6 @@ export interface RelationshipState {
   sources: Snapshot[];
   scheduled: Snapshot[];
 }
-const size = (v: unknown) => Buffer.byteLength(JSON.stringify(v), "utf8");
-function bounded(v: unknown) {
-  if (size(v) > MAX_JSONB_SIZE_BYTES) throw accrualErrors.historyUnsupported();
-}
-
 /** Caller freezes all source/relationship rows first. Raw numeric text stays exact. */
 export async function captureRelationshipState(
   m: EntityManager,
@@ -68,12 +66,11 @@ export async function captureRelationshipState(
           [userId, id],
         )
       : [];
-  const sources: Snapshot[] = [];
-  for (const sourceId of [...sourceIds].sort()) {
-    const snapshot: Snapshot = {};
-    await captureAccrualHistorySnapshot(m, userId, sourceId, snapshot, true);
-    sources.push(snapshot);
-  }
+  const sources = [
+    ...(
+      await captureAccrualHistorySnapshots(m, userId, sourceIds, true)
+    ).values(),
+  ];
   const state: RelationshipState = {
     version: 1,
     kind,
@@ -86,7 +83,6 @@ export async function captureRelationshipState(
     scheduled,
   };
   const normalized = JSON.parse(JSON.stringify(state)) as RelationshipState;
-  bounded(normalized);
   return normalized;
 }
 
@@ -112,7 +108,6 @@ export async function beginRelationshipHistory(
     sourceIds,
     categoryIds,
   );
-  bounded([state, state]);
   return state;
 }
 
@@ -146,24 +141,21 @@ export async function recordRelationshipHistory(
     before.sourceIds,
     before.categoryIds,
   );
-  bounded([before, after]);
   const repo = m.getRepository(ActionHistory);
   await repo.delete({ userId, isUndone: true });
   const name = String(after.entity.name ?? "");
-  await repo.save(
-    repo.create({
-      userId,
-      entityType: before.kind,
-      entityId: before.id,
-      action: "update",
-      beforeData: { accrualRelationships: before },
-      afterData: { accrualRelationships: after },
-      description: `Updated ${before.kind} "${name}"`,
-      descriptionKey:
-        before.kind === "category" ? "updatedCategory" : "updatedPayee",
-      descriptionParams: { name },
-    }),
-  );
+  await saveRequiredAccrualHistory(m, {
+    userId,
+    entityType: before.kind,
+    entityId: before.id,
+    action: "update",
+    beforeData: { accrualRelationships: before },
+    afterData: { accrualRelationships: after },
+    description: `Updated ${before.kind} "${name}"`,
+    descriptionKey:
+      before.kind === "category" ? "updatedCategory" : "updatedPayee",
+    descriptionParams: { name },
+  });
 }
 
 function parse(value: unknown, action: ActionHistory): RelationshipState {
@@ -191,7 +183,6 @@ function parse(value: unknown, action: ActionHistory): RelationshipState {
   )
     throw accrualErrors.conflict();
   const normalized = JSON.parse(JSON.stringify(state)) as RelationshipState;
-  bounded(normalized);
   return normalized;
 }
 
@@ -353,19 +344,10 @@ export async function replayRelationshipHistory(
     target.sourceIds,
     target.categoryIds,
   );
-  bounded([actual, expected]);
   const side = action.isUndone ? "afterData" : "beforeData";
-  const result = await m
-    .createQueryBuilder()
-    .update(ActionHistory)
-    .set({ [side]: { accrualRelationships: actual } })
-    .where("id=:id AND user_id=:userId AND is_undone=:isUndone", {
-      id: action.id,
-      userId: action.userId,
-      isUndone: action.isUndone ?? false,
-    })
-    .execute();
-  if (result.affected !== 1) throw accrualErrors.conflict();
+  await replaceAccrualHistorySide(m, action, side, {
+    accrualRelationships: actual,
+  });
   return true;
 }
 
@@ -376,6 +358,20 @@ export async function guardLegacyRelationshipHistory(
 ): Promise<void> {
   if (!action.entityId || !["category", "payee"].includes(action.entityType))
     return;
+  // Contact fields and category labels do not affect source fingerprints.
+  if (action.action === "update" && action.beforeData && action.afterData) {
+    if (
+      action.entityType === "payee" &&
+      action.beforeData.name === action.afterData.name
+    )
+      return;
+    if (
+      action.entityType === "category" &&
+      action.beforeData.isIncome === action.afterData.isIncome &&
+      action.beforeData.parentId === action.afterData.parentId
+    )
+      return;
+  }
   // A deleted legacy entity has already lost nullable FK relationships. Labels
   // can be null, so there is no sound affected-source inference from its name.
   if (action.action === "delete") {

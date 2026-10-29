@@ -1,3 +1,4 @@
+import { withScopedDb } from "@/common/db/scoped-db";
 import { randomUUID } from "node:crypto";
 import { TransactionsModule } from "@/transactions/transactions.module";
 import { TransactionsService } from "@/transactions/transactions.service";
@@ -127,6 +128,23 @@ describe("payee metadata accrual maintenance through actual services", () => {
     await h.owner.query(
       "INSERT INTO categories(id,user_id,name,is_income) VALUES($1,$2,'Tax',false)",
       [category, user],
+    );
+  });
+  it("does not lock source transactions for contact-only payee edits", async () => {
+    const p = await payee("Synthetic contact edit");
+    const source = await create(p.id);
+    await as(() =>
+      withScopedDb(h.app, async () => {
+        await payees.update(user, p.id, { notes: "Updated contact notes" });
+        await h.owner.transaction(async (other) => {
+          expect(
+            await other.query(
+              "SELECT id FROM transactions WHERE id=$1 FOR UPDATE NOWAIT",
+              [source.tx.id],
+            ),
+          ).toHaveLength(1);
+        });
+      }),
     );
   });
   it("refreshes renamed source metadata without changing allocations or bank balances", async () => {

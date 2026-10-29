@@ -3111,6 +3111,7 @@ CREATE TABLE action_history (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     entity_type VARCHAR(50) NOT NULL,
+    accrual_entity_type VARCHAR(50),
     entity_id UUID,
     action VARCHAR(20) NOT NULL,
     before_data JSONB,
@@ -3120,11 +3121,32 @@ CREATE TABLE action_history (
     description VARCHAR(500) NOT NULL,
     description_key VARCHAR(100),
     description_params JSONB,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_action_history_owner UNIQUE (id, user_id)
 );
 
 CREATE INDEX idx_action_history_user_created ON action_history(user_id, created_at DESC);
 CREATE INDEX idx_action_history_user_undone ON action_history(user_id, is_undone, created_at DESC);
+
+-- Oversized required accrual undo data; removed with its transient history parent.
+CREATE TABLE accrual_history_chunks (
+    action_id UUID NOT NULL,
+    user_id UUID NOT NULL,
+    side VARCHAR(6) NOT NULL,
+    part_index INTEGER NOT NULL,
+    payload BYTEA NOT NULL,
+    PRIMARY KEY (action_id, side, part_index),
+    CONSTRAINT fk_accrual_history_chunk_owner FOREIGN KEY (action_id, user_id)
+        REFERENCES action_history(id, user_id) ON DELETE CASCADE,
+    CONSTRAINT ck_accrual_history_chunk_side CHECK (side IN ('before', 'after')),
+    CONSTRAINT ck_accrual_history_chunk_index CHECK (part_index >= 0),
+    CONSTRAINT ck_accrual_history_chunk_size CHECK (octet_length(payload) BETWEEN 1 AND 65536)
+);
+
+CREATE POLICY accrual_history_chunks_isolation ON accrual_history_chunks
+    USING (user_id = (SELECT app_current_user_id()) OR (SELECT app_bypass_rls()))
+    WITH CHECK (user_id = (SELECT app_current_user_id()) OR (SELECT app_bypass_rls()));
+ALTER TABLE accrual_history_chunks ENABLE ROW LEVEL SECURITY;
 
 -- OAuth 2.1 Authorization Server payloads (node-oidc-provider adapter)
 CREATE TABLE oauth_payloads (
@@ -4542,6 +4564,7 @@ CREATE TABLE IF NOT EXISTS accrual_schedules (
     CONSTRAINT ck_accrual_schedule_revision CHECK (revision > 0),
     CONSTRAINT ck_accrual_schedule_fingerprint CHECK (source_fingerprint ~ '^[a-f0-9]{64}$')
 );
+CREATE INDEX IF NOT EXISTS idx_accrual_schedule_source ON accrual_schedules(source_transaction_id);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_accrual_schedule_transaction ON accrual_schedules(source_transaction_id) WHERE source_split_id IS NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS uq_accrual_schedule_split ON accrual_schedules(source_split_id) WHERE source_split_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_accrual_schedule_user ON accrual_schedules(user_id);
@@ -4797,7 +4820,7 @@ ALTER TABLE user_preferences ALTER COLUMN reporting_basis SET DEFAULT 'cash';
 -- Explicit invoker read models over persisted allocations; no shadow tables or JSON record conversion.
 -- A SQL-string function body avoids base-column view dependencies during
 -- historical migration replay. Invoker SQL functions remain planner-inlineable.
-CREATE OR REPLACE FUNCTION public.accrual_reporting_components_rows() RETURNS TABLE(
+CREATE OR REPLACE FUNCTION accrual_reporting_components_rows() RETURNS TABLE(
  "source_id" uuid,
  "split_id" uuid,
  "user_id" uuid,
@@ -4828,23 +4851,27 @@ $read_model$;
 CREATE OR REPLACE VIEW public.accrual_reporting_components WITH (security_invoker=true) AS
 SELECT * FROM public.accrual_reporting_components_rows();
 
-CREATE OR REPLACE FUNCTION public.accrual_reporting_cash_id(p_source uuid) RETURNS uuid
-LANGUAGE sql STABLE SECURITY INVOKER SET search_path=public,pg_temp AS $$
- SELECT CASE WHEN EXISTS(SELECT 1 FROM public.accrual_schedules s WHERE s.source_transaction_id=t.id AND s.user_id=t.user_id AND NOT t.is_transfer AND t.status IS DISTINCT FROM 'VOID')
-  AND EXISTS(SELECT 1 FROM public.accrual_reporting_components c WHERE c.source_id=t.id AND c.effective_date=t.transaction_date)
- THEN md5(t.id::text||TO_CHAR(t.transaction_date,'YYYY-MM-DD')||'accrual-report-v1')::uuid ELSE t.id END
- FROM public.transactions t WHERE t.id=p_source
-$$;
-CREATE OR REPLACE FUNCTION public.accrual_reporting_cash_split_id(p_split uuid) RETURNS uuid
-LANGUAGE sql STABLE SECURITY INVOKER SET search_path=public,pg_temp AS $$
- SELECT CASE WHEN public.accrual_reporting_cash_id(s.transaction_id) IS DISTINCT FROM s.transaction_id
- THEN md5(s.id::text||TO_CHAR(t.transaction_date,'YYYY-MM-DD')||'accrual-report-split-v1')::uuid ELSE s.id END
- FROM public.transaction_splits s JOIN public.transactions t ON t.id=s.transaction_id WHERE s.id=p_split
-$$;
+-- Sparse mapping: only scheduled sources that have a reporting row on their
+-- payment date need a changed identity. Callers join this set, never invoke a
+-- table-reading scalar function once per ledger row. Policies remain invoker's.
+CREATE OR REPLACE FUNCTION accrual_reporting_cash_links_rows() RETURNS TABLE(
+ source_id uuid,reporting_id uuid,cash_date date,user_id uuid
+) LANGUAGE sql STABLE SECURITY INVOKER AS $read_model$
+ SELECT t.id,md5(t.id::text||TO_CHAR(t.transaction_date,'YYYY-MM-DD')||'accrual-report-v1')::uuid,t.transaction_date,t.user_id
+ FROM (SELECT DISTINCT source_transaction_id,user_id FROM public.accrual_schedules) scheduled
+ JOIN public.transactions t ON t.id=scheduled.source_transaction_id AND t.user_id=scheduled.user_id
+ WHERE NOT t.is_transfer AND t.status IS DISTINCT FROM 'VOID'
+ AND (
+   EXISTS(SELECT 1 FROM public.accrual_schedules s JOIN public.accrual_allocations a ON a.schedule_id=s.id AND a.user_id=s.user_id
+          WHERE s.source_transaction_id=t.id AND s.user_id=t.user_id AND a.recognition_date=t.transaction_date)
+   OR (t.is_split AND EXISTS(SELECT 1 FROM public.transaction_splits sp WHERE sp.transaction_id=t.id
+       AND NOT EXISTS(SELECT 1 FROM public.accrual_schedules s WHERE s.source_transaction_id=t.id AND s.user_id=t.user_id AND s.source_split_id=sp.id)))
+ )
+$read_model$;
+CREATE OR REPLACE VIEW public.accrual_reporting_cash_links WITH (security_invoker=true) AS
+SELECT * FROM public.accrual_reporting_cash_links_rows();
 
--- A SQL-string function body avoids base-column view dependencies during
--- historical migration replay. Invoker SQL functions remain planner-inlineable.
-CREATE OR REPLACE FUNCTION public.accrual_reporting_transactions_rows() RETURNS TABLE(
+CREATE OR REPLACE FUNCTION accrual_reporting_transactions_rows() RETURNS TABLE(
  "id" uuid,
  "user_id" uuid,
  "account_id" uuid,
@@ -4892,13 +4919,15 @@ SELECT t.id AS id,
  t.status AS status,
  t.reconciled_date AS reconciled_date,
  t.is_split AS is_split,
- CASE WHEN t.parent_transaction_id IS NULL THEN NULL ELSE COALESCE(public.accrual_reporting_cash_id(t.parent_transaction_id),t.parent_transaction_id) END AS parent_transaction_id,
+ COALESCE(parent_map.reporting_id,t.parent_transaction_id) AS parent_transaction_id,
  t.is_transfer AS is_transfer,
- CASE WHEN t.linked_transaction_id IS NULL THEN NULL ELSE COALESCE(public.accrual_reporting_cash_id(t.linked_transaction_id),t.linked_transaction_id) END AS linked_transaction_id,
+ t.linked_transaction_id AS linked_transaction_id,
  t.external_id AS external_id,
  t.created_at AS created_at,
  t.updated_at AS updated_at,false AS is_recognition,t.id AS source_transaction_id,t.transaction_date AS source_cash_date,t.amount AS source_amount,t.linked_transaction_id AS source_linked_id,t.parent_transaction_id AS source_parent_id
-FROM public.transactions t WHERE NOT EXISTS(SELECT 1 FROM public.accrual_schedules s WHERE s.source_transaction_id=t.id AND s.user_id=t.user_id AND NOT t.is_transfer AND t.status IS DISTINCT FROM 'VOID')
+FROM public.transactions t
+LEFT JOIN public.accrual_reporting_cash_links parent_map ON parent_map.source_id=t.parent_transaction_id AND parent_map.user_id=t.user_id
+WHERE NOT EXISTS(SELECT 1 FROM public.accrual_schedules s WHERE s.source_transaction_id=t.id AND s.user_id=t.user_id AND NOT t.is_transfer AND t.status IS DISTINCT FROM 'VOID')
 UNION ALL
 SELECT md5(t.id::text||TO_CHAR(p.effective_date,'YYYY-MM-DD')||'accrual-report-v1')::uuid AS id,
  t.user_id AS user_id,
@@ -4917,13 +4946,15 @@ SELECT md5(t.id::text||TO_CHAR(p.effective_date,'YYYY-MM-DD')||'accrual-report-v
  t.status AS status,
  t.reconciled_date AS reconciled_date,
  t.is_split AS is_split,
- CASE WHEN t.parent_transaction_id IS NULL THEN NULL ELSE COALESCE(public.accrual_reporting_cash_id(t.parent_transaction_id),t.parent_transaction_id) END AS parent_transaction_id,
+ COALESCE(parent_map.reporting_id,t.parent_transaction_id) AS parent_transaction_id,
  t.is_transfer AS is_transfer,
- CASE WHEN t.linked_transaction_id IS NULL THEN NULL ELSE COALESCE(public.accrual_reporting_cash_id(t.linked_transaction_id),t.linked_transaction_id) END AS linked_transaction_id,
+ t.linked_transaction_id AS linked_transaction_id,
  t.external_id AS external_id,
  t.created_at AS created_at,
  t.updated_at AS updated_at,p.is_recognition,t.id AS source_transaction_id,t.transaction_date AS source_cash_date,t.amount AS source_amount,t.linked_transaction_id AS source_linked_id,t.parent_transaction_id AS source_parent_id
-FROM public.transactions t CROSS JOIN LATERAL (
+FROM public.transactions t
+LEFT JOIN public.accrual_reporting_cash_links parent_map ON parent_map.source_id=t.parent_transaction_id AND parent_map.user_id=t.user_id
+CROSS JOIN LATERAL (
  SELECT c.effective_date,SUM(c.amount) AS amount,BOOL_OR(c.schedule_id IS NOT NULL) AS is_recognition
  FROM public.accrual_reporting_components c WHERE c.source_id=t.id GROUP BY c.effective_date
 ) p WHERE EXISTS(SELECT 1 FROM public.accrual_schedules s WHERE s.source_transaction_id=t.id AND s.user_id=t.user_id AND NOT t.is_transfer AND t.status IS DISTINCT FROM 'VOID')
@@ -4932,8 +4963,8 @@ CREATE OR REPLACE VIEW public.accrual_reporting_transactions WITH (security_invo
 SELECT * FROM public.accrual_reporting_transactions_rows();
 
 -- A SQL-string function body avoids base-column view dependencies during
--- historical migration replay. Invoker SQL functions remain planner-inlineable.
-CREATE OR REPLACE FUNCTION public.accrual_reporting_transaction_splits_rows() RETURNS TABLE(
+-- historical migration replay. Set-returning SQL functions have no per-row scalar lookups.
+CREATE OR REPLACE FUNCTION accrual_reporting_transaction_splits_rows() RETURNS TABLE(
  "id" uuid,
  "transaction_id" uuid,
  "kind" character varying(20),
@@ -4956,7 +4987,7 @@ SELECT sp.id AS id,
  sp.kind AS kind,
  sp.category_id AS category_id,
  sp.transfer_account_id AS transfer_account_id,
- CASE WHEN sp.linked_transaction_id IS NULL THEN NULL ELSE COALESCE(public.accrual_reporting_cash_id(sp.linked_transaction_id),sp.linked_transaction_id) END AS linked_transaction_id,
+ sp.linked_transaction_id AS linked_transaction_id,
  sp.amount AS amount,
  sp.memo AS memo,
  sp.created_at AS created_at,sp.id AS source_split_id,sp.amount AS source_amount,NULL::uuid AS schedule_id,t.transaction_date AS source_cash_date,t.transaction_date AS effective_date,sp.linked_transaction_id AS source_linked_id,t.user_id AS reporting_user_id
@@ -4968,7 +4999,7 @@ SELECT md5(sp.id::text||TO_CHAR(t.transaction_date,'YYYY-MM-DD')||'accrual-repor
  sp.kind AS kind,
  sp.category_id AS category_id,
  sp.transfer_account_id AS transfer_account_id,
- CASE WHEN sp.linked_transaction_id IS NULL THEN NULL ELSE COALESCE(public.accrual_reporting_cash_id(sp.linked_transaction_id),sp.linked_transaction_id) END AS linked_transaction_id,
+ sp.linked_transaction_id AS linked_transaction_id,
  sp.amount AS amount,
  sp.memo AS memo,
  sp.created_at AS created_at,
@@ -4987,7 +5018,7 @@ SELECT md5(sp.id::text||TO_CHAR(a.recognition_date,'YYYY-MM-DD')||'accrual-repor
  sp.kind AS kind,
  sp.category_id AS category_id,
  sp.transfer_account_id AS transfer_account_id,
- CASE WHEN sp.linked_transaction_id IS NULL THEN NULL ELSE COALESCE(public.accrual_reporting_cash_id(sp.linked_transaction_id),sp.linked_transaction_id) END AS linked_transaction_id,
+ sp.linked_transaction_id AS linked_transaction_id,
  a.amount AS amount,
  sp.memo AS memo,
  sp.created_at AS created_at,
@@ -5006,8 +5037,8 @@ CREATE OR REPLACE VIEW public.accrual_reporting_transaction_splits WITH (securit
 SELECT * FROM public.accrual_reporting_transaction_splits_rows();
 
 -- A SQL-string function body avoids base-column view dependencies during
--- historical migration replay. Invoker SQL functions remain planner-inlineable.
-CREATE OR REPLACE FUNCTION public.accrual_reporting_transaction_tags_rows() RETURNS TABLE(
+-- historical migration replay. Set-returning SQL functions have no per-row scalar lookups.
+CREATE OR REPLACE FUNCTION accrual_reporting_transaction_tags_rows() RETURNS TABLE(
  "transaction_id" uuid,
  "tag_id" uuid,
  "reporting_user_id" uuid
@@ -5023,8 +5054,8 @@ $read_model$;
 CREATE OR REPLACE VIEW public.accrual_reporting_transaction_tags WITH (security_invoker=true) AS
 SELECT * FROM public.accrual_reporting_transaction_tags_rows();
 -- A SQL-string function body avoids base-column view dependencies during
--- historical migration replay. Invoker SQL functions remain planner-inlineable.
-CREATE OR REPLACE FUNCTION public.accrual_reporting_transaction_split_tags_rows() RETURNS TABLE(
+-- historical migration replay. Set-returning SQL functions have no per-row scalar lookups.
+CREATE OR REPLACE FUNCTION accrual_reporting_transaction_split_tags_rows() RETURNS TABLE(
  "transaction_split_id" uuid,
  "tag_id" uuid,
  "reporting_user_id" uuid
@@ -5036,8 +5067,8 @@ CREATE OR REPLACE VIEW public.accrual_reporting_transaction_split_tags WITH (sec
 SELECT * FROM public.accrual_reporting_transaction_split_tags_rows();
 
 -- A SQL-string function body avoids base-column view dependencies during
--- historical migration replay. Invoker SQL functions remain planner-inlineable.
-CREATE OR REPLACE FUNCTION public.accrual_reporting_investment_transactions_rows() RETURNS TABLE(
+-- historical migration replay. Set-returning SQL functions have no per-row scalar lookups.
+CREATE OR REPLACE FUNCTION accrual_reporting_investment_transactions_rows() RETURNS TABLE(
  "id" uuid,
  "user_id" uuid,
  "account_id" uuid,
@@ -5064,8 +5095,8 @@ CREATE OR REPLACE FUNCTION public.accrual_reporting_investment_transactions_rows
 SELECT i.id AS id,
  i.user_id AS user_id,
  i.account_id AS account_id,
- COALESCE(public.accrual_reporting_cash_id(i.transaction_id),i.transaction_id) AS transaction_id,
- COALESCE(public.accrual_reporting_cash_split_id(i.transaction_split_id),i.transaction_split_id) AS transaction_split_id,
+ i.transaction_id AS transaction_id,
+ CASE WHEN split_parent_map.source_id IS NULL THEN i.transaction_split_id ELSE md5(cash_split.id::text||TO_CHAR(split_parent_map.cash_date,'YYYY-MM-DD')||'accrual-report-split-v1')::uuid END AS transaction_split_id,
  i.linked_transaction_id AS linked_transaction_id,
  i.security_id AS security_id,
  i.funding_account_id AS funding_account_id,
@@ -5082,6 +5113,8 @@ SELECT i.id AS id,
  i.created_at AS created_at,
  i.updated_at AS updated_at,i.transaction_id AS source_transaction_id,i.transaction_split_id AS source_transaction_split_id
 FROM public.investment_transactions i
+LEFT JOIN public.transaction_splits cash_split ON cash_split.id=i.transaction_split_id
+LEFT JOIN public.accrual_reporting_cash_links split_parent_map ON split_parent_map.source_id=cash_split.transaction_id AND split_parent_map.user_id=i.user_id
 $read_model$;
 CREATE OR REPLACE VIEW public.accrual_reporting_investment_transactions WITH (security_invoker=true) AS
 SELECT * FROM public.accrual_reporting_investment_transactions_rows();

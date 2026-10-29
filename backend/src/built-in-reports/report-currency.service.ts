@@ -1,3 +1,4 @@
+import { reportingRates } from "../accruals/reporting-money";
 import { Injectable } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
@@ -74,7 +75,10 @@ export class ReportCurrencyService {
     return preferredCurrency(pref);
   }
 
-  async buildRateMap(_defaultCurrency: string): Promise<RateMap> {
+  async buildRateMap(
+    defaultCurrency: string,
+    sources: readonly (ReportingFxRow & { currency_code: string })[] = [],
+  ): Promise<RateMap> {
     const rates = await this.exchangeRateService.getLatestRates();
     const rateMap: RateMap = new Map();
     for (const rate of rates) {
@@ -83,20 +87,19 @@ export class ReportCurrencyService {
         Number(rate.rate),
       );
     }
-    const history = await this.exchangeRateService.getRateHistory();
-    rateMap.history = new Map();
-    for (const row of history) {
-      const pair = `${row.fromCurrency}->${row.toCurrency}`;
-      const observations = rateMap.history.get(pair) ?? [];
-      observations.push({
-        date:
-          row.rateDate instanceof Date
-            ? row.rateDate.toISOString().slice(0, 10)
-            : String(row.rateDate).slice(0, 10),
-        rate: Number(row.rate),
-      });
-      rateMap.history.set(pair, observations);
-    }
+    const dated = sources.filter((row) => row.conversion_date);
+    rateMap.history = dated.length
+      ? await withScopedDb(this.dataSource, (m) =>
+          reportingRates(
+            m,
+            dated.map((row) => ({
+              currencyCode: row.currency_code,
+              transactionDate: row.conversion_date!,
+            })),
+            defaultCurrency,
+          ),
+        )
+      : new Map();
     return rateMap;
   }
 

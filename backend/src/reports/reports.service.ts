@@ -1,8 +1,17 @@
+import { reportingExecutionBasis } from "../accruals/reporting-basis";
 import { exportReport } from "../accruals/reporting-export";
-import { reportingAmount, reportingRates } from "../accruals/reporting-money";
-import { convertReportTransactions } from "../accruals/reporting-custom-money";
-import { ServiceUnavailableException } from "@nestjs/common";
-import { ReportingRead } from "../accruals/reporting-basis";
+import {
+  tryReportingConversion,
+  reportingRates,
+} from "../accruals/reporting-money";
+import {
+  createDatedReportConverter,
+  type RowConverter,
+} from "./report-row-converter";
+import {
+  currentReportingRead,
+  ReportingRead,
+} from "../accruals/reporting-basis";
 import { reportingEntities } from "../accruals/reporting-query";
 import {
   Injectable,
@@ -77,12 +86,6 @@ import {
  * {@link RowConverter.convert}, which records a row it cannot convert instead of
  * letting it join a sum in its own units (INV-FX-001).
  */
-interface RowConverter {
-  readonly currency: string;
-  readonly gaps: ConversionGaps;
-  /** `null` when `currencyCode` has no rate into the reporting currency. */
-  convert(amount: number, currencyCode: string): number | null;
-}
 
 @Injectable()
 export class ReportsService {
@@ -96,11 +99,16 @@ export class ReportsService {
   private async createConverter(
     userId: string,
     countOnly = false,
+    transactions: Transaction[] = [],
   ): Promise<RowConverter> {
     const currency = await this.currencyService.getDefaultCurrency(userId);
     const gaps = new ConversionGaps();
     // An event count has no converted amount: its cells retain only event ids.
     if (countOnly) return { currency, gaps, convert: () => null };
+    if (reportingExecutionBasis(userId) === "accrual")
+      return withScopedDb(this.dataSource, (m) =>
+        createDatedReportConverter(m, currency, transactions),
+      );
     const rateMap = await this.currencyService.buildRateMap(currency);
     return {
       currency,
@@ -297,23 +305,20 @@ export class ReportsService {
     );
 
     // Query transactions with filters
-    const selected = await this.getFilteredTransactions(
+    const selection = await this.getFilteredTransactions(
       userId,
       startDate,
       endDate,
       report.filters,
       report.config,
     );
+    const selected = selection.rows;
     // A split parent reached the aggregators whatever its own sign, so its lines
     // are narrowed here, where each line's own amount and kind are readable.
-    const converted = await withScopedDb(this.dataSource, (manager) =>
-      convertReportTransactions(
-        manager,
-        userId,
-        this.narrowSplitLines(selected, report.config),
-        report.config.metric !== MetricType.COUNT,
-      ),
-    );
+    const converted = {
+      currency: currentReportingRead(userId)!.currency,
+      transactions: this.narrowSplitLines(selected, report.config),
+    };
     const transactions = converted.transactions;
 
     // Only fetch category/payee maps when the report groups by them (avoid over-fetching)
@@ -337,6 +342,7 @@ export class ReportsService {
     const converter = await this.createConverter(
       userId,
       report.config.metric === MetricType.COUNT,
+      transactions,
     );
 
     // Aggregate data based on groupBy type
@@ -359,6 +365,7 @@ export class ReportsService {
         data,
         converted.currency,
         endDate,
+        converter,
       );
     }
 
@@ -376,10 +383,25 @@ export class ReportsService {
       data,
       converter.gaps,
       report.config.metric,
+      selection.truncated,
     );
 
     return {
+      ...(selection.truncated
+        ? {
+            dataComplete: false as const,
+            truncated: true as const,
+            rowLimit: 50000,
+          }
+        : {}),
       fxComplete: converter.gaps.isComplete,
+      ...(converter.missingRatePairs?.length
+        ? {
+            missingRatePairs: converter.missingRatePairs,
+            repair: "currency_rate_history" as const,
+            fetchAttempted: false as const,
+          }
+        : {}),
       reportId: report.id,
       name: report.name,
       viewType: report.viewType,
@@ -582,7 +604,7 @@ export class ReportsService {
     endDate: string,
     filters: CustomReport["filters"],
     config: ReportConfig,
-  ): Promise<Transaction[]> {
+  ): Promise<{ rows: Transaction[]; truncated: boolean }> {
     return withScopedDb(this.dataSource, async (m) => {
       const queryBuilder = m
         .getRepository(Transaction)
@@ -734,14 +756,12 @@ export class ReportsService {
       const rows = await reportingEntities(
         m,
         userId,
-        queryBuilder.orderBy("transaction.transactionDate", "ASC").take(50001),
+        queryBuilder
+          .orderBy("transaction.transactionDate", "ASC")
+          .addOrderBy("transaction.id", "ASC")
+          .take(50001),
       );
-      if (rows.length > 50000)
-        throw new ServiceUnavailableException({
-          code: "REPORTING_ROW_LIMIT",
-          limit: 50000,
-        });
-      return rows;
+      return { rows: rows.slice(0, 50000), truncated: rows.length > 50000 };
     });
   }
 
@@ -967,11 +987,17 @@ export class ReportsService {
             const value = conv.convert(
               Math.abs(Number(split.amount)),
               tx.currencyCode,
+              tx,
             );
             if (value === null) continue;
             result.push({
               id: tx.id,
-              reportingProvenance: split.reportingProvenance,
+              reportingProvenance: split.reportingProvenance && {
+                ...split.reportingProvenance,
+                ...(conv.conversion
+                  ? { conversion: conv.conversion(Number(split.amount), tx) }
+                  : {}),
+              },
               label:
                 split.memo ||
                 tx.payeeName ||
@@ -993,11 +1019,17 @@ export class ReportsService {
           const value = conv.convert(
             Math.abs(Number(tx.amount)),
             tx.currencyCode,
+            tx,
           );
           if (value === null) continue;
           result.push({
             id: tx.id,
-            reportingProvenance: tx.reportingProvenance,
+            reportingProvenance: tx.reportingProvenance && {
+              ...tx.reportingProvenance,
+              ...(conv.conversion
+                ? { conversion: conv.conversion(Number(tx.amount), tx) }
+                : {}),
+            },
             label:
               tx.payeeName || transferLabel || tx.description || "Transaction",
             value,
@@ -1023,7 +1055,11 @@ export class ReportsService {
     );
     for (const tx of transactions) {
       for (const line of netLinesOf(tx, false)) {
-        cells.add("total", line, conv.convert(line.amount, tx.currencyCode));
+        cells.add(
+          "total",
+          line,
+          conv.convert(line.amount, tx.currencyCode, tx),
+        );
       }
     }
 
@@ -1064,7 +1100,7 @@ export class ReportsService {
         cells.add(
           line.category,
           line,
-          conv.convert(line.amount, tx.currencyCode),
+          conv.convert(line.amount, tx.currencyCode, tx),
         );
       }
     }
@@ -1129,7 +1165,11 @@ export class ReportsService {
       if (lines.length === 0) continue;
       const payeeId = tx.payeeId || "unknown";
       for (const line of lines) {
-        cells.add(payeeId, line, conv.convert(line.amount, tx.currencyCode));
+        cells.add(
+          payeeId,
+          line,
+          conv.convert(line.amount, tx.currencyCode, tx),
+        );
       }
       if (!payeeNames.has(payeeId) && tx.payeeName) {
         payeeNames.set(payeeId, tx.payeeName);
@@ -1185,7 +1225,7 @@ export class ReportsService {
       // Converted once per line, so a row under several tags records one gap.
       const converted = lines.map((line) => ({
         line,
-        value: conv.convert(line.amount, tx.currencyCode),
+        value: conv.convert(line.amount, tx.currencyCode, tx),
       }));
       // Collect all tags: transaction-level + split-level. A tag on an embedded
       // investment line describes the trade, not ordinary cash, so the lines
@@ -1295,7 +1335,7 @@ export class ReportsService {
 
       labels.set(key, label);
       for (const line of lines) {
-        cells.add(key, line, conv.convert(line.amount, tx.currencyCode));
+        cells.add(key, line, conv.convert(line.amount, tx.currencyCode, tx));
       }
     }
     const dataMap = cells.settle();
@@ -1357,36 +1397,64 @@ export class ReportsService {
     data: AggregatedDataPoint[],
     currency: string,
     asOf: string,
+    converter: RowConverter,
   ): Promise<AggregatedDataPoint[]> {
     const budgets = await this.budgetsService.findAll(userId);
     const activeBudget =
       budgets.find((budget) => budget.isActive) || budgets[0];
-    if (!activeBudget)
-      throw new ServiceUnavailableException({
-        code: "REPORTING_BUDGET_REQUIRED",
-        repair: "create_budget",
-      });
+    if (!activeBudget) return data;
     const budget = await this.budgetsService.findOne(userId, activeBudget.id);
     const source = { currencyCode: budget.currencyCode, transactionDate: asOf };
     const budgetMap = await withScopedDb(this.dataSource, async (manager) => {
-      const rates = await reportingRates(manager, [source], currency);
+      const dated = reportingExecutionBasis(userId) === "accrual";
+      const rates = dated
+        ? await reportingRates(manager, [source], currency)
+        : new Map();
       return new Map(
         (budget.categories ?? [])
           .filter((category) => category.categoryId && !category.isIncome)
-          .map((category) => [
-            category.categoryId!,
-            reportingAmount(category.amount, source, currency, rates),
-          ]),
+          .map((category) => {
+            if (!dated)
+              return [
+                category.categoryId!,
+                converter.convert(category.amount, budget.currencyCode, source),
+              ] as const;
+            const result = tryReportingConversion(
+              category.amount,
+              source,
+              currency,
+              rates,
+            );
+            if (result.amount === null) {
+              converter.gaps.record(budget.currencyCode);
+              if (
+                converter.missingRatePairs &&
+                !converter.missingRatePairs.some(
+                  (pair) =>
+                    JSON.stringify(pair) ===
+                    JSON.stringify(result.missingRatePair),
+                )
+              )
+                converter.missingRatePairs.push(result.missingRatePair);
+            }
+            return [category.categoryId!, result.amount] as const;
+          }),
       );
     });
-    return data.map((point) => {
-      const budgeted = budgetMap.get(point.id || "") ?? 0;
-      return {
-        ...point,
-        value: roundMoney(point.value - budgeted),
-        budgeted,
-        actual: roundMoney(point.value),
-      };
+    return data.flatMap((point) => {
+      const budgeted =
+        budgetMap.get(point.id || "") ??
+        (budgetMap.has(point.id || "") ? null : 0);
+      // An unpriceable budget is not a zero budget, nor an actual-only variance.
+      if (budgeted === null) return [];
+      return [
+        {
+          ...point,
+          value: roundMoney(point.value - budgeted),
+          budgeted,
+          actual: roundMoney(point.value),
+        },
+      ];
     });
   }
 
@@ -1400,11 +1468,13 @@ export class ReportsService {
     data: AggregatedDataPoint[],
     gaps: ConversionGaps,
     metric: MetricType,
+    truncated = false,
   ): ReportSummary {
     const knownTotal = roundMoney(sumMoney(data.map((d) => d.value)));
     const count = data.reduce((acc, d) => acc + (d.count || 1), 0);
     const average = count > 0 ? knownTotal / count : 0;
-    const complete = this.keepsUnconverted(metric) || gaps.isComplete;
+    const complete =
+      !truncated && (this.keepsUnconverted(metric) || gaps.isComplete);
 
     return {
       total: complete ? knownTotal : null,

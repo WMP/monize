@@ -4,8 +4,15 @@ import { AccrualSchedule } from "./entities/accrual-schedule.entity";
 import { findAccrual, writeAccrual, type StoredAccrual } from "./accrual-store";
 import { loadAccrualSource, requireAccrualOwner } from "./accrual-source";
 import { buildAccrualPlan, type AccrualPeriod } from "./accrual-allocation";
-import { accrualContentFingerprint } from "./accrual-fingerprint";
+import {
+  accrualContentFingerprint,
+  type AccrualSourceSnapshot,
+} from "./accrual-fingerprint";
 import { canonical } from "./accrual-source-edit";
+import {
+  captureAccrualHistorySnapshots,
+  readAccrualHistoryStates,
+} from "./accrual-history-capture";
 import { accrualErrors } from "./accrual-errors";
 
 export interface AccrualHistoryState {
@@ -20,14 +27,9 @@ export async function readAccrualHistoryState(
   userId: string,
   transactionId: string,
 ): Promise<AccrualHistoryState> {
-  const schedules: StoredAccrual[] = await m.query(
-    `SELECT id,source_transaction_id AS "sourceTransactionId",source_split_id AS "sourceSplitId",
-      family,currency_code AS "currencyCode",preset,TO_CHAR(start_month,'YYYY-MM') AS "startMonth",
-      month_count AS "monthCount",revision,source_fingerprint AS "sourceFingerprint"
-     FROM accrual_schedules WHERE user_id=$1 AND source_transaction_id=$2 ORDER BY id`,
-    [userId, transactionId],
-  );
-  return { version: 1, schedules };
+  return (await readAccrualHistoryStates(m, userId, [transactionId])).get(
+    transactionId,
+  )!;
 }
 
 function stateFrom(value: unknown, transactionId: string): AccrualHistoryState {
@@ -48,6 +50,10 @@ function stateFrom(value: unknown, transactionId: string): AccrualHistoryState {
       (row.sourceSplitId !== null && !isUUID(row.sourceSplitId)) ||
       !["income", "expense"].includes(row.family) ||
       !["LTM", "NTM", "CUSTOM"].includes(row.preset) ||
+      (row.recognitionDateRule !== undefined &&
+        !["MONTH_END", "FIRST_BUSINESS_DAY"].includes(
+          row.recognitionDateRule,
+        )) ||
       !/^[0-9]{4}-[0-9]{2}$/.test(row.startMonth) ||
       !Number.isInteger(row.monthCount) ||
       row.monthCount < 1 ||
@@ -75,6 +81,31 @@ function periodOf(row: StoredAccrual): AccrualPeriod {
     : { preset: row.preset, dateRule: row.recognitionDateRule };
 }
 
+/** Old buggy snapshots omitted the rule. Recover only a plan witnessed by its content hash. */
+function historyPeriod(
+  row: StoredAccrual,
+  source: AccrualSourceSnapshot,
+): AccrualPeriod {
+  if (row.recognitionDateRule !== undefined) return periodOf(row);
+  const matches = (["MONTH_END", "FIRST_BUSINESS_DAY"] as const).flatMap(
+    (dateRule) => {
+      const period = periodOf({ ...row, recognitionDateRule: dateRule });
+      const plan = buildAccrualPlan(
+        source.paymentDate,
+        source.amount,
+        source.currencyDecimals,
+        period,
+      );
+      return accrualContentFingerprint(source, row.family, period, plan) ===
+        row.sourceFingerprint
+        ? [period]
+        : [];
+    },
+  );
+  if (matches.length !== 1) throw accrualErrors.conflict();
+  return matches[0];
+}
+
 /** Refuse changed/recreated schedules and unmaintained source edits before writes. */
 export async function assertAccrualHistoryState(
   m: EntityManager,
@@ -87,7 +118,21 @@ export async function assertAccrualHistoryState(
     if (current.schedules.length) throw accrualErrors.conflict();
     return current; // Legacy cash-only history remains replayable.
   }
-  const prior = stateFrom(expected, transactionId);
+  const parsed = stateFrom(expected, transactionId);
+  const prior = {
+    ...parsed,
+    schedules: parsed.schedules.map((row) => {
+      if (row.recognitionDateRule !== undefined) return row;
+      const matching = current.schedules.find(
+        (value) =>
+          value.id === row.id &&
+          value.sourceFingerprint === row.sourceFingerprint,
+      );
+      return matching
+        ? { ...row, recognitionDateRule: matching.recognitionDateRule }
+        : row;
+    }),
+  };
   if (JSON.stringify(canonical(prior)) !== JSON.stringify(canonical(current)))
     throw accrualErrors.conflict();
   if (current.schedules.length) requireAccrualOwner(userId);
@@ -129,32 +174,10 @@ export async function captureAccrualHistorySnapshot(
   snapshot: Snapshot,
   force = false,
 ): Promise<void> {
-  const state = await readAccrualHistoryState(m, userId, transactionId);
-  snapshot.accrualState = state;
-  if (!force && !state.schedules.length) return;
-  requireAccrualOwner(userId);
-  const rows: Snapshot[] = await m.query(
-    `SELECT t.id,t.account_id AS "accountId",TO_CHAR(t.transaction_date,'YYYY-MM-DD') AS "transactionDate",
-      t.amount::text AS amount,t.currency_code AS "currencyCode",t.exchange_rate::text AS "exchangeRate",
-      t.original_amount::text AS "originalAmount",t.original_currency_code AS "originalCurrencyCode",
-      t.payee_id AS "payeeId",t.payee_name AS "payeeName",t.category_id AS "categoryId",
-      t.description,t.reference_number AS "referenceNumber",t.status,t.is_split AS "isSplit",
-      t.is_transfer AS "isTransfer",t.linked_transaction_id AS "linkedTransactionId",
-      t.parent_transaction_id AS "parentTransactionId",t.reconciled_date AS "reconciledDate",
-      t.created_at AS "createdAt",ARRAY(SELECT tt.tag_id FROM transaction_tags tt WHERE tt.transaction_id=t.id ORDER BY tt.tag_id) AS "tagIds"
-     FROM transactions t WHERE t.id=$1 AND t.user_id=$2`,
-    [transactionId, userId],
-  );
-  if (!rows[0]) throw accrualErrors.conflict();
-  const splits = await m.query(
-    `SELECT s.id,s.kind,s.category_id AS "categoryId",s.transfer_account_id AS "transferAccountId",
-      s.linked_transaction_id AS "linkedTransactionId",s.amount::text AS amount,s.memo,
-      ARRAY(SELECT st.tag_id FROM transaction_split_tags st WHERE st.transaction_split_id=s.id ORDER BY st.tag_id) AS "tagIds"
-     FROM transaction_splits s JOIN transactions t ON t.id=s.transaction_id
-     WHERE t.id=$1 AND t.user_id=$2 ORDER BY s.id`,
-    [transactionId, userId],
-  );
-  Object.assign(snapshot, rows[0], { splits, accrualExact: true });
+  const row = (
+    await captureAccrualHistorySnapshots(m, userId, [transactionId], force)
+  ).get(transactionId);
+  if (row) Object.assign(snapshot, row);
 }
 
 /** Existing transfer/investment history lacks a full structural restore contract. */
@@ -204,7 +227,7 @@ export async function restoreAccrualHistoryState(
     if (source.snapshot.currencyCode !== row.currencyCode)
       throw accrualErrors.conflict();
     const family = source.family ?? row.family;
-    const period = periodOf(row);
+    const period = historyPeriod(row, source.snapshot);
     const plan = buildAccrualPlan(
       source.snapshot.paymentDate,
       source.snapshot.amount,

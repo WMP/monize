@@ -1,3 +1,5 @@
+import { lockSourceFamily } from "../common/db/source-family-lock";
+import { categoryLockScope } from "./category-lock-scope";
 import { BadRequestException } from "@nestjs/common";
 import { createHash } from "node:crypto";
 import type { EntityManager } from "typeorm";
@@ -84,24 +86,47 @@ export async function prepareCategoryMutation(
   const initialCategory = initial.find((row) => row.id === id);
   if (!initialCategory) throw accrualErrors.missing();
   const affected = command.operation === "update" ? subtree(initial, id) : [id];
-  const sources: SourceRow[] = await m.query(sourceSql(true), [
-    userId,
-    affected,
-  ]);
+  const needsSourceState =
+    command.operation !== "update" ||
+    (command.dto.isIncome !== undefined &&
+      command.dto.isIncome !== initialCategory.isIncome) ||
+    (command.dto.parentId !== undefined &&
+      command.dto.parentId !== initialCategory.parentId);
+  const sources: SourceRow[] = needsSourceState
+    ? await m.query(sourceSql(false), [userId, affected])
+    : [];
+  if (
+    !(await lockSourceFamily(
+      m,
+      userId,
+      sources.map((row) => row.id),
+    ))
+  )
+    throw accrualErrors.conflict();
   const payeeSql =
     "SELECT id FROM payees WHERE user_id=$1 AND default_category_id=$2 ORDER BY id";
   const payees: { id: string }[] =
     command.operation === "delete"
       ? await m.query(payeeSql + " FOR UPDATE", [userId, id])
       : [];
-  const graph: CategoryNode[] = await m.query(graphSql + " FOR UPDATE OF c", [
-    userId,
+  const categoryLocks = categoryLockScope(initial, [
+    id,
+    ...(command.operation === "update" && command.dto.parentId
+      ? [command.dto.parentId]
+      : []),
+    ...(command.operation === "reassign" && command.toCategoryId
+      ? [command.toCategoryId]
+      : []),
   ]);
+  await m.query(
+    "SELECT id FROM categories WHERE user_id=$1 AND id=ANY($2::uuid[]) ORDER BY id FOR UPDATE",
+    [userId, categoryLocks],
+  );
+  const graph: CategoryNode[] = await m.query(graphSql, [userId]);
   if (!sameRows(initial, graph)) throw accrualErrors.conflict();
-  const current: SourceRow[] = await m.query(sourceSql(false), [
-    userId,
-    affected,
-  ]);
+  const current: SourceRow[] = needsSourceState
+    ? await m.query(sourceSql(false), [userId, affected])
+    : [];
   if (!sameRows(sources, current)) throw accrualErrors.conflict();
   if (
     command.operation === "delete" &&

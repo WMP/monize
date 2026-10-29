@@ -1,9 +1,23 @@
 jest.mock("../accruals/reporting-summary-money", () => ({
+  // getSummary now reads convertedIncome/convertedExpenses unconditionally
+  // (reportingSummaryRows converts for Cash too, not just Accrual); every
+  // fixture here is single-reporting-currency, so the converted figure is
+  // the native one, same as the real function with nothing to convert.
   reportingSummaryRows: async (
     _m: unknown,
     _u: string,
-    query: { getRawMany: () => Promise<unknown[]> },
-  ) => query.getRawMany(),
+    query: { getRawMany: () => Promise<Record<string, unknown>[]> },
+    _currency: string,
+    incomeColumn = "totalIncome",
+    expensesColumn = "totalExpenses",
+  ) => {
+    const rows = await query.getRawMany();
+    return rows.map((row) => ({
+      ...row,
+      convertedIncome: Number(row[incomeColumn]) || 0,
+      convertedExpenses: Number(row[expensesColumn]) || 0,
+    }));
+  },
 }));
 jest.mock("../accruals/reporting-money", () =>
   jest
@@ -261,14 +275,14 @@ describe("TransactionAnalyticsService", () => {
       const result = await service.getSummary(userId);
 
       expect(result).toEqual({
+        currency: "USD",
+        fxComplete: true,
         totalIncome: 0,
         totalExpenses: 0,
         netCashFlow: 0,
         transactionCount: 0,
         firstTransactionDate: null,
         lastTransactionDate: null,
-        currency: "USD",
-        fxComplete: true,
         byCurrency: {},
       });
     });

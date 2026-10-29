@@ -361,18 +361,6 @@ describe("BudgetTrendReportsService", () => {
       periodsRepository.find.mockResolvedValueOnce(closedPeriods);
       periodsRepository.findOne.mockResolvedValueOnce(null);
 
-      // Closed actuals are current reads too, rather than the materialized snapshot.
-      transactionsRepository.createQueryBuilder
-        .mockReturnValueOnce(
-          createMockQueryBuilder({
-            getRawOne: jest.fn().mockResolvedValue({ total: "-750" }),
-          }),
-        )
-        .mockReturnValueOnce(
-          createMockQueryBuilder({
-            getRawOne: jest.fn().mockResolvedValue({ total: "-820" }),
-          }),
-        );
       const result = await service.getTrend("user-1", "budget-1", 6);
 
       expect(result).toHaveLength(2);
@@ -418,20 +406,8 @@ describe("BudgetTrendReportsService", () => {
         getRawOne: jest.fn().mockResolvedValue({ total: "-50" }),
       });
 
-      transactionsRepository.createQueryBuilder
-        .mockReturnValueOnce(
-          createMockQueryBuilder({
-            getRawOne: jest.fn().mockResolvedValue({ total: "-700" }),
-          }),
-        )
-        .mockReturnValueOnce(directQb);
-      splitsRepository.createQueryBuilder
-        .mockReturnValueOnce(
-          createMockQueryBuilder({
-            getRawOne: jest.fn().mockResolvedValue({ total: "0" }),
-          }),
-        )
-        .mockReturnValueOnce(splitQb);
+      transactionsRepository.createQueryBuilder.mockReturnValueOnce(directQb);
+      splitsRepository.createQueryBuilder.mockReturnValueOnce(splitQb);
 
       const result = await service.getTrend("user-1", "budget-1", 6);
 
@@ -553,29 +529,9 @@ describe("BudgetTrendReportsService", () => {
       });
 
       transactionsRepository.createQueryBuilder
-        .mockReturnValueOnce(
-          createMockQueryBuilder({
-            getRawOne: jest.fn().mockResolvedValue({ total: "-600" }),
-          }),
-        )
-        .mockReturnValueOnce(
-          createMockQueryBuilder({
-            getRawOne: jest.fn().mockResolvedValue({ total: "0" }),
-          }),
-        )
         .mockReturnValueOnce(directQb)
         .mockReturnValueOnce(transferQb);
       splitsRepository.createQueryBuilder
-        .mockReturnValueOnce(
-          createMockQueryBuilder({
-            getRawOne: jest.fn().mockResolvedValue({ total: "0" }),
-          }),
-        )
-        .mockReturnValueOnce(
-          createMockQueryBuilder({
-            getRawOne: jest.fn().mockResolvedValue({ total: "0" }),
-          }),
-        )
         .mockReturnValueOnce(splitQb)
         .mockReturnValueOnce(splitTransferQb);
 
@@ -627,20 +583,8 @@ describe("BudgetTrendReportsService", () => {
         getRawOne: jest.fn().mockResolvedValue({ total: "-25" }),
       });
 
-      transactionsRepository.createQueryBuilder
-        .mockReturnValueOnce(
-          createMockQueryBuilder({
-            getRawOne: jest.fn().mockResolvedValue({ total: "-180" }),
-          }),
-        )
-        .mockReturnValueOnce(transferQb);
-      splitsRepository.createQueryBuilder
-        .mockReturnValueOnce(
-          createMockQueryBuilder({
-            getRawOne: jest.fn().mockResolvedValue({ total: "0" }),
-          }),
-        )
-        .mockReturnValueOnce(splitTransferQb);
+      transactionsRepository.createQueryBuilder.mockReturnValueOnce(transferQb);
+      splitsRepository.createQueryBuilder.mockReturnValueOnce(splitTransferQb);
 
       const result = await service.getTrend("user-1", "budget-1", 6);
 

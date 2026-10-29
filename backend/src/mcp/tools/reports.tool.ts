@@ -29,7 +29,7 @@ export class McpReportsTools {
           "Prefer it over list_transactions for any breakdown, anomaly or " +
           "month-comparison question. The `type` field says what each report " +
           "answers and which of the date parameters it reads. For an arbitrary " +
-          "pair of ranges use compare_periods instead. Returns basis, currency and result; anomalies are cash-only.",
+          "pair of ranges use compare_periods instead. Returns the report's own data and completeness fields; anomalies are cash-only.",
         inputSchema: z.object({
           basis: z
             .enum(["cash", "accrual"])
@@ -74,7 +74,7 @@ export class McpReportsTools {
             user.userId,
             args,
           );
-          return toolResult(data);
+          return toolResult(data.result);
         } catch (err: unknown) {
           return safeToolError(err);
         }

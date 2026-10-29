@@ -210,6 +210,7 @@ describe("ReportsService", () => {
     });
     qb.orWhere = jest.fn().mockReturnValue(qb);
     qb.orderBy = jest.fn().mockReturnValue(qb);
+    qb.addOrderBy = jest.fn().mockReturnValue(qb);
     qb.take = jest.fn().mockReturnValue(qb);
     qb.getMany = jest.fn().mockResolvedValue([]);
     // Apply overrides last
@@ -760,6 +761,37 @@ describe("ReportsService", () => {
 
       return { qb, report: fullReport };
     };
+
+    it.each([MetricType.TOTAL_AMOUNT, MetricType.COUNT])(
+      "returns bounded partial figures rather than a total when %s exceeds the row limit",
+      async (metric) => {
+        const transactions = Array.from({ length: 50001 }, (_, i) =>
+          createMockTransaction({ id: `limited-${i}`, amount: -1 }),
+        );
+        setupExecuteMocks(
+          { groupBy: GroupByType.NONE, config: { ...defaultConfig, metric } },
+          transactions,
+        );
+        const result = await service.execute("user-1", "report-1");
+        expect(result).toMatchObject({
+          truncated: true,
+          dataComplete: false,
+          rowLimit: 50000,
+          summary: {
+            total: null,
+            knownTotal: 50000,
+            count: 50000,
+            average: null,
+          },
+        });
+        const exported = await service.export("user-1", "report-1");
+        expect(exported).toMatchObject({
+          truncated: true,
+          dataComplete: false,
+        });
+        expect(exported.csv).toContain("dataComplete,truncated,rowLimit");
+      },
+    );
 
     it("executes a report with no transactions and returns empty data", async () => {
       setupExecuteMocks({
@@ -3305,6 +3337,7 @@ describe("ReportsService", () => {
         ]);
         budgetsService.findOne.mockResolvedValue({
           id: "budget-1",
+          currencyCode: "USD",
           categories: [{ categoryId: "cat-1", amount: 100, isIncome: false }],
         });
 
@@ -3343,6 +3376,7 @@ describe("ReportsService", () => {
         ]);
         budgetsService.findOne.mockResolvedValue({
           id: "budget-1",
+          currencyCode: "USD",
           categories: [{ categoryId: "cat-1", amount: 200, isIncome: false }],
         });
 
@@ -3352,7 +3386,39 @@ describe("ReportsService", () => {
         expect(groceries!.budgeted).toBe(200);
       });
 
-      it("withholds budget variance when no budgets exist", async () => {
+      it("withholds a variance when the budget currency cannot be converted", async () => {
+        setupExecuteMocks(
+          {
+            groupBy: GroupByType.CATEGORY,
+            config: { ...defaultConfig, metric: MetricType.BUDGET_VARIANCE },
+          },
+          [
+            createMockTransaction({
+              id: "known",
+              categoryId: "cat-1",
+              amount: -80,
+            }),
+          ],
+        );
+        categoriesRepository.find.mockResolvedValue([mockCategory]);
+        budgetsService.findAll.mockResolvedValue([
+          { id: "budget-1", isActive: true },
+        ]);
+        budgetsService.findOne.mockResolvedValue({
+          id: "budget-1",
+          currencyCode: "EUR",
+          categories: [{ categoryId: "cat-1", amount: 100, isIncome: false }],
+        });
+        const result = await service.execute("user-1", "report-1");
+        expect(result).toMatchObject({
+          data: [],
+          fxComplete: false,
+          missingCurrencies: ["EUR"],
+          summary: { total: null, knownTotal: 0, average: null },
+        });
+      });
+
+      it("retains the upstream fallback when no budget exists", async () => {
         const transactions = [
           createMockTransaction({
             id: "tx-1",
@@ -3376,9 +3442,7 @@ describe("ReportsService", () => {
 
         await expect(
           service.execute("user-1", "report-1"),
-        ).rejects.toMatchObject({
-          response: { code: "REPORTING_BUDGET_REQUIRED" },
-        });
+        ).resolves.toMatchObject({ data: [{ id: "cat-1", value: 50 }] });
       });
 
       it("propagates a failed budget lookup rather than labelling actuals as variance", async () => {

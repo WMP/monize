@@ -135,6 +135,35 @@ describe("ReportCurrencyService", () => {
       expect(rateMap.get("USD->CAD")).toBe(1.36);
     });
 
+    it("loads historical rates only for the report's currencies and date window", async () => {
+      scopedDataSource.manager.query.mockResolvedValueOnce([
+        {
+          from_currency: "EUR",
+          to_currency: "USD",
+          rate: "1.2",
+          rate_date: "2026-06-14",
+        },
+      ]);
+      const map = await service.buildRateMap("USD", [
+        { currency_code: "EUR", conversion_date: "2026-06-15" },
+        { currency_code: "EUR", conversion_date: "2026-06-30" },
+      ]);
+      expect(exchangeRateService.getRateHistory).not.toHaveBeenCalled();
+      expect(scopedDataSource.manager.query).toHaveBeenCalledWith(
+        expect.stringContaining("WITH pairs AS"),
+        [["EUR"], "USD", "2026-06-15", "2026-06-30"],
+      );
+      expect(
+        service.tryConvertAmount(100, "EUR", "USD", map, {
+          conversion_date: "2026-06-15",
+        }),
+      ).toBe(120);
+    });
+    it("does not load history for undated cash-only report rows", async () => {
+      await service.buildRateMap("USD");
+      expect(exchangeRateService.getRateHistory).not.toHaveBeenCalled();
+      expect(scopedDataSource.manager.query).not.toHaveBeenCalled();
+    });
     it("returns empty map when no exchange rates exist", async () => {
       exchangeRateService.getLatestRates.mockResolvedValue([]);
 

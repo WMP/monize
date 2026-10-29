@@ -47,7 +47,7 @@ describe("reviewed payee deletion with surviving accruals", () => {
     expect(
       (
         await f.h.owner.query(
-          "SELECT before_data FROM action_history WHERE user_id=$1 AND entity_id=$2 AND entity_type='accrual_relationship_operation' AND action='update'",
+          "SELECT before_data FROM action_history WHERE user_id=$1 AND entity_id=$2 AND entity_type='accrual_history_v1' AND accrual_entity_type='accrual_relationship_operation' AND action='update'",
           [f.user, f.payee],
         )
       )[0].before_data.taxonomyOperation.payees[0].id,

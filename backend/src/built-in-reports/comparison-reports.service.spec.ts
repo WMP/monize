@@ -387,7 +387,7 @@ describe("ComparisonReportsService", () => {
       expect(currencyService.getDefaultCurrency).toHaveBeenCalledWith(
         mockUserId,
       );
-      expect(currencyService.buildRateMap).toHaveBeenCalledWith("USD");
+      expect(currencyService.buildRateMap).toHaveBeenCalledWith("USD", []);
     });
   });
 
@@ -773,7 +773,7 @@ describe("ComparisonReportsService", () => {
       expect(currencyService.getDefaultCurrency).toHaveBeenCalledWith(
         mockUserId,
       );
-      expect(currencyService.buildRateMap).toHaveBeenCalledWith("USD");
+      expect(currencyService.buildRateMap).toHaveBeenCalledWith("USD", []);
     });
   });
 

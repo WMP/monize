@@ -2,7 +2,10 @@ import {
   reportingMoneyMany,
   reportingMoneyOne,
 } from "../accruals/reporting-money";
-import { ReportingRead } from "../accruals/reporting-basis";
+import {
+  reportingExecutionBasis,
+  ReportingRead,
+} from "../accruals/reporting-basis";
 import { Injectable, Logger } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
@@ -43,7 +46,11 @@ export class BudgetTrendReportsService {
   ): Promise<BudgetTrendPoint[]> {
     const budget = await this.budgetsService.findOne(userId, budgetId);
 
-    const periods = await this.getClosedPeriods(budget.id, months);
+    const periods = await this.getClosedPeriods(
+      budget.id,
+      months,
+      reportingExecutionBasis(userId) === "accrual",
+    );
 
     if (periods.length === 0) {
       return this.computeLiveTrendFromTransactions(userId, budget, months);
@@ -52,7 +59,10 @@ export class BudgetTrendReportsService {
     const result: BudgetTrendPoint[] = [];
     for (const period of periods) {
       const budgeted = Number(period.totalBudgeted) || 0;
-      const actual = await this.computePeriodActuals(userId, budget, period);
+      const actual =
+        reportingExecutionBasis(userId) === "accrual"
+          ? await this.computePeriodActuals(userId, budget, period)
+          : Number(period.actualExpenses) || 0;
       const variance = actual - budgeted;
       const percentUsed =
         budgeted > 0 ? roundToDecimals((actual / budgeted) * 100, 2) : 0;
@@ -126,6 +136,30 @@ export class BudgetTrendReportsService {
     for (const period of periods) {
       const periodMonthKey = this.formatPeriodMonthKey(period.periodStart);
       const cats = period.periodCategories || [];
+      const liveActuals =
+        period.status === PeriodStatus.OPEN ||
+        reportingExecutionBasis(userId) === "accrual"
+          ? await this.computeCategoryActuals(
+              userId,
+              [
+                ...new Set(
+                  cats
+                    .filter(
+                      (pc) =>
+                        !pc.budgetCategory?.isIncome &&
+                        pc.categoryId &&
+                        (!categoryIds?.length ||
+                          categoryIds.includes(pc.categoryId)),
+                    )
+                    .map((pc) => pc.categoryId!),
+                ),
+              ],
+              period.periodStart,
+              period.periodEnd,
+              budget.currencyCode,
+              budgetExcludedAccountIds(budget.config),
+            )
+          : null;
 
       for (const pc of cats) {
         const catId = pc.categoryId;
@@ -159,16 +193,10 @@ export class BudgetTrendReportsService {
         }
 
         const budgeted = Number(pc.budgetedAmount) || 0;
-        // Closed periods retain their plan, but actuals follow the selected basis
-        // and current source revisions just like open periods.
-        const actual = await this.computeCategoryActual(
-          userId,
-          catId,
-          period.periodStart,
-          period.periodEnd,
-          budget.currencyCode,
-          budgetExcludedAccountIds(budget.config),
-        );
+        // Cash keeps its stored close; Accrual revalues the snapshotted members.
+        const actual = liveActuals
+          ? (liveActuals.get(catId) ?? 0)
+          : Number(pc.actualAmount) || 0;
 
         const variance = actual - budgeted;
         const percentUsed =
@@ -192,10 +220,19 @@ export class BudgetTrendReportsService {
   private async getClosedPeriods(
     budgetId: string,
     months: number,
+    includeMembership = false,
   ): Promise<BudgetPeriod[]> {
     return withScopedDb(this.dataSource, (m) =>
       m.getRepository(BudgetPeriod).find({
         where: { budgetId, status: PeriodStatus.CLOSED },
+        ...(includeMembership
+          ? {
+              relations: [
+                "periodCategories",
+                "periodCategories.budgetCategory",
+              ],
+            }
+          : {}),
         order: { periodStart: "ASC" },
         take: months,
       }),
@@ -217,7 +254,14 @@ export class BudgetTrendReportsService {
     budget: Budget,
     period: BudgetPeriod,
   ): Promise<number> {
-    const categories = (budget.categories || []).filter((bc) => !bc.isIncome);
+    const members =
+      period.status === PeriodStatus.CLOSED
+        ? (period.periodCategories ?? []).map((pc) => ({
+            ...pc.budgetCategory,
+            categoryId: pc.categoryId,
+          }))
+        : budget.categories || [];
+    const categories = members.filter((bc) => !bc.isIncome);
     const categoryIds = categories
       .filter((bc) => bc.categoryId !== null && !bc.isTransfer)
       .map((bc) => bc.categoryId as string);
@@ -347,26 +391,29 @@ export class BudgetTrendReportsService {
     return Math.max(-total, 0);
   }
 
-  private async computeCategoryActual(
+  private async computeCategoryActuals(
     userId: string,
-    categoryId: string,
+    categoryIds: string[],
     periodStart: string,
     periodEnd: string,
     currencyCode: string,
     excludedAccountIds: readonly string[],
-  ): Promise<number> {
+  ): Promise<Map<string, number>> {
+    if (!categoryIds.length) return new Map();
     const [directResult, splitResult] = await Promise.all([
       withScopedDb(this.dataSource, (m) =>
-        reportingMoneyOne(
+        reportingMoneyMany(
           m,
           userId,
           excludeBudgetAccounts(
             m
               .getRepository(Transaction)
               .createQueryBuilder("t")
-              .select("COALESCE(SUM(t.amount), 0)", "total")
+              .select("t.category_id", "categoryId")
+              .addSelect("COALESCE(SUM(t.amount), 0)", "total")
+              .groupBy("t.category_id")
               .where("t.user_id = :userId", { userId })
-              .andWhere("t.category_id = :categoryId", { categoryId })
+              .andWhere("t.category_id IN (:...categoryIds)", { categoryIds })
               .andWhere("t.transaction_date >= :start", { start: periodStart })
               .andWhere("t.transaction_date <= :end", { end: periodEnd })
               .andWhere("t.status != :void", { void: "VOID" })
@@ -378,7 +425,7 @@ export class BudgetTrendReportsService {
         ),
       ),
       withScopedDb(this.dataSource, (m) =>
-        reportingMoneyOne(
+        reportingMoneyMany(
           m,
           userId,
           excludeBudgetAccounts(
@@ -386,9 +433,11 @@ export class BudgetTrendReportsService {
               .getRepository(TransactionSplit)
               .createQueryBuilder("s")
               .innerJoin("s.transaction", "t")
-              .select("COALESCE(SUM(s.amount), 0)", "total")
+              .select("s.category_id", "categoryId")
+              .addSelect("COALESCE(SUM(s.amount), 0)", "total")
+              .groupBy("s.category_id")
               .where("t.user_id = :userId", { userId })
-              .andWhere("s.category_id = :categoryId", { categoryId })
+              .andWhere("s.category_id IN (:...categoryIds)", { categoryIds })
               .andWhere("t.transaction_date >= :start", { start: periodStart })
               .andWhere("t.transaction_date <= :end", { end: periodEnd })
               .andWhere("t.status != :void", { void: "VOID" }),
@@ -400,13 +449,17 @@ export class BudgetTrendReportsService {
       ),
     ]);
 
-    // Expenses are negative; negate to get positive spending, clamp to 0
-    return Math.max(
-      -(
-        parseFloat(directResult?.total || "0") +
-        parseFloat(splitResult?.total || "0")
-      ),
-      0,
+    const values = new Map<string, number[]>();
+    for (const row of [...directResult, ...splitResult]) {
+      const amounts = values.get(row.categoryId) ?? [];
+      amounts.push(Number(row.total));
+      values.set(row.categoryId, amounts);
+    }
+    return new Map(
+      categoryIds.map((id) => [
+        id,
+        Math.max(-sumMoney(values.get(id) ?? []), 0),
+      ]),
     );
   }
 

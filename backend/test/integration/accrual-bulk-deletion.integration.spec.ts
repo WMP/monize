@@ -7,6 +7,9 @@ import {
   settlePendingHistoryWrites,
 } from "@/action-history/action-history.service";
 import { withUserContext } from "@/common/db/with-context";
+import { withScopedDb } from "@/common/db/scoped-db";
+import { LockScope, lockTransactionRows } from "@/common/db/locks";
+import { refreshSourceAccruals } from "@/accruals/accrual-lifecycle";
 import type { AccrualPreviewDto } from "@/accruals/dto/accrual-command.dto";
 import { createTestAccount } from "../helpers/test-factories";
 import {
@@ -190,6 +193,38 @@ describe("versioned accrual bulk deletion through actual services", () => {
       expect(await balance()).toBe("1000.0000");
     }
   });
+  it.each([false, true])(
+    "does not serialize deletion on unrelated bulk history (accrued=%s)",
+    async (accrued) => {
+      const source = await create();
+      if (accrued) await accrue(source.id);
+      await settlePendingHistoryWrites();
+      const blocker = h.owner.createQueryRunner();
+      await blocker.connect();
+      await blocker.startTransaction();
+      try {
+        await blocker.query(
+          "SELECT pg_advisory_xact_lock($1::int,hashtext($2))",
+          [LockScope.AccrualBulkHistory, user],
+        );
+        await as(() =>
+          withScopedDb(h.app, async (m) => {
+            await m.query("SET LOCAL lock_timeout='250ms'");
+            await transactions.bulkDelete(user, {
+              mode: "ids",
+              transactionIds: [source.id],
+            });
+          }),
+        );
+        expect(await sources()).toHaveLength(0);
+        expect(await balance()).toBe("1000.0000");
+      } finally {
+        if (blocker.isTransactionActive) await blocker.rollbackTransaction();
+        await blocker.release();
+      }
+    },
+  );
+
   it("records exactly the filter-selected deletion set", async () => {
     const first = await create(),
       excluded = await create();
@@ -240,21 +275,41 @@ describe("versioned accrual bulk deletion through actual services", () => {
     expect(await actions()).toHaveLength(0);
     expect(await balance()).toBe("-1400.0000");
   });
-  it("refuses snapshots over the history limit before deleting anything", async () => {
+  it("stores oversized legacy notes without dropping ordinary sources from undo", async () => {
     const first = await create(),
       second = await create();
     await accrue(first.id);
+    const note = "x".repeat(300000);
     await h.owner.query(
-      "UPDATE transactions SET description=repeat('x',300000) WHERE id=ANY($1)",
-      [[first.id, second.id]],
+      "UPDATE transactions SET description=$1 WHERE id=ANY($2)",
+      [note, [first.id, second.id]],
     );
-    await expect(remove([first.id, second.id])).rejects.toMatchObject({
-      status: 409,
-    });
+    await as(() =>
+      withScopedDb(h.app, async (m) => {
+        await lockTransactionRows(m, [first.id, second.id], user);
+        await refreshSourceAccruals(m, user, first.id);
+      }),
+    );
+    await remove([first.id, second.id]);
+    expect(await sources()).toHaveLength(0);
+    expect((await actions())[0].before_data).toHaveProperty(
+      "accrualHistoryPayload",
+    );
+    await as(() => history.undo(user));
     expect(await sources()).toHaveLength(2);
     expect(await schedules()).toHaveLength(1);
-    expect(await actions()).toHaveLength(0);
+    expect(
+      (
+        await h.owner.query(
+          "SELECT description FROM transactions WHERE id=ANY($1)",
+          [[first.id, second.id]],
+        )
+      ).every((row: { description: string }) => row.description === note),
+    ).toBe(true);
     expect(await balance()).toBe("-1400.0000");
+    await as(() => history.redo(user));
+    expect(await sources()).toHaveLength(0);
+    expect(await balance()).toBe("1000.0000");
   });
   it("rolls back deletion, schedules and balances if required history insertion fails", async () => {
     const first = await create(),

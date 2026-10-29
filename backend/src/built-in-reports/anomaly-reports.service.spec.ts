@@ -623,7 +623,7 @@ describe("AnomalyReportsService", () => {
       expect(currencyService.getDefaultCurrency).toHaveBeenCalledWith(
         mockUserId,
       );
-      expect(currencyService.buildRateMap).toHaveBeenCalledWith("USD");
+      expect(currencyService.buildRateMap).toHaveBeenCalledWith("USD", []);
     });
 
     it("passes correct date range to the query (6 months)", async () => {

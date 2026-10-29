@@ -95,6 +95,7 @@ export function keyBearingExportTables(): readonly string[] {
 export const INTENTIONALLY_EXCLUDED_TABLES: ReadonlySet<string> = new Set([
   "users", // the account row itself; a restore targets an existing user
   "action_history", // undo/redo log, wiped on restore (not undoable to prior state)
+  "accrual_history_chunks", // transient undo payloads; parent wipe/pruning cascades them
   "ai_insights", // regenerable AI cache
   "ai_usage_logs", // usage telemetry, not user content
   // The OPERATOR's Google Places counter. Deliberately not exported while

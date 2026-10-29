@@ -1,3 +1,4 @@
+import { withScopedDb } from "@/common/db/scoped-db";
 import { createAccrualTaxonomyFixture } from "../helpers/accrual-taxonomy-fixture";
 import { TransactionAccrualEditorController } from "@/transactions/transaction-accrual-editor.controller";
 import { createTestUserDirect } from "../helpers/integration-setup";
@@ -17,6 +18,47 @@ describe("atomic source and accrual editor (PostgreSQL)", () => {
   beforeEach(async () => f.reset());
   afterAll(async () => f?.close());
   const req = () => ({ user: { id: f.user } });
+  it("does not take write locks while inspecting a schedule or previewing edits", async () => {
+    const { tx } = await f.source();
+    await f.accrue(tx.id);
+    const [schedule] = await f.as(() =>
+      f.accruals.sourceSchedules(f.user, tx.id),
+    );
+    await f.as(() =>
+      withScopedDb(f.h.app, async (m) => {
+        const query = jest.spyOn(m, "query");
+        try {
+          await f.accruals.detail(f.user, schedule.id);
+          await f.accruals.previewSourceEdit(f.user, tx.id, { amount: -2400 });
+          await controller.preview(req(), tx.id, {
+            patch: { amount: -2400 },
+            settings: [{ sourceTransactionId: tx.id, preset: "NTM" }],
+          });
+          expect(
+            query.mock.calls.some(([sql]) =>
+              /FOR\s+(?:UPDATE|SHARE)/i.test(sql),
+            ),
+          ).toBe(false);
+          await f.h.owner.transaction(async (other) => {
+            expect(
+              await other.query(
+                "SELECT id FROM transactions WHERE id=$1 FOR UPDATE NOWAIT",
+                [tx.id],
+              ),
+            ).toHaveLength(1);
+            expect(
+              await other.query(
+                "SELECT id FROM accrual_schedules WHERE id=$1 FOR UPDATE NOWAIT",
+                [schedule.id],
+              ),
+            ).toHaveLength(1);
+          });
+        } finally {
+          query.mockRestore();
+        }
+      }),
+    );
+  });
   it("previews unsaved amount/date and commits source and custom allocation together", async () => {
     const { tx } = await f.source();
     await f.accrue(tx.id);
@@ -61,6 +103,39 @@ describe("atomic source and accrual editor (PostgreSQL)", () => {
     });
     const detail = await f.as(() => f.accruals.detail(f.user, schedules[0].id));
     expect(detail.plan.allocations[0].amount).toBe("-400.0000");
+  });
+  it("stores the first-business-day dates approved in the combined preview", async () => {
+    const { tx } = await f.source();
+    const input = {
+      patch: { amount: -2400 },
+      settings: [
+        {
+          sourceTransactionId: tx.id,
+          preset: "CUSTOM" as const,
+          startMonth: "2026-08",
+          monthCount: 3,
+          dateRule: "FIRST_BUSINESS_DAY" as const,
+        },
+      ],
+    };
+    const preview = await f.as(() => controller.preview(req(), tx.id, input));
+    expect(preview.previews[0].plan?.allocations[0].recognitionDate).toBe(
+      "2026-08-03",
+    );
+    await f.as(() =>
+      controller.save(req(), tx.id, {
+        ...input,
+        fingerprint: preview.fingerprint,
+      }),
+    );
+    const [schedule] = await f.as(() =>
+      f.accruals.sourceSchedules(f.user, tx.id),
+    );
+    const detail = await f.as(() => f.accruals.detail(f.user, schedule.id));
+    expect(detail.plan.allocations).toEqual(
+      preview.previews[0].plan?.allocations,
+    );
+    expect(schedule.dateRule).toBe("FIRST_BUSINESS_DAY");
   });
   it("rolls source, bank balance and allocation writes back when the schedule phase fails", async () => {
     const { tx } = await f.source();

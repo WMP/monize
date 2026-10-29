@@ -7,7 +7,6 @@ import { inferSplitKind } from "../transactions/split-kind.util";
 import { SplitKind } from "../transactions/entities/split-kind.enum";
 import { TransactionSplit } from "../transactions/entities/transaction-split.entity";
 import { AccrualSchedule } from "./entities/accrual-schedule.entity";
-import { lockTransactionRow } from "../common/db/locks";
 import { buildAccrualPlan } from "./accrual-allocation";
 import { accrualPreviewFingerprint } from "./accrual-fingerprint";
 import { loadAccrualSource } from "./accrual-source";
@@ -94,6 +93,7 @@ export async function resolveSourceAccrualEdit(
   splitCategories: ReadonlyMap<string, string | null> = new Map(),
   removedComponents: ReadonlySet<string | null> = new Set(),
   categoryFamilies: ReadonlyMap<string, AccrualFamily> = new Map(),
+  lock = true,
 ): Promise<AccrualEditResolution> {
   const retainedCategoryIds = await retainedSplits(
     m,
@@ -116,12 +116,14 @@ export async function resolveSourceAccrualEdit(
       row.sourceSplitId,
       false,
       false,
+      lock,
     );
     const schedule = await findAccrual(
       m,
       userId,
       transactionId,
       row.sourceSplitId,
+      lock,
     );
     if (!schedule) throw accrualErrors.conflict();
     const before = await storedAccrualPlan(m, userId, schedule);
@@ -330,13 +332,24 @@ export async function previewSourceAccrualEdit(
   transactionId: string,
   patch: EditPatch,
 ) {
-  if (!(await lockTransactionRow(m, transactionId, userId)))
+  if (
+    !(
+      await m.query("SELECT id FROM transactions WHERE id=$1 AND user_id=$2", [
+        transactionId,
+        userId,
+      ])
+    )[0]
+  )
     throw accrualErrors.missing();
   const result = await resolveSourceAccrualEdit(
     m,
     userId,
     transactionId,
     patch,
+    new Map(),
+    new Set(),
+    new Map(),
+    false,
   );
   return {
     fingerprint: result.fingerprint,

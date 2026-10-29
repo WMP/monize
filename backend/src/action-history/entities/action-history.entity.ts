@@ -1,5 +1,6 @@
 import {
   Entity,
+  Unique,
   Column,
   PrimaryGeneratedColumn,
   CreateDateColumn,
@@ -10,6 +11,7 @@ import { Exclude } from "class-transformer";
 import { User } from "../../users/entities/user.entity";
 
 @Entity("action_history")
+@Unique("uq_action_history_owner", ["id", "userId"])
 export class ActionHistory {
   @PrimaryGeneratedColumn("uuid")
   id: string;
@@ -23,6 +25,15 @@ export class ActionHistory {
 
   @Column({ type: "varchar", length: 50, name: "entity_type" })
   entityType: string;
+
+  @Exclude()
+  @Column({
+    type: "varchar",
+    length: 50,
+    name: "accrual_entity_type",
+    nullable: true,
+  })
+  accrualEntityType: string | null;
 
   @Column({ type: "uuid", name: "entity_id", nullable: true })
   entityId: string | null;

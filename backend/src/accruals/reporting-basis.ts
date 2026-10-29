@@ -1,3 +1,4 @@
+import { reportingPreference } from "./reporting-preference";
 import { BadRequestException } from "@nestjs/common";
 import { preferredCurrency } from "../common/default-currency.util";
 import { AsyncLocalStorage } from "node:async_hooks";
@@ -15,6 +16,7 @@ export interface ReportingReadContext {
   executionByScope?: Map<string, ReportingBasis>;
 }
 const reads = new AsyncLocalStorage<ReportingReadContext>();
+
 export function currentReportingRead(userId: string) {
   const value = reads.getStore();
   return value?.userId === userId ? value : undefined;
@@ -31,9 +33,9 @@ export async function resolveReportingBasis(
   const context = currentReportingRead(userId);
   if (context?.accrualEnabled !== undefined)
     return context.accrualEnabled ? (requested ?? context.basis) : "cash";
-  const pref = await m
-    .getRepository(UserPreference)
-    .findOne({ where: { userId } });
+  const pref = await reportingPreference(userId, () =>
+    m.getRepository(UserPreference).findOne({ where: { userId } }),
+  );
   return pref?.accrualEnabled === true
     ? (requested ?? pref.reportingBasis ?? "cash")
     : "cash";
@@ -57,8 +59,10 @@ export async function withReportingRead<T>(
   const existing = currentReportingRead(userId);
   if (existing && (requested === undefined || requested === existing.basis))
     return fn();
-  const pref = await withScopedDb(dataSource, (m) =>
-    m.getRepository(UserPreference).findOne({ where: { userId } }),
+  const pref = await reportingPreference(userId, () =>
+    withScopedDb(dataSource, (m) =>
+      m.getRepository(UserPreference).findOne({ where: { userId } }),
+    ),
   );
   return reads.run(
     {
@@ -78,7 +82,13 @@ export async function withReportingRead<T>(
           resolveReportingExecution(manager, userId),
         );
       const result = await fn();
-      if (result && typeof result === "object" && !Array.isArray(result))
+      if (
+        reads.getStore()!.accrualEnabled &&
+        result &&
+        typeof result === "object" &&
+        (Object.getPrototypeOf(result) === Object.prototype ||
+          Object.getPrototypeOf(result) === null)
+      )
         return {
           ...result,
           basis:

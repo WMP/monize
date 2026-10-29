@@ -49,11 +49,7 @@ import { formatDateYMDLocal } from "../common/date-utils";
 import { applyTransactionSearch } from "./apply-transaction-search";
 import { tr } from "../i18n/translate";
 import { withScopedDb } from "../common/db/scoped-db";
-import {
-  lockTransactionRows,
-  acquireAdvisoryLock,
-  LockScope,
-} from "../common/db/locks";
+import { lockTransactionRows } from "../common/db/locks";
 import { deletionBalanceEffect } from "../common/deletion-balance.util";
 import { roundMoney } from "../common/round.util";
 import {
@@ -271,6 +267,21 @@ export class TransactionBulkUpdateService {
         await lockTransactionRows(
           m,
           lockSet.rowIds.filter((id) => !lockedParents.has(id)),
+          userId,
+        );
+      }
+
+      if (!isUpdatingStatus) {
+        // Schedule creation takes the same source lock. Discovering schedules
+        // before this lock could miss a first schedule committed while UPDATE waits.
+        const lockedParents = await lockTransactionRows(
+          m,
+          splitParentIds,
+          userId,
+        );
+        await lockTransactionRows(
+          m,
+          eligibleIds.filter((id) => !lockedParents.has(id)),
           userId,
         );
       }
@@ -634,7 +645,6 @@ export class TransactionBulkUpdateService {
     // Balance adjustments and both delete passes commit atomically.
     let deleted = 0;
     await withScopedDb(this.dataSource, async (m) => {
-      await acquireAdvisoryLock(m, LockScope.AccrualBulkHistory, userId);
       const transactionIdsSet = new Set(transactions.map((t) => t.id));
 
       // A split-transfer leg links to its split PARENT, not to a mirror leg.

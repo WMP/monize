@@ -1229,16 +1229,27 @@ export class PayeesService {
     const transactionsCategorized = await withScopedDb(
       this.dataSource,
       async (m) => {
-        const relationshipBefore = await beginPayeeRelationshipHistory(
-          m,
-          userId,
-          id,
-        );
-        const livePayee = await m.findOne(Payee, { where: { id, userId } });
+        const observedPayee = await m.findOne(Payee, { where: { id, userId } });
+        if (!observedPayee) throw accrualErrors.missing();
+        const writesSource =
+          applyMode !== "none" ||
+          updatePayeeDto.accrualImpactFingerprint !== undefined ||
+          (updateFields.name !== undefined &&
+            updateFields.name !== observedPayee.name);
+        const relationshipBefore = writesSource
+          ? await beginPayeeRelationshipHistory(m, userId, id)
+          : undefined;
+        const livePayee = await m.findOne(Payee, {
+          where: { id, userId },
+          lock: { mode: "pessimistic_write" },
+        });
         if (!livePayee) throw accrualErrors.missing();
         const changedName =
           updateFields.name !== undefined &&
           updateFields.name !== livePayee.name;
+        // A name changed while the metadata-only path queued: retry with sources
+        // locked first, rather than acquiring them behind the payee lock.
+        if (changedName && !writesSource) throw accrualErrors.conflict();
         beforeData = {
           name: livePayee.name,
           notes: livePayee.notes,

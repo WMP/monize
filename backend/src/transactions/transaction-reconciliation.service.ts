@@ -636,6 +636,13 @@ export class TransactionReconciliationService {
         .andWhere("userId = :userId", { userId })
         .execute();
 
+      const scheduled: { id: string }[] = await m.query(
+        "SELECT DISTINCT source_transaction_id AS id FROM accrual_schedules WHERE user_id=$1 AND source_transaction_id=ANY($2::uuid[]) ORDER BY id",
+        [userId, transactionIds],
+      );
+      for (const row of scheduled)
+        await refreshSourceAccruals(m, userId, row.id);
+
       return { reconciled: transactions.length };
     });
   }

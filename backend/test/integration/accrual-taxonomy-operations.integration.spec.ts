@@ -303,7 +303,7 @@ describe("Accrual taxonomy operation reconstruction and writer guards (enforced 
     expect(await aliases()).toHaveLength(1);
     expect((await links())[0].payee_id).toBe(f.payee);
   });
-  it("refuses oversized reconstruction snapshots before deleting relationships", async () => {
+  it("restores oversized reconstruction snapshots including every alias", async () => {
     const { tx } = await f.source();
     await f.accrue(tx.id);
     await f.h.owner.query(
@@ -313,15 +313,17 @@ describe("Accrual taxonomy operation reconstruction and writer guards (enforced 
     await clear();
     const original = await links(),
       states = await f.states(tx.id);
-    await expect(remove()).rejects.toMatchObject({ status: 409 });
+    const originalAliases = await aliases();
+    await remove();
+    expect(await aliases()).toEqual([]);
+    await f.as(() => history.undo(f.user));
     expect(await links()).toEqual(original);
-    expect(await f.states(tx.id)).toEqual(states);
-    expect(await aliases()).toHaveLength(1000);
-    expect(
-      await f.h.owner.query("SELECT id FROM action_history WHERE user_id=$1", [
-        f.user,
-      ]),
-    ).toEqual([]);
+    expect((await f.states(tx.id))[0].id).toBe(states[0].id);
+    expect(await aliases()).toEqual(originalAliases);
+    await f.as(() => history.redo(f.user));
+    expect(await aliases()).toEqual([]);
+    await f.as(() => history.undo(f.user));
+    expect(await aliases()).toEqual(originalAliases);
   });
   it("refuses lower-level accrued conversion before any bank or counterpart mutation", async () => {
     const { tx } = await f.source();
