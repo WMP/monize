@@ -5,7 +5,7 @@ import { useForm, Controller } from 'react-hook-form';
 import '@/lib/zodConfig';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Button } from '@/components/ui/Button';
+import { FormActions } from '@/components/ui/FormActions';
 import { Input } from '@/components/ui/Input';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { getCurrencySymbol } from '@/lib/format';
@@ -45,7 +45,6 @@ export function BudgetForm({
   isSaving = false,
 }: BudgetFormProps) {
   const t = useTranslations('budgets');
-  const tc = useTranslations('common');
   const {
     register,
     handleSubmit,
@@ -161,14 +160,11 @@ export function BudgetForm({
         </label>
       </div>
 
-      <div className="flex justify-end gap-3 pt-2">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          {tc('cancel')}
-        </Button>
-        <Button type="submit" disabled={isSaving}>
-          {isSaving ? t('form.saving') : t('form.saveChanges')}
-        </Button>
-      </div>
+      <FormActions
+        onCancel={onCancel}
+        submitLabel={t('form.saveChanges')}
+        isSubmitting={isSaving}
+      />
     </form>
   );
 }

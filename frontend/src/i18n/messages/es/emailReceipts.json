@@ -763,8 +763,7 @@
     },
     "search": {
       "label": "Buscar correos",
-      "text": "Buscar",
-      "placeholder": "Asunto, remitente o contenido",
+      "placeholder": "Buscar por asunto, remitente o contenido...",
       "in": "Buscar en",
       "fields": {
         "all": "Todos los campos",
@@ -806,10 +805,10 @@
       "body": "Las confirmaciones de pedido aparecen aquí una vez que se ha leído el buzón.",
       "filteredTitle": "No hay correos con este estado",
       "filteredBody": "Elige otro estado para ver el resto.",
-      "noMailboxBody": "Todavía no hay ningún buzón conectado. Conecta uno para empezar a leer confirmaciones de pedido.",
-      "connectButton": "Conectar un buzón",
       "searchTitle": "Ningún correo coincide con la búsqueda",
-      "searchBody": "Cambie las palabras o las fechas, o borre la búsqueda para ver todos los correos."
+      "searchBody": "Cambie las palabras o las fechas, o borre la búsqueda para ver todos los correos.",
+      "noMailboxBody": "Todavía no hay ningún buzón conectado. Conecta uno para empezar a leer confirmaciones de pedido.",
+      "connectButton": "Conectar un buzón"
     },
     "actions": {
       "view": "Ver",
@@ -1092,9 +1091,7 @@
     "help": "No se asoció ninguna transacción automáticamente. Estas son tus transacciones del intervalo de fechas de abajo, que empieza siendo los días en torno a la compra. Elige la que pagó o cambia las fechas para buscar más lejos.",
     "fromLabel": "Desde",
     "toLabel": "Hasta",
-    "searchLabel": "Buscar",
-    "searchPlaceholder": "Beneficiario, descripción o importe",
-    "searchButton": "Buscar",
+    "searchPlaceholder": "Buscar por beneficiario, descripción o importe...",
     "loading": "Cargando transacciones",
     "error": "No se pudieron cargar las transacciones.",
     "retry": "Reintentar",
@@ -1331,7 +1328,7 @@
       "reviseHelp": "Dile al asistente qué cambiar. Actualiza el mismo borrador a partir de estos correos y transacciones.",
       "tradeHelp": "El asistente lee estas confirmaciones y escribe un borrador de perfil para {domain} que propone la transacción de inversión que informa cada una. Todavía no se aprueba nada.",
       "tradeSample": "Confirmación de operación",
-      "feedbackLabel": "Qué debe cambiar",
+      "feedbackLabel": "Cambios solicitados",
       "feedbackPlaceholder": "Por ejemplo: el total es la línea que dice Importe pagado, no el subtotal.",
       "send": "Enviar a la IA",
       "sendFeedback": "Enviar nota a la IA",

@@ -17,7 +17,8 @@
     "label": "Filtrar por tipo",
     "all": "Todos",
     "email_receipt": "Recibos por e-mail",
-    "transaction_review": "Regras"
+    "transaction_review": "Regras",
+    "option": "{label} ({count})"
   },
   "status": {
     "pending": "Pendente",

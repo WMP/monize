@@ -100,7 +100,8 @@
     "unsupportedInvestmentAction": "Niet-ondersteunde beleggingsactie: {{ action }}",
     "unsupportedBulkAction": "Niet-ondersteunde bulkactie: {{ action }}",
     "unsupportedSimpleAction": "Niet-ondersteunde actie: {{ action }}",
-    "unsupportedTableForReinsert": "Niet-ondersteunde tabel voor herplaatsing: {{ tableName }}"
+    "unsupportedTableForReinsert": "Niet-ondersteunde tabel voor herplaatsing: {{ tableName }}",
+    "undoConversion": "Deze wijziging heeft een transactie omgezet naar of van een overboeking en kan daarom niet automatisch ongedaan worden gemaakt. Zet hem in plaats daarvan terug."
   },
   "admin": {
     "passwordOrInviteNotBoth": "Geef een wachtwoord of een e-mailuitnodiging op, niet beide.",
@@ -792,7 +793,11 @@
     "transferRateUnavailable": "Kon geen wisselkoers bepalen voor {{ from }} -> {{ to }}. Geef een exchangeRate of een doelbedrag op zodat de overboeking correct wordt geboekt.",
     "transferAmountsMustAgreeOnZero": "Een overboeking moet aan beide zijden een bedrag anders dan nul verplaatsen, of nul aan beide zijden",
     "transferImpliedRateInvalid": "Het bestemmingsbedrag impliceert een onbruikbare wisselkoers ten opzichte van het bronbedrag",
-    "externalIdNotThisTransfer": "Deze externalId wordt in de bronrekening al gebruikt door een transactie die geen overboeking naar deze doelrekening is"
+    "externalIdNotThisTransfer": "Deze externalId wordt in de bronrekening al gebruikt door een transactie die geen overboeking naar deze doelrekening is",
+    "alreadyATransfer": "Deze transactie is al een overboeking. Bewerk in plaats daarvan de overboeking zelf.",
+    "convertTransferCrossOwner": "Een overboeking met de rekening van een andere eigenaar kan niet worden omgezet. Verwijder hem en maak in plaats daarvan de gewenste boeking aan.",
+    "splitTransferLegConvertLocked": "Deze overboeking maakt deel uit van een gesplitste transactie. Verwijder hem door de splitsing op de brontransactie te bewerken.",
+    "transferCounterpartChanged": "De andere kant van deze overboeking is gewijzigd tijdens het bewerken. Herlaad en probeer het opnieuw."
   },
   "users": {
     "userNotFound": "Gebruiker niet gevonden",

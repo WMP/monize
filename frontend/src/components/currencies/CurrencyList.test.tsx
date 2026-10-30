@@ -241,7 +241,7 @@ describe('CurrencyList', () => {
     const usage = { USD: { accounts: 2, securities: 3 } };
 
     render(<CurrencyList currencies={currencies} {...defaultProps} usage={usage} />);
-    expect(screen.getByText('2 accts, 3 secs')).toBeInTheDocument();
+    expect(screen.getByText('2 accounts, 3 securities')).toBeInTheDocument();
   });
 
   it('cycles the shared density preference', () => {
@@ -280,6 +280,27 @@ describe('CurrencyList', () => {
       render(<CurrencyList currencies={currencies} {...defaultProps} onSort={onSort} sortField="code" sortDirection="asc" />);
       fireEvent.click(screen.getByText('Code'));
       expect(onSort).toHaveBeenCalledWith('code');
+    });
+
+    it('sorts from a button inside each sortable th, which announces the direction', () => {
+      // A <th onClick> is not reachable from the keyboard; a button is.
+      const onSort = vi.fn();
+      const currencies = [makeCurrency({ code: 'CAD', name: 'Canadian Dollar' })];
+
+      render(<CurrencyList currencies={currencies} {...defaultProps} onSort={onSort} sortField="code" sortDirection="desc" />);
+      const codeButton = screen.getByRole('button', { name: /^Code/ });
+      expect(codeButton.closest('th')).toHaveAttribute('aria-sort', 'descending');
+      expect(screen.getByRole('button', { name: /^Name/ }).closest('th')).toHaveAttribute('aria-sort', 'none');
+      expect(codeButton.closest('th')!.className).toContain('tracking-wider');
+      fireEvent.click(screen.getByRole('button', { name: /^Name/ }));
+      expect(onSort).toHaveBeenCalledWith('name');
+    });
+
+    it('explains the rate column in a tooltip rather than a title on every value', () => {
+      const currencies = [makeCurrency({ code: 'USD', name: 'US Dollar' })];
+      render(<CurrencyList currencies={currencies} {...defaultProps} />);
+      expect(screen.getByRole('button', { name: /What one unit of each currency is worth in/ })).toBeInTheDocument();
+      expect(document.querySelector('tbody [title]')).toBeNull();
     });
 
     it('uses local sort state when no onSort prop is provided', () => {
@@ -781,7 +802,7 @@ describe('CurrencyList', () => {
       const usage = { USD: { accounts: 3, securities: 0 } };
 
       render(<CurrencyList currencies={currencies} {...defaultProps} usage={usage} />);
-      expect(screen.getByText('3 accts')).toBeInTheDocument();
+      expect(screen.getByText('3 accounts')).toBeInTheDocument();
     });
 
     it('shows only securities usage when accounts is zero', () => {
@@ -789,7 +810,7 @@ describe('CurrencyList', () => {
       const usage = { USD: { accounts: 0, securities: 2 } };
 
       render(<CurrencyList currencies={currencies} {...defaultProps} usage={usage} />);
-      expect(screen.getByText('2 secs')).toBeInTheDocument();
+      expect(screen.getByText('2 securities')).toBeInTheDocument();
     });
 
     it('shows singular account label for one account', () => {
@@ -797,7 +818,7 @@ describe('CurrencyList', () => {
       const usage = { USD: { accounts: 1, securities: 0 } };
 
       render(<CurrencyList currencies={currencies} {...defaultProps} usage={usage} />);
-      expect(screen.getByText('1 acct')).toBeInTheDocument();
+      expect(screen.getByText('1 account')).toBeInTheDocument();
     });
 
     it('shows singular security label for one security', () => {
@@ -805,7 +826,7 @@ describe('CurrencyList', () => {
       const usage = { USD: { accounts: 0, securities: 1 } };
 
       render(<CurrencyList currencies={currencies} {...defaultProps} usage={usage} />);
-      expect(screen.getByText('1 sec')).toBeInTheDocument();
+      expect(screen.getByText('1 security')).toBeInTheDocument();
     });
 
     it('shows dash when no usage exists for currency', () => {

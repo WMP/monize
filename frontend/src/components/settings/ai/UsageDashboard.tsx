@@ -14,12 +14,17 @@ import { usePreferencesStore } from '@/store/preferencesStore';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { preferredCurrency } from '@/lib/default-currency';
+import { Th } from '@/components/ui/Table';
 
 interface UsageDashboardProps {
   usage: AiUsageSummary;
   configs: AiProviderConfig[];
   onPeriodChange: (days?: number) => void;
 }
+
+// The two tables sit inside the dashboard card, flush with its headings, so
+// the header cells keep TH_CLASS's face with the compact padding of the rows.
+const USAGE_CELL_PAD = 'px-2 pt-0 pb-2 first:pl-0 last:pr-0';
 
 const PERIOD_OPTIONS = [
   { labelKey: 'periods.d7', value: 7 },
@@ -246,22 +251,22 @@ export function UsageDashboard({ usage, configs, onPeriodChange }: UsageDashboar
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
-                  <th className="pb-2 font-medium">{t('byProvider.provider')}</th>
-                  <th className="pb-2 font-medium text-right">{t('byProvider.requests')}</th>
-                  <th className="pb-2 font-medium text-right">{t('byProvider.inputTokens')}</th>
-                  <th className="pb-2 font-medium text-right">{t('byProvider.outputTokens')}</th>
-                  <th className="pb-2 font-medium text-right">{t('byProvider.estCost')}</th>
+                <tr className="border-b border-gray-200 dark:border-gray-700">
+                  <Th className={USAGE_CELL_PAD}>{t('byProvider.provider')}</Th>
+                  <Th align="right" className={USAGE_CELL_PAD}>{t('byProvider.requests')}</Th>
+                  <Th align="right" className={USAGE_CELL_PAD}>{t('byProvider.inputTokens')}</Th>
+                  <Th align="right" className={USAGE_CELL_PAD}>{t('byProvider.outputTokens')}</Th>
+                  <Th align="right" className={USAGE_CELL_PAD}>{t('byProvider.estCost')}</Th>
                 </tr>
               </thead>
               <tbody>
                 {usage.byProvider.map((row) => (
                   <tr key={row.provider} className="border-b border-gray-100 dark:border-gray-700/50">
-                    <td className="py-2 text-gray-900 dark:text-gray-100">{resolveProviderName(row.provider, configs)}</td>
-                    <td className="py-2 text-right text-gray-600 dark:text-gray-300">{formatNumber(row.requests, 0)}</td>
-                    <td className="py-2 text-right text-gray-600 dark:text-gray-300">{formatNumber(row.inputTokens, 0)}</td>
-                    <td className="py-2 text-right text-gray-600 dark:text-gray-300">{formatNumber(row.outputTokens, 0)}</td>
-                    <td className="py-2 text-right text-gray-600 dark:text-gray-300">{renderBucket(row.estimatedCostByCurrency)}</td>
+                    <td className="py-2 px-2 first:pl-0 last:pr-0 text-gray-900 dark:text-gray-100">{resolveProviderName(row.provider, configs)}</td>
+                    <td className="py-2 px-2 first:pl-0 last:pr-0 text-right text-gray-600 dark:text-gray-300">{formatNumber(row.requests, 0)}</td>
+                    <td className="py-2 px-2 first:pl-0 last:pr-0 text-right text-gray-600 dark:text-gray-300">{formatNumber(row.inputTokens, 0)}</td>
+                    <td className="py-2 px-2 first:pl-0 last:pr-0 text-right text-gray-600 dark:text-gray-300">{formatNumber(row.outputTokens, 0)}</td>
+                    <td className="py-2 px-2 first:pl-0 last:pr-0 text-right text-gray-600 dark:text-gray-300">{renderBucket(row.estimatedCostByCurrency)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -277,30 +282,30 @@ export function UsageDashboard({ usage, configs, onPeriodChange }: UsageDashboar
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
-                  <th className="pb-2 font-medium">{t('recentActivity.date')}</th>
-                  <th className="pb-2 font-medium">{t('recentActivity.provider')}</th>
-                  <th className="pb-2 font-medium">{t('recentActivity.feature')}</th>
-                  <th className="pb-2 font-medium text-right">{t('recentActivity.tokens')}</th>
-                  <th className="pb-2 font-medium text-right">{t('recentActivity.duration')}</th>
-                  <th className="pb-2 font-medium text-right">{t('recentActivity.estCost')}</th>
+                <tr className="border-b border-gray-200 dark:border-gray-700">
+                  <Th className={USAGE_CELL_PAD}>{t('recentActivity.date')}</Th>
+                  <Th className={USAGE_CELL_PAD}>{t('recentActivity.provider')}</Th>
+                  <Th className={USAGE_CELL_PAD}>{t('recentActivity.feature')}</Th>
+                  <Th align="right" className={USAGE_CELL_PAD}>{t('recentActivity.tokens')}</Th>
+                  <Th align="right" className={USAGE_CELL_PAD}>{t('recentActivity.duration')}</Th>
+                  <Th align="right" className={USAGE_CELL_PAD}>{t('recentActivity.estCost')}</Th>
                 </tr>
               </thead>
               <tbody>
                 {usage.recentLogs.map((log) => (
                   <tr key={log.id} className="border-b border-gray-100 dark:border-gray-700/50">
-                    <td className="py-2 text-gray-600 dark:text-gray-300">
+                    <td className="py-2 px-2 first:pl-0 last:pr-0 text-gray-600 dark:text-gray-300">
                       {formatDate(new Date(log.createdAt))}
                     </td>
-                    <td className="py-2 text-gray-900 dark:text-gray-100">{resolveLogName(log.provider, log.model, configs)}</td>
-                    <td className="py-2 text-gray-600 dark:text-gray-300">{log.feature}</td>
-                    <td className="py-2 text-right text-gray-600 dark:text-gray-300">
+                    <td className="py-2 px-2 first:pl-0 last:pr-0 text-gray-900 dark:text-gray-100">{resolveLogName(log.provider, log.model, configs)}</td>
+                    <td className="py-2 px-2 first:pl-0 last:pr-0 text-gray-600 dark:text-gray-300">{log.feature}</td>
+                    <td className="py-2 px-2 first:pl-0 last:pr-0 text-right text-gray-600 dark:text-gray-300">
                       {formatNumber(log.inputTokens + log.outputTokens, 0)}
                     </td>
-                    <td className="py-2 text-right text-gray-600 dark:text-gray-300">
+                    <td className="py-2 px-2 first:pl-0 last:pr-0 text-right text-gray-600 dark:text-gray-300">
                       {log.durationMs}ms
                     </td>
-                    <td className="py-2 text-right text-gray-600 dark:text-gray-300">
+                    <td className="py-2 px-2 first:pl-0 last:pr-0 text-right text-gray-600 dark:text-gray-300">
                       {renderLogCost(log.estimatedCost, log.costCurrency)}
                     </td>
                   </tr>

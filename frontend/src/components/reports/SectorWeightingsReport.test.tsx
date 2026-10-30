@@ -267,7 +267,7 @@ describe('SectorWeightingsReport', () => {
     await waitFor(() => {
       expect(screen.getByText(/Failed to load report data/)).toBeInTheDocument();
     });
-    expect(screen.getByRole('button', { name: /Try again/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Try Again/ })).toBeInTheDocument();
   });
 
   it('clears filters', async () => {

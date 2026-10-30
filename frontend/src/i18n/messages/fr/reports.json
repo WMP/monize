@@ -4,6 +4,7 @@
     "subtitle": "Générez des analyses sur votre santé financière",
     "searchPlaceholder": "Rechercher des rapports par nom ou description...",
     "allReports": "Tous les rapports",
+    "categoryWithCount": "{label} ({count})",
     "removeFavourite": "Retirer des favoris",
     "addFavourite": "Ajouter aux favoris",
     "tableReport": "Rapport",
@@ -137,7 +138,8 @@
   },
   "reportPage": {
     "notFound": "Rapport introuvable",
-    "notFoundDesc": "Le rapport demandé n'existe pas."
+    "notFoundDesc": "Le rapport demandé n'existe pas.",
+    "viewLabel": "Affichage"
   },
   "error": {
     "defaultMessage": "Impossible de charger les données du rapport. Veuillez réessayer.",
@@ -514,8 +516,6 @@
     "viewMonthly": "Mensuel",
     "viewDaily": "Quotidien",
     "viewBySecurity": "Par titre",
-    "displayChart": "Graphique",
-    "displayTable": "Tableau",
     "showLabel": "Afficher :",
     "seriesDividends": "Dividendes",
     "seriesInterest": "Intérêts",
@@ -1251,7 +1251,6 @@
     "incompleteTooltip": "Certains jours de cette période manquent d'un cours, d'un taux de change ou d'un solde de trésorerie, les chiffres qui dépendent de chaque jour ne sont donc pas affichés.",
     "measuredFromClose": "Depuis la clôture de la séance du {date}",
     "notAvailable": "N/A",
-    "intradayUnavailable": "Données de prix intraday détaillées indisponibles",
     "intradayUnavailableTitle": "Vue intraday indisponible pour cette combinaison de comptes",
     "intradayUnavailableDesc": "Une ou plusieurs positions utilisent un fournisseur de cours (MSN Money) qui n'expose pas les données intraday{skipped}. Passez à une plage plus longue pour voir les instantanés quotidiens.",
     "intradayUnavailableSkipped": " : {symbols}",
@@ -1302,8 +1301,6 @@
     "costBasis": "Coût de revient",
     "realizedGainLoss": "Gain/perte réalisé",
     "securitiesSold": "Titres vendus",
-    "viewChart": "Graphique",
-    "viewTable": "Tableau",
     "noTransactions": "Aucune transaction de vente trouvée pour cette période.",
     "noGainsLosses": "Aucun gain ni perte à afficher.",
     "bySecurityTitle": "Gains réalisés par titre",
@@ -1339,7 +1336,7 @@
     "sixMonthTotal": "Total sur 6 mois",
     "monthlyEstimate": "Estimation mensuelle",
     "identifiedPayees": "bénéficiaires identifiés",
-    "minOccurrencesLabel": "Occurrences minimales :",
+    "minOccurrencesLabel": "Occurrences minimales",
     "inLast6Months": "(dans les 6 derniers mois)",
     "noRecurring": "Aucune dépense récurrente trouvée avec {count}+ occurrences dans les 6 derniers mois.",
     "failedToLoad": "Impossible de charger les données des dépenses récurrentes.",
@@ -1699,8 +1696,6 @@
     "activeBills": "Factures actives",
     "overdue": "En retard",
     "thisMonth": "Ce mois",
-    "autoPostsTitle": "Publication automatique à l'échéance",
-    "manualPostTitle": "Nécessite une publication manuelle",
     "autoLabel": "Auto",
     "manualLabel": "Manuel",
     "overdueLabel": "En retard",
@@ -1834,6 +1829,7 @@
     "removeAriaLabel": "Retirer {title} de la comparaison",
     "removeTitle": "Retirer de la comparaison",
     "runFailed": "Échec de l'exécution",
+    "never": "Jamais",
     "errors": {
       "loadScenarioFailed": "Impossible de charger le scénario.",
       "simulationFailed": "La simulation a échoué."
@@ -1847,7 +1843,6 @@
     "backToReports": "Retour aux rapports",
     "deleteButton": "Supprimer le rapport",
     "deleteConfirmMessage": "Êtes-vous sûr de vouloir supprimer « {name} » ? Cette action est irréversible.",
-    "deleting": "Suppression...",
     "toasts": {
       "loadFailed": "Impossible de charger le rapport",
       "updated": "Rapport mis à jour",

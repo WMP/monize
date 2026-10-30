@@ -45,6 +45,9 @@ import {
   portfolioPartialTotal,
   type PortfolioCompleteness,
 } from '@/lib/net-worth-completeness';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
+import { ChevronDownIcon } from '@heroicons/react/24/outline';
 
 type HoldingsSortField = 'symbol' | 'quantity' | 'averageCost' | 'currentPrice' | 'marketValue' | 'gainLoss' | 'gainLossPercent';
 
@@ -404,9 +407,7 @@ export function InvestmentPerformanceReport() {
   if (!portfolio || !summaryValues || portfolio.holdings.length === 0) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-        <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-          {t('investmentPerformance.noHoldings')}
-        </p>
+        <EmptyState title={t('investmentPerformance.noHoldings')} />
       </div>
     );
   }
@@ -469,24 +470,20 @@ export function InvestmentPerformanceReport() {
               onChange={setSelectedAccountIds}
             />
           </div>
-          <div className="flex flex-wrap gap-2 items-center">
+          <div className={SEGMENTED_GROUP_CLASS} role="group" aria-label={t('reportPage.viewLabel')}>
             <button
+              type="button"
               onClick={() => setViewType('performance')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                viewType === 'performance'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-              }`}
+              aria-pressed={viewType === 'performance'}
+              className={segmentClass(viewType === 'performance')}
             >
               {t('investmentPerformance.viewHoldings')}
             </button>
             <button
+              type="button"
               onClick={() => setViewType('allocation')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                viewType === 'allocation'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-              }`}
+              aria-pressed={viewType === 'allocation'}
+              className={segmentClass(viewType === 'allocation')}
             >
               {t('investmentPerformance.viewAllocation')}
             </button>
@@ -620,15 +617,7 @@ export function InvestmentPerformanceReport() {
                                 </div>
                               </div>
                               {isExpandable && (
-                                <svg
-                                  aria-hidden="true"
-                                  className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                >
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                </svg>
+                                <ChevronDownIcon className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} aria-hidden="true" />
                               )}
                             </div>
                           </td>
@@ -648,11 +637,11 @@ export function InvestmentPerformanceReport() {
                             <CellLabel className={CAPTION_CLASS}>{columns.marketValue.label}</CellLabel>
                             {fmtHolding(holding.marketValue, holding.currencyCode)}
                           </td>
-                          <td role="cell" className={`${CELL_PLACEMENT.gainLoss} ${(holding.gainLoss || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} ${FIGURE_CELL}`}>
+                          <td role="cell" className={`${CELL_PLACEMENT.gainLoss} ${gainLossColor(holding.gainLoss || 0)} ${FIGURE_CELL}`}>
                             <CellLabel className={CAPTION_CLASS}>{columns.gainLoss.label}</CellLabel>
                             {fmtHolding(holding.gainLoss, holding.currencyCode)}
                           </td>
-                          <td role="cell" className={`${CELL_PLACEMENT.gainLossPercent} font-medium ${(holding.gainLossPercent || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} ${FIGURE_CELL}`}>
+                          <td role="cell" className={`${CELL_PLACEMENT.gainLossPercent} font-medium ${gainLossColor(holding.gainLossPercent || 0)} ${FIGURE_CELL}`}>
                             <CellLabel className={CAPTION_CLASS}>{columns.gainLossPercent.label}</CellLabel>
                             {holding.gainLossPercent !== null ? formatPercent(holding.gainLossPercent) : t('investmentPerformance.na')}
                           </td>
@@ -682,11 +671,11 @@ export function InvestmentPerformanceReport() {
                               <CellLabel className={CAPTION_CLASS}>{columns.marketValue.label}</CellLabel>
                               {fmtHolding(sub.marketValue, sub.currencyCode)}
                             </td>
-                            <td role="cell" className={`${CELL_PLACEMENT.gainLoss} ${(sub.gainLoss || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} ${CHILD_FIGURE_CELL}`}>
+                            <td role="cell" className={`${CELL_PLACEMENT.gainLoss} ${gainLossColor(sub.gainLoss || 0)} ${CHILD_FIGURE_CELL}`}>
                               <CellLabel className={CAPTION_CLASS}>{columns.gainLoss.label}</CellLabel>
                               {fmtHolding(sub.gainLoss, sub.currencyCode)}
                             </td>
-                            <td role="cell" className={`${CELL_PLACEMENT.gainLossPercent} ${(sub.gainLossPercent || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} ${CHILD_FIGURE_CELL}`}>
+                            <td role="cell" className={`${CELL_PLACEMENT.gainLossPercent} ${gainLossColor(sub.gainLossPercent || 0)} ${CHILD_FIGURE_CELL}`}>
                               <CellLabel className={CAPTION_CLASS}>{columns.gainLossPercent.label}</CellLabel>
                               {sub.gainLossPercent !== null ? formatPercent(sub.gainLossPercent) : t('investmentPerformance.na')}
                             </td>

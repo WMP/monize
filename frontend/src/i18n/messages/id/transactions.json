@@ -175,7 +175,6 @@
       "viewPayeeTitle": "Lihat detail {name}",
       "investmentLabel": "Investasi",
       "linkedInvestmentTitle": "Lihat di Investasi",
-      "linkedInvestmentBadgeTitle": "Transaksi ini ditautkan ke transaksi investasi",
       "filterByDate": "Filter berdasarkan tanggal \"{date}\"",
       "filterByAccount": "Filter berdasarkan \"{name}\"",
       "filterByPayee": "Filter berdasarkan \"{name}\"",
@@ -223,10 +222,10 @@
       "show": "Tampilkan filter"
     },
     "accounts": {
-      "label": "Tampilkan akun:",
-      "all": "Semua",
-      "active": "Aktif",
-      "closed": "Ditutup"
+      "label": "Tampilkan akun",
+      "allCount": "Semua ({count})",
+      "activeCount": "Aktif ({count})",
+      "closedCount": "Ditutup ({count})"
     },
     "fields": {
       "accounts": "Akun",
@@ -320,7 +319,7 @@
     },
     "modal": {
       "title": "Perbarui Transaksi Massal",
-      "subtitle": "Perbarui {count, plural, one {# transaksi yang dipilih} other {# transaksi yang dipilih}}. Aktifkan kolom yang ingin Anda ubah.",
+      "help": "Aktifkan kolom yang ingin Anda ubah.",
       "submitLabel": "Perbarui {count, plural, one {# Transaksi} other {# Transaksi}}",
       "payee": "Penerima",
       "category": "Kategori",
@@ -368,8 +367,9 @@
       "fromAccount": "Dari Akun",
       "toAccount": "Ke Akun",
       "transferAmount": "Jumlah Transfer",
-      "transferAmountWithCurrency": "Jumlah Transfer ({currency})",
-      "amountReceived": "Jumlah Diterima ({currency})",
+      "amountReceivedLabel": "Jumlah Diterima",
+      "transferAmountInCurrency": "Jumlah Transfer ({currency})",
+      "amountReceivedInCurrency": "Jumlah Diterima ({currency})",
       "payeeOptional": "Penerima (Opsional)",
       "categoryOptional": "Kategori (Opsional)"
     },
@@ -399,10 +399,16 @@
     "submitCreateAndNewDescription": "Simpan dan mulai yang baru, dengan akun dan tanggal yang sama.",
     "submitOptions": "Pilih apa yang terjadi setelah membuat",
     "submitUpdate": "Perbarui {mode}",
+    "submitConvert": "Konversi ke {mode}",
     "reconciledConfirm": {
       "title": "Edit transaksi yang telah direkonsiliasi?",
       "message": "Transaksi ini telah direkonsiliasi. Mengubahnya akan memengaruhi rekonsiliasi yang telah selesai. Apakah Anda tetap ingin menyimpan perubahan?",
       "confirm": "Simpan perubahan"
+    },
+    "counterpartConfirm": {
+      "title": "Konversi transfer ini?",
+      "message": "Sisi lain transfer ini sudah dibersihkan atau direkonsiliasi. Mengonversinya menjadi transaksi akan menghapus entri tersebut dari akun lain dan mengubah saldo yang telah dicocokkan dengan laporan. Lanjutkan?",
+      "confirm": "Tetap konversi"
     },
     "modeLabel": {
       "transfer": "Transfer",
@@ -432,7 +438,8 @@
       "destinationRequired": "Silakan pilih akun tujuan",
       "sameAccount": "Akun sumber dan tujuan harus berbeda",
       "negativeTransfer": "Jumlah transfer tidak boleh negatif",
-      "convertToTransferUnsupported": "Transaksi yang sudah ada tidak dapat diubah menjadi transfer di sini. Hapus transaksi tersebut dan buat transfer sebagai gantinya.",
+      "convertedToTransfer": "Dikonversi menjadi transfer",
+      "convertedToTransaction": "Dikonversi menjadi transaksi",
       "payeeCreated": "Penerima \"{name}\" dibuat",
       "payeeCreateFailed": "Gagal membuat penerima",
       "payeeReactivated": "Penerima \"{name}\" diaktifkan kembali",
@@ -475,7 +482,8 @@
       "loading": "Memuat garansi",
       "loadError": "Garansi untuk transaksi ini tidak dapat dimuat.",
       "empty": "Belum ada garansi"
-    }
+    },
+    "conversionLockedNote": "Transfer ini milik transaksi terpisah atau akun pemilik lain, sehingga di sini hanya dapat tetap menjadi transfer. Ubah dari pemisahan atau hapus dan buat entri yang Anda inginkan."
   },
   "splitEditor": {
     "header": "Detail Pembagian",
@@ -538,7 +546,7 @@
     "quantityPlaceholder": "Kuantitas",
     "pricePlaceholder": "Harga",
     "commissionPlaceholder": "Komisi",
-    "amountPlaceholder": "Jumlah ({currency})",
+    "amountOnlyPlaceholder": "Jumlah",
     "ratePlaceholder": "{to} per 1 {from}",
     "ariaRate": "Nilai tukar ({to} per 1 {from})",
     "rateHint": "Jumlah, harga, dan komisi dalam {from}; kurs ini mengonversi dampak kas ke {to}.",

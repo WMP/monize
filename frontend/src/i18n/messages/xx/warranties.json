@@ -22,7 +22,14 @@
       "expiring": "[XX-Expiring-XX]",
       "active": "[XX-Active-XX]",
       "expired": "[XX-Expired-XX]",
-      "lifetime": "[XX-Lifetime-XX]"
+      "lifetime": "[XX-Lifetime-XX]",
+      "counted": {
+        "all": "[XX-All ({count})-XX]",
+        "expiring": "[XX-Expiring ({count})-XX]",
+        "active": "[XX-Active ({count})-XX]",
+        "expired": "[XX-Expired ({count})-XX]",
+        "lifetime": "[XX-Lifetime ({count})-XX]"
+      }
     },
     "search": {
       "label": "[XX-Search warranties-XX]",
@@ -163,14 +170,21 @@
     "notFound": "[XX-This warranty was not found.-XX]",
     "retry": "[XX-Try again-XX]",
     "archivedBadge": "[XX-Archived-XX]",
+    "switcher": {
+      "trigger": "[XX-Switch warranty-XX]",
+      "placeholder": "[XX-Filter warranties...-XX]",
+      "noMatches": "[XX-No warranties match-XX]"
+    },
+    "summary": {
+      "expires": "[XX-Expires-XX]",
+      "purchased": "[XX-Purchased-XX]",
+      "price": "[XX-Purchase Price-XX]",
+      "openClaims": "[XX-Open Claims-XX]"
+    },
     "card": {
       "title": "[XX-Details-XX]",
-      "expires": "[XX-Expires-XX]",
-      "daysLeft": "[XX-Time left-XX]",
       "kind": "[XX-Warranty type-XX]",
       "vendor": "[XX-Vendor-XX]",
-      "purchaseDate": "[XX-Purchased-XX]",
-      "price": "[XX-Purchase price-XX]",
       "serialNumbers": "[XX-Serial numbers-XX]",
       "model": "[XX-Model number-XX]",
       "productUrl": "[XX-Product page-XX]",
@@ -228,7 +242,7 @@
     "form": {
       "claimDateLabel": "[XX-Claim date-XX]",
       "statusLabel": "[XX-Status-XX]",
-      "descriptionLabel": "[XX-What went wrong-XX]",
+      "descriptionLabel": "[XX-Description-XX]",
       "resolutionLabel": "[XX-Resolution-XX]",
       "resolvedOnLabel": "[XX-Closed on-XX]",
       "resolvedOnHint": "[XX-Only for a resolved or denied claim-XX]",

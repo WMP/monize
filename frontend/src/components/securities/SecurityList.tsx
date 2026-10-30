@@ -16,7 +16,9 @@ import { RowActions } from '@/components/ui/row-actions/RowActions';
 import { RowActionSheet } from '@/components/ui/row-actions/RowActionSheet';
 import { DensityToggleBar } from '@/components/ui/DensityToggle';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { CellLabel } from '@/components/ui/Table';
+import { CellLabel, SortableTh, Th } from '@/components/ui/Table';
+import { Badge } from '@/components/ui/Badge';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import {
   SORT_FIELDS,
   buildSecurityActions,
@@ -85,9 +87,8 @@ function FavouriteStar({
  * The Active/Inactive pill, in both layouts.
  *
  * A dense row drops to the abbreviated labels (the full words do not fit that
- * row height); the colour is the status, never the layout. It stays in this file
- * for the same reason the star does: `rounded-full` + `text-xs` + `font-medium`
- * is the `ui-conventions` pill fingerprint, baselined against this path.
+ * row height); the colour is the status, never the layout, and the pill is
+ * the shared `Badge`.
  */
 function SecurityStatusPill({
   security,
@@ -99,15 +100,15 @@ function SecurityStatusPill({
   const t = useTranslations('securities');
   if (security.isActive) {
     return (
-      <span className={`inline-flex items-center rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 ${density === 'dense' ? 'px-1.5 py-0.5' : 'px-2.5 py-0.5'}`}>
+      <Badge variant="green">
         {density === 'dense' ? t('list.statusBadge.activeShort') : t('list.statusBadge.active')}
-      </span>
+      </Badge>
     );
   }
   return (
-    <span className={`inline-flex items-center rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300 ${density === 'dense' ? 'px-1.5 py-0.5' : 'px-2.5 py-0.5'}`}>
+    <Badge variant="gray">
       {density === 'dense' ? t('list.statusBadge.inactiveShort') : t('list.statusBadge.inactive')}
-    </span>
+    </Badge>
   );
 }
 
@@ -504,6 +505,7 @@ export function SecurityList({
       }
     }
   }, [onSort, localSortField]);
+  const sortProps = { sortField, sortDirection, onSort: handleSort };
 
   // Long-press opens a per-row action sheet on mobile (and via right-click).
   const [contextSecurity, setContextSecurity] = useState<Security | null>(null);
@@ -619,76 +621,58 @@ export function SecurityList({
             </tr>
             ) : (
             <tr>
-              <th className={`${headerPadding} text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>
+              <Th align="center" className={headerPadding}>
                 <span className="sr-only">{t('list.columns.favourite')}</span>
-              </th>
-              <th
-                className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200`}
-                onClick={() => handleSort('symbol')}
+              </Th>
+              <SortableTh {...sortProps} field="symbol" className={headerPadding}>
+                {sortFieldLabels.symbol}
+              </SortableTh>
+              <SortableTh {...sortProps} field="name" className={headerPadding}>
+                {sortFieldLabels.name}
+              </SortableTh>
+              <SortableTh {...sortProps} field="type" className={headerPadding}>
+                {sortFieldLabels.type}
+              </SortableTh>
+              <SortableTh {...sortProps} field="shares" align="right" className={headerPadding}>
+                {sortFieldLabels.shares}
+              </SortableTh>
+              <SortableTh
+                {...sortProps}
+                field="value"
+                align="right"
+                className={`${headerPadding} whitespace-nowrap`}
+                adornment={<InfoTooltip text={t('list.columnTitles.value')} align="right" usePortal />}
               >
-                {sortFieldLabels.symbol}<SortIcon field="symbol" sortField={sortField} sortDirection={sortDirection} />
-              </th>
-              <th
-                className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200`}
-                onClick={() => handleSort('name')}
-              >
-                {sortFieldLabels.name}<SortIcon field="name" sortField={sortField} sortDirection={sortDirection} />
-              </th>
-              <th
-                className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200`}
-                onClick={() => handleSort('type')}
-              >
-                {sortFieldLabels.type}<SortIcon field="type" sortField={sortField} sortDirection={sortDirection} />
-              </th>
-              <th
-                className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200`}
-                onClick={() => handleSort('shares')}
-              >
-                {sortFieldLabels.shares}<SortIcon field="shares" sortField={sortField} sortDirection={sortDirection} />
-              </th>
-              <th
-                className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200`}
-                onClick={() => handleSort('value')}
-                title={t('list.columnTitles.value')}
-              >
-                {sortFieldLabels.value}<SortIcon field="value" sortField={sortField} sortDirection={sortDirection} />
-              </th>
+                {sortFieldLabels.value}
+              </SortableTh>
               {density === 'normal' && (
                 <>
-                  <th
-                    className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 hidden sm:table-cell`}
-                    onClick={() => handleSort('exchange')}
+                  <SortableTh {...sortProps} field="exchange" className={`${headerPadding} hidden sm:table-cell`}>
+                    {sortFieldLabels.exchange}
+                  </SortableTh>
+                  <SortableTh {...sortProps} field="currency" className={`${headerPadding} hidden sm:table-cell`}>
+                    {sortFieldLabels.currency}
+                  </SortableTh>
+                  <SortableTh {...sortProps} field="provider" className={`${headerPadding} hidden md:table-cell`}>
+                    {sortFieldLabels.provider}
+                  </SortableTh>
+                  <SortableTh
+                    {...sortProps}
+                    field="source"
+                    className={`${headerPadding} hidden md:table-cell whitespace-nowrap`}
+                    adornment={<InfoTooltip text={t('list.columnTitles.source')} usePortal />}
                   >
-                    {sortFieldLabels.exchange}<SortIcon field="exchange" sortField={sortField} sortDirection={sortDirection} />
-                  </th>
-                  <th
-                    className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 hidden sm:table-cell`}
-                    onClick={() => handleSort('currency')}
-                  >
-                    {sortFieldLabels.currency}<SortIcon field="currency" sortField={sortField} sortDirection={sortDirection} />
-                  </th>
-                  <th
-                    className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 hidden md:table-cell`}
-                    onClick={() => handleSort('provider')}
-                    title={t('list.columnTitles.source')}
-                  >
-                    {sortFieldLabels.provider}<SortIcon field="provider" sortField={sortField} sortDirection={sortDirection} />
-                  </th>
-                  <th
-                    className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 hidden md:table-cell`}
-                    onClick={() => handleSort('source')}
-                    title={t('list.columnTitles.source')}
-                  >
-                    {sortFieldLabels.source}<SortIcon field="source" sortField={sortField} sortDirection={sortDirection} />
-                  </th>
+                    {sortFieldLabels.source}
+                  </SortableTh>
                 </>
               )}
-              <th className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell`}>
-                {t('list.columns.status')}
-              </th>
-              <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell sticky right-0 bg-gray-50 dark:bg-gray-800`}>
+              <Th className={`${headerPadding} hidden sm:table-cell`}>{t('list.columns.status')}</Th>
+              <Th
+                align="right"
+                className={`${headerPadding} hidden sm:table-cell sticky right-0 bg-gray-50 dark:bg-gray-800`}
+              >
                 {t('list.columns.actions')}
-              </th>
+              </Th>
             </tr>
             )}
           </thead>

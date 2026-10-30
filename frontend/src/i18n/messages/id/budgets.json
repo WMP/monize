@@ -34,7 +34,8 @@
       "WANT": "Keinginan",
       "SAVING": "Tabungan"
     },
-    "saving": "Menyimpan..."
+    "saving": "Menyimpan...",
+    "remove": "Hapus dari anggaran"
   },
   "categoryList": {
     "title": "Anggaran Kategori",
@@ -83,7 +84,6 @@
     "baseIncomePlaceholder": "Perkiraan pendapatan bulanan",
     "active": "Aktif",
     "saveChanges": "Simpan Perubahan",
-    "saving": "Menyimpan...",
     "typeOptions": {
       "MONTHLY": "Bulanan",
       "ANNUAL": "Tahunan",
@@ -109,7 +109,8 @@
     "title": "Peta Panas Pengeluaran - {monthLabel}",
     "ariaLabel": "Peta panas pengeluaran",
     "less": "Sedikit",
-    "more": "Banyak"
+    "more": "Banyak",
+    "readout": "{date}: {amount}"
   },
   "periodDetail": {
     "summaryCards": {
@@ -134,7 +135,8 @@
     "rolloverBadge": "+{amount} rollover",
     "underBudgetLabel": "{amount} di bawah anggaran",
     "overBudgetLabel": "{amount} melebihi anggaran",
-    "carriedForward": "{amount} dibawa ke depan"
+    "carriedForward": "{amount} dibawa ke depan",
+    "dateRange": "{start} sampai {end}"
   },
   "periodSelector": {
     "label": "Periode:",
@@ -471,11 +473,18 @@
         "description": "Buat anggaran pertama Anda dengan menganalisis riwayat pengeluaran. Wizard akan menyarankan jumlah realistis berdasarkan transaksi Anda.",
         "cta": "Buat Anggaran Pertama Anda"
       },
+      "loading": "Memuat anggaran...",
+      "columns": {
+        "name": "Nama",
+        "strategy": "Strategi",
+        "type": "Jenis",
+        "categories": "Kategori",
+        "started": "Dimulai",
+        "status": "Status"
+      },
       "card": {
         "active": "Aktif",
-        "inactive": "Tidak Aktif",
-        "categories": "{count} kategori",
-        "started": "Dimulai {date}"
+        "inactive": "Tidak Aktif"
       }
     },
     "create": {
@@ -484,6 +493,9 @@
     },
     "detail": {
       "backToBudgets": "Kembali ke Anggaran",
+      "switchBudget": "Pindah ke anggaran lain",
+      "switchPlaceholder": "Saring anggaran...",
+      "switchNoMatches": "Tidak ada anggaran yang cocok",
       "notFound": "Anggaran tidak ditemukan",
       "delete": {
         "title": "Hapus Anggaran",
@@ -501,7 +513,7 @@
     "edit": {
       "subtitlePrefix": "Edit: ",
       "subtitle": "Perbarui pengaturan anggaran dan alokasi kategori",
-      "backToDashboard": "Kembali ke Dasbor",
+      "backToBudget": "Kembali ke {name}",
       "budgetSettings": "Pengaturan Anggaran",
       "categoryAllocations": "Alokasi Kategori",
       "income": "Pendapatan",
@@ -510,12 +522,19 @@
       "percentUsed": "{percent}% terpakai",
       "rolloverType": "Rollover: {type}",
       "editCategoryTitle": "Edit {name}",
+      "remove": {
+        "title": "Hapus Kategori",
+        "message": "Hapus \"{name}\" dari anggaran ini? Alokasi {amount} miliknya tidak akan dianggarkan lagi, dan riwayatnya di periode anggaran sebelumnya akan dihapus. Transaksi Anda tidak terpengaruh. Tindakan ini tidak dapat dibatalkan.",
+        "confirm": "Hapus"
+      },
       "toasts": {
         "updated": "Anggaran diperbarui",
         "updateFailed": "Gagal memperbarui anggaran",
         "categoryUpdated": "Kategori diperbarui",
         "categoryFailed": "Gagal memperbarui kategori",
-        "loadFailed": "Gagal memuat anggaran"
+        "loadFailed": "Gagal memuat anggaran",
+        "categoryRemoved": "Kategori dihapus dari anggaran",
+        "categoryRemoveFailed": "Gagal menghapus kategori"
       }
     }
   },

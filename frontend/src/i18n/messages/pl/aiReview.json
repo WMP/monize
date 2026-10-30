@@ -17,7 +17,8 @@
     "label": "Filtruj według rodzaju",
     "all": "Wszystkie",
     "email_receipt": "Paragony z e-maili",
-    "transaction_review": "Reguły"
+    "transaction_review": "Reguły",
+    "option": "{label} ({count})"
   },
   "status": {
     "pending": "Oczekuje",

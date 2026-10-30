@@ -123,6 +123,8 @@
       "createdTransaction": "लेनदेन {payee} {amount} बनाया गया",
       "updatedTransaction": "लेनदेन {payee} {amount} अपडेट हुआ",
       "deletedTransaction": "लेनदेन {payee} {amount} हटाया गया",
+      "convertedToTransfer": "लेन-देन {payee} {amount} को स्थानांतरण में बदला गया",
+      "convertedToTransaction": "स्थानांतरण {payee} {amount} को लेन-देन में बदला गया",
       "bulkUpdatedTransactions": "{count, plural, one {# लेनदेन बल्क अपडेट किया गया} other {# लेनदेन बल्क अपडेट किए गए}}",
       "createdTransfer": "{from} से {to} को {amount} का स्थानांतरण बनाया गया",
       "createdInvestmentTransaction": "{action} लेनदेन बनाया गया",
@@ -131,12 +133,6 @@
       "transferredSecurity": "खातों के बीच प्रतिभूति स्थानांतरित की गई",
       "updatedSecurityTransfer": "प्रतिभूति स्थानांतरण अपडेट हुआ",
       "ranTransactionRule": "नियम “{name}” को {count, plural, one {# लेनदेन} other {# लेनदेन}} पर चलाया गया"
-    },
-    "timeAgo": {
-      "justNow": "अभी-अभी",
-      "minutes": "{count} मिनट पहले",
-      "hours": "{count} घंटे पहले",
-      "days": "{count} दिन पहले"
     },
     "undonePrefix": "पूर्ववत: {description}",
     "redonePrefix": "फिर से किया: {description}"

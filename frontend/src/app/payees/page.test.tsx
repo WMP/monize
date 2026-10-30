@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useState } from 'react';
-import { render, screen, waitFor, fireEvent, act } from '@/test/render';
+import { render, screen, waitFor, fireEvent, act, within } from '@/test/render';
 import PayeesPage from './page';
+import { SEGMENTED_TOOLBAR_GROUP_CLASS, toolbarSegmentClass } from '@/components/ui/segmented-control';
 import toast from 'react-hot-toast';
 
 // Mock next/image
@@ -791,6 +792,29 @@ describe('PayeesPage', () => {
         expect(screen.queryByTestId('payee-p-1')).not.toBeInTheDocument();
         expect(screen.getByTestId('payee-p-5')).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('Filter segments', () => {
+    // The two filters are the shared segmented control: a named group whose
+    // pressed segment reports itself, in a toolbar row that wraps on a phone.
+    it('draws the status and category filters as segmented groups with the pressed segment marked', async () => {
+      render(<PayeesPage />);
+      const status = await screen.findByRole('group', { name: 'Status' });
+      expect(status.className).toBe(SEGMENTED_TOOLBAR_GROUP_CLASS);
+      const active = within(status).getByRole('button', { name: 'Active (4)' });
+      expect(active).toHaveAttribute('aria-pressed', 'true');
+      expect(active.className).toBe(toolbarSegmentClass(true));
+      expect(within(status).getByRole('button', { name: 'All (4)' })).toHaveAttribute('aria-pressed', 'false');
+
+      const category = screen.getByRole('group', { name: 'Default Category' });
+      expect(category.className).toBe(SEGMENTED_TOOLBAR_GROUP_CLASS);
+      expect(within(category).getByRole('button', { name: 'All Payees (4)' })).toHaveAttribute('aria-pressed', 'true');
+      const noCategory = within(category).getByRole('button', { name: 'No Default Category (2)' });
+      await act(async () => { fireEvent.click(noCategory); });
+      expect(noCategory).toHaveAttribute('aria-pressed', 'true');
+      expect(noCategory.className).toBe(toolbarSegmentClass(true));
+      expect(status.parentElement!.className).toContain('flex-wrap');
     });
   });
 

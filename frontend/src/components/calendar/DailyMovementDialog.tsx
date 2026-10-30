@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { Modal } from '@/components/ui/Modal';
+import { Button } from '@/components/ui/Button';
 import { TABLE_BODY_CLASS } from '@/components/ui/Table';
 import { ReportError } from '@/components/reports/ReportError';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -42,6 +43,7 @@ export function DailyMovementDialog({
   onClose,
 }: DailyMovementDialogProps) {
   const t = useTranslations('calendar');
+  const tc = useTranslations('common');
   const { formatDate } = useDateFormat();
 
   const requestKey = JSON.stringify([date, [...accountIds].sort(), displayCurrency ?? '']);
@@ -70,6 +72,11 @@ export function DailyMovementDialog({
       maxWidth="lg"
       padding="md"
       title={date === null ? '' : t('change.detailTitle', { date: formatDate(date) })}
+      footer={
+        <Button type="button" variant="outline" onClick={onClose}>
+          {tc('close')}
+        </Button>
+      }
     >
       {detail.error !== null && data === null && (
         <ReportError message={t('errors.movementDetailFailed')} onRetry={detail.reload} />

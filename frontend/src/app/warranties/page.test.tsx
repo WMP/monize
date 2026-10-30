@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, act, waitFor, within } from '@/test/render';
+import { render, screen, fireEvent, act, waitFor, within, cleanup } from '@/test/render';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
 import type { Warranty, WarrantyListResult, WarrantySummary } from '@/types/warranty';
@@ -259,17 +259,68 @@ describe('WarrantiesPage', () => {
     expect(screen.getByTestId('warranty-form')).toBeInTheDocument();
   });
 
-  it('filters by status from the pills, from the first page', async () => {
+  it('filters by status from the segments, from the first page', async () => {
     await renderPage();
     const pills = screen.getByRole('group', { name: 'Filter by status' });
-    expect(within(pills).getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(pills).getByRole('button', { name: 'All (16)' })).toHaveAttribute('aria-pressed', 'true');
     mockList.mockResolvedValue(page([]));
     await act(async () => {
-      fireEvent.click(within(pills).getByRole('button', { name: 'Expired' }));
+      fireEvent.click(within(pills).getByRole('button', { name: 'Expired (3)' }));
     });
     expect(lastListParams()).toMatchObject({ status: 'expired', page: 1 });
-    expect(within(pills).getByRole('button', { name: 'Expired' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(pills).getByRole('button', { name: 'Expired (3)' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText('No warranties match')).toBeInTheDocument();
+  });
+
+  it("counts each status segment from the summary, the shared segmented control's way", async () => {
+    await renderPage();
+    const segments = within(screen.getByRole('group', { name: 'Filter by status' })).getAllByRole('button');
+    expect(segments.map((segment) => segment.textContent)).toEqual([
+      'All (16)',
+      'Expiring (2)',
+      'Active (7)',
+      'Expired (3)',
+      'Lifetime (4)',
+    ]);
+    // A segment, not a Badge pill.
+    expect(segments[0].className).toContain('rounded');
+    expect(segments[0].className).not.toContain('rounded-full');
+  });
+
+  it('drops the counts while they are unknown or count another list', async () => {
+    mockSummary.mockReturnValue(new Promise(() => {}));
+    await renderPage();
+    const pills = screen.getByRole('group', { name: 'Filter by status' });
+    expect(within(pills).getByRole('button', { name: 'All' })).toBeInTheDocument();
+
+    cleanup();
+    mockSummary.mockResolvedValue(SUMMARY);
+    await renderPage();
+    // The summary counts current warranties, not the archived list.
+    await act(async () => {
+      fireEvent.click(screen.getByRole('switch', { name: 'Show archived' }));
+    });
+    const archivedPills = screen.getByRole('group', { name: 'Filter by status' });
+    expect(within(archivedPills).getByRole('button', { name: 'All' })).toBeInTheDocument();
+    expect(within(archivedPills).queryByRole('button', { name: 'All (16)' })).not.toBeInTheDocument();
+  });
+
+  it('puts Add warranty in the page header as the one primary action, beside the help link', async () => {
+    await renderPage();
+    const heading = screen.getByRole('heading', { level: 1, name: 'Warranties' });
+    const header = heading.parentElement!.parentElement!.parentElement!;
+    const add = within(header).getByRole('button', { name: 'Add warranty' });
+    expect(add).toHaveAttribute('data-tour-id', 'warranties-add-button');
+    expect(add.className).toContain('bg-blue-600');
+    expect(within(header).getByRole('link', { name: 'Open the Monize wiki for help with this section' })).toHaveAttribute(
+      'href',
+      'https://github.com/kenlasko/monize/wiki/Warranties',
+    );
+    // The toolbar keeps the CSV pair, spaced by the container's gap.
+    const exportButton = screen.getByRole('button', { name: 'Export CSV' });
+    expect(within(header).queryByRole('button', { name: 'Export CSV' })).not.toBeInTheDocument();
+    expect(exportButton).toHaveClass('gap-1');
+    expect(exportButton.querySelector('svg')!.getAttribute('class')).not.toMatch(/\bmr-/);
   });
 
   it('searches through q', async () => {
@@ -324,7 +375,7 @@ describe('WarrantiesPage', () => {
     await renderPage();
     mockList.mockResolvedValueOnce(page([warranty({ id: 'w-2', name: 'Camera', status: 'expired', daysLeft: -2 })]));
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Expired' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Expired (3)' }));
     });
     expect(screen.getByText('Camera')).toBeInTheDocument();
     await act(async () => {
@@ -512,7 +563,7 @@ describe('WarrantiesPage', () => {
     await renderPage();
     const pills = screen.getByRole('group', { name: 'Filter by status' });
     await act(async () => {
-      fireEvent.click(within(pills).getByRole('button', { name: 'Expiring' }));
+      fireEvent.click(within(pills).getByRole('button', { name: 'Expiring (2)' }));
     });
     const rows = [warranty(), warranty({ id: 'w-2', name: 'Phone' })];
     mockListAll.mockResolvedValue(rows);

@@ -114,8 +114,8 @@
       "matchAll": "Semua ini",
       "matchAny": "Salah satu dari ini",
       "matchLabel": "Kecocokan",
-      "not": "Bukan",
-      "notLabel": "Balikkan grup ini: cocok jika kondisinya tidak terpenuhi",
+      "not": "Balikkan grup",
+      "notHelp": "Grup yang dibalik cocok jika kondisinya tidak terpenuhi.",
       "title": "Grup",
       "addCondition": "+ Tambah kondisi",
       "addGroup": "+ Tambah grup",
@@ -201,7 +201,7 @@
       "tags": "Tag",
       "category": "Kategori",
       "payee": "Penerima",
-      "instruction": "Apa yang perlu diperiksa",
+      "instruction": "Instruksi peninjauan",
       "instructionPlaceholder": "Contoh: pisahkan pembelian ini sesuai struk",
       "instructionHelp": "Aturan hanya meminta peninjauan. Seseorang menyetujui setiap perubahan sebelum dilakukan.",
       "onlyIfEmpty": "Hanya jika kosong",
@@ -220,7 +220,7 @@
       "createIfMissing": "Buat penerima jika belum ada",
       "createIfMissingHelp": "Jika aktif, dan tidak ada penerima yang cocok dengan nama tersebut (menurut nama, alias, atau kecocokan dekat), penerima baru dibuat. Penerima yang dibuat oleh aturan tetap ada jika Anda membatalkan proses.",
       "onlyIfEmptyDescriptionHelp": "Jika aktif, aturan menulis deskripsi hanya jika transaksi belum memilikinya. Nonaktifkan untuk menulisnya setiap kali.",
-      "mode": "Cara menulis",
+      "mode": "Mode deskripsi",
       "modes": {
         "replace": "Ganti deskripsi",
         "append": "Tambahkan setelah deskripsi",
@@ -262,12 +262,12 @@
         "windowHelp": "Seberapa jauh dari tanggal jatuh tempo bank dapat mengambil pembayaran. Debit hingga sejumlah hari ini sebelum atau setelah tanggal jatuh tempo angsuran membayar angsuran itu; yang di luar jendela dibiarkan tanpa perubahan.",
         "daysBefore": "Hari sebelum tanggal jatuh tempo",
         "daysAfter": "Hari setelah tanggal jatuh tempo",
-        "excess": "Saat debit lebih besar dari angsuran",
+        "excess": "Debit di atas angsuran",
         "excessPolicies": {
           "extra_principal": "Bayar selisihnya sebagai pokok tambahan",
           "refuse": "Biarkan transaksi tanpa perubahan"
         },
-        "shortfall": "Saat debit lebih kecil dari angsuran",
+        "shortfall": "Debit di bawah angsuran",
         "shortfallPolicies": {
           "refuse": "Biarkan transaksi tanpa perubahan",
           "interest_first": "Bayar bunga dulu, sisanya sebagai pokok"

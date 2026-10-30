@@ -9,6 +9,7 @@ import { usePreferencesStore } from '@/store/preferencesStore';
 import { userSettingsApi } from '@/lib/user-settings';
 import { getErrorMessage } from '@/lib/errors';
 import { useDragReorder, DropIndicatorLine } from '@/hooks/useDragReorder';
+import { ChevronDownIcon, XMarkIcon, ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon, PlusIcon } from '@heroicons/react/24/outline';
 import {
   DASHBOARD_WIDGETS,
   DEFAULT_DASHBOARD_WIDGET_IDS,
@@ -161,13 +162,15 @@ export function CustomizeDashboardModal({ isOpen, onClose }: CustomizeDashboardM
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} maxWidth="4xl" className="p-4 sm:p-8" pushHistory>
-      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-        {t('customize.title')}
-      </h3>
-      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-        {t('customize.description')}
-      </p>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      maxWidth="4xl"
+      className="p-6"
+      pushHistory
+      title={t('customize.title')}
+      description={t('customize.description')}
+    >
 
       {/* Mockup of the dashboard grid: single column on mobile, two columns on
           larger screens -- exactly like the real page. */}
@@ -198,12 +201,8 @@ export function CustomizeDashboardModal({ isOpen, onClose }: CustomizeDashboardM
                 className="p-0.5 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
               >
                 {/* Up on mobile (single-column stack), left on wider screens (two-column grid). */}
-                <svg className="h-3.5 w-3.5 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                </svg>
-                <svg className="h-3.5 w-3.5 hidden sm:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
+                <ChevronUpIcon className="h-3.5 w-3.5 sm:hidden" aria-hidden="true" />
+                <ChevronLeftIcon className="h-3.5 w-3.5 hidden sm:block" aria-hidden="true" />
               </button>
               <button
                 type="button"
@@ -213,12 +212,8 @@ export function CustomizeDashboardModal({ isOpen, onClose }: CustomizeDashboardM
                 className="p-0.5 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
               >
                 {/* Down on mobile (single-column stack), right on wider screens (two-column grid). */}
-                <svg className="h-3.5 w-3.5 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-                <svg className="h-3.5 w-3.5 hidden sm:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
+                <ChevronDownIcon className="h-3.5 w-3.5 sm:hidden" aria-hidden="true" />
+                <ChevronRightIcon className="h-3.5 w-3.5 hidden sm:block" aria-hidden="true" />
               </button>
               <button
                 type="button"
@@ -226,9 +221,7 @@ export function CustomizeDashboardModal({ isOpen, onClose }: CustomizeDashboardM
                 aria-label={t('customize.hide', { name: widgetName(id) })}
                 className="p-0.5 ml-1.5 sm:ml-0 rounded text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 flex-shrink-0"
               >
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <XMarkIcon className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
             </div>
           ))}
@@ -258,9 +251,7 @@ export function CustomizeDashboardModal({ isOpen, onClose }: CustomizeDashboardM
                 aria-label={t('customize.show', { name: widgetName(id) })}
                 className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-gray-300 dark:border-gray-600 px-3 py-1 text-sm text-gray-600 dark:text-gray-300 hover:border-blue-500 hover:text-blue-600 dark:hover:border-blue-400 dark:hover:text-blue-400 transition-colors"
               >
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
+                <PlusIcon className="h-3.5 w-3.5" aria-hidden="true" />
                 <WidgetTypeIcon type={widgetIcon(id)} />
                 {widgetName(id)}
               </button>

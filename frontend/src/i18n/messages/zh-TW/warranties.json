@@ -22,7 +22,14 @@
       "expiring": "即將到期",
       "active": "有效",
       "expired": "已到期",
-      "lifetime": "終身"
+      "lifetime": "終身",
+      "counted": {
+        "all": "全部（{count}）",
+        "expiring": "即將到期（{count}）",
+        "active": "有效（{count}）",
+        "expired": "已到期（{count}）",
+        "lifetime": "終身（{count}）"
+      }
     },
     "search": {
       "label": "搜尋保固",
@@ -163,14 +170,21 @@
     "notFound": "找不到此保固。",
     "retry": "重試",
     "archivedBadge": "已封存",
+    "switcher": {
+      "trigger": "切換保固",
+      "placeholder": "篩選保固...",
+      "noMatches": "沒有符合的保固"
+    },
+    "summary": {
+      "expires": "到期日",
+      "purchased": "購買日期",
+      "price": "購買價格",
+      "openClaims": "處理中的申請"
+    },
     "card": {
       "title": "詳細資料",
-      "expires": "到期日",
-      "daysLeft": "剩餘時間",
       "kind": "保固類型",
       "vendor": "商家",
-      "purchaseDate": "購買日期",
-      "price": "購買價格",
       "serialNumbers": "序號",
       "model": "型號",
       "productUrl": "產品頁面",
@@ -228,7 +242,7 @@
     "form": {
       "claimDateLabel": "申請日期",
       "statusLabel": "狀態",
-      "descriptionLabel": "發生了什麼問題",
+      "descriptionLabel": "說明",
       "resolutionLabel": "處理結果",
       "resolvedOnLabel": "結案日期",
       "resolvedOnHint": "僅適用於已解決或已拒絕的申請",

@@ -34,7 +34,6 @@
     "units": "Одиниці",
     "avgCostPerUnit": "Середня ціна / одиницю",
     "heldInAccounts": "На рахунках",
-    "openAccount": "Показати {name} на сторінці «Інвестиції»",
     "unitsShare": "{units} ({share})",
     "valueUnknown": "Без оцінки",
     "approx": "~ {amount}"

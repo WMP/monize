@@ -35,7 +35,7 @@
     "createFailed": "Não foi possível definir o lembrete",
     "dialogTitle": "Lembrar-me",
     "dialogDescription": "Receba esta notificação novamente mais tarde até tomar uma ação.",
-    "modeLabel": "Com que frequência",
+    "modeLabel": "Frequência",
     "modeRepeat": "Repetir até eu parar",
     "modeOnce": "Apenas mais uma vez",
     "intervalLabelRepeat": "Lembrar-me a cada",

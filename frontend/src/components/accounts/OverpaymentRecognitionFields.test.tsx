@@ -87,15 +87,16 @@ describe('OverpaymentRecognitionFields', () => {
     expect(screen.getAllByRole('option', { name: 'Loan Overpayment' }).length).toBeGreaterThanOrEqual(1);
   });
 
-  it('labels the interest category as required only when asked to', async () => {
+  it('labels the interest category with no marker when it is required', async () => {
     await renderFields({ interestCategoryRequired: true });
-    expect(screen.getByLabelText('Interest Category (required)')).toBeInTheDocument();
+    expect(screen.getByLabelText('Interest Category')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Interest Category (optional)')).not.toBeInTheDocument();
   });
 
   it('labels the interest category as optional by default (an edit keeps it)', async () => {
     await renderFields();
-    expect(screen.getByLabelText('Interest Category')).toBeInTheDocument();
-    expect(screen.queryByLabelText('Interest Category (required)')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Interest Category (optional)')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Interest Category')).not.toBeInTheDocument();
   });
 
   it('reports the chosen payee', async () => {
@@ -111,7 +112,7 @@ describe('OverpaymentRecognitionFields', () => {
 
   it('reports the chosen interest booking mode', async () => {
     const props = await renderFields();
-    fireEvent.change(screen.getByLabelText('How is interest recorded?'), {
+    fireEvent.change(screen.getByLabelText('Interest Recording'), {
       target: { value: 'SEPARATE' },
     });
     expect(props.onInterestBookingModeChange).toHaveBeenCalledWith('SEPARATE');

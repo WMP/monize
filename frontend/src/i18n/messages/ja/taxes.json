@@ -12,7 +12,7 @@
   "payroll": {
     "title": "給与控除",
     "subtitle": "給与請求の控除行に対する年間上限額",
-    "backToTaxes": "税金",
+    "backToTaxes": "税金に戻る",
     "newButton": "+ 新しいルール",
     "loading": "給与控除を読み込んでいます...",
     "emptyState": {

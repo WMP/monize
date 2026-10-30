@@ -73,6 +73,7 @@ export function BankSyncLinkDialog({
   onSave,
 }: BankSyncLinkDialogProps) {
   const t = useTranslations('settings.bankSync.link');
+  const tc = useTranslations('common');
   const [defaults, setDefaults] = useState<Defaults>({ state: 'loading' });
 
   // The dialog is keyed by the pair it links, so a different pair is a new
@@ -101,6 +102,14 @@ export function BankSyncLinkDialog({
       padding="md"
       maxWidth="md"
       pushHistory
+      footer={
+        // The form draws its own Cancel; until it is there, this is the way out.
+        defaults.state === 'loading' ? (
+          <Button type="button" variant="outline" onClick={onClose}>
+            {tc('cancel')}
+          </Button>
+        ) : undefined
+      }
     >
       {defaults.state === 'loading' ? (
         <div className="flex items-center gap-2 py-6 text-sm text-gray-600 dark:text-gray-300">

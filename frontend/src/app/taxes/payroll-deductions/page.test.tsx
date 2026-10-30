@@ -131,7 +131,7 @@ describe('PayrollDeductionsPage', () => {
     expect(screen.getByText('$1,077.48')).toBeInTheDocument();
     expect(screen.getByText('$64.00')).toBeInTheDocument();
     expect(screen.getByText("From the bill's line")).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Taxes/ })).toHaveAttribute('href', '/taxes');
+    expect(screen.getByRole('link', { name: 'Back to Taxes' })).toHaveAttribute('href', '/taxes');
   });
 
   it('keeps the year-to-date table collapsed until asked, then shows paid, maximum and remaining', async () => {
@@ -161,6 +161,15 @@ describe('PayrollDeductionsPage', () => {
     expect(screen.getByText('$1,002.45')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Hide previous periods/ }));
     expect(screen.queryByText('Previous Periods')).not.toBeInTheDocument();
+  });
+
+  it('stretches each disclosure button across a phone line, alone on its row', async () => {
+    await renderPage();
+    for (const name of [/Show year-to-date/, /Show previous periods/]) {
+      const toggle = screen.getByRole('button', { name });
+      expect(toggle.className).toContain('w-full');
+      expect(toggle.className).toContain('sm:w-auto');
+    }
   });
 
   it('says when rows in another currency were left out of the paid figure', async () => {

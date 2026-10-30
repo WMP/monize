@@ -6,7 +6,7 @@
       "category": "Categoría",
       "amount": "Monto",
       "schedule": "Programación",
-      "auto": "Auto",
+      "auto": "Registro automático",
       "actions": "Acciones"
     },
     "empty": {
@@ -25,7 +25,6 @@
     "modifiedDateTitle": "Fecha modificada para esta ocurrencia",
     "splitBadge": "División ({count})",
     "autoPostBadge": "Activo",
-    "autoPostTitle": "Se registra automáticamente al vencer",
     "inactiveSuffix": " — Inactiva",
     "actionTitles": {
       "post": "Registrar transacción",
@@ -76,9 +75,7 @@
     "accountsLabel": "Cuentas",
     "accountsPlaceholder": "Todas las cuentas",
     "categoriesLabel": "Categorías",
-    "categoriesPlaceholder": "Todas las categorías",
-    "collapseAriaLabel": "Contraer filtros",
-    "expandAriaLabel": "Expandir filtros"
+    "categoriesPlaceholder": "Todas las categorías"
   },
   "postDialog": {
     "title": "Registrar transacción",

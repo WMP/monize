@@ -34,7 +34,8 @@
       "WANT": "इच्छा",
       "SAVING": "बचत"
     },
-    "saving": "सहेजा जा रहा है..."
+    "saving": "सहेजा जा रहा है...",
+    "remove": "बजट से हटाएँ"
   },
   "categoryList": {
     "title": "श्रेणी बजट",
@@ -83,7 +84,6 @@
     "baseIncomePlaceholder": "अपेक्षित मासिक आय",
     "active": "सक्रिय",
     "saveChanges": "परिवर्तन सहेजें",
-    "saving": "सहेजा जा रहा है...",
     "typeOptions": {
       "MONTHLY": "मासिक",
       "ANNUAL": "वार्षिक",
@@ -109,7 +109,8 @@
     "title": "खर्च हीटमैप - {monthLabel}",
     "ariaLabel": "खर्च हीटमैप",
     "less": "कम",
-    "more": "अधिक"
+    "more": "अधिक",
+    "readout": "{date}: {amount}"
   },
   "periodDetail": {
     "summaryCards": {
@@ -134,7 +135,8 @@
     "rolloverBadge": "+{amount} रोलओवर",
     "underBudgetLabel": "{amount} बजट से कम",
     "overBudgetLabel": "{amount} बजट से अधिक",
-    "carriedForward": "{amount} आगे ले जाया गया"
+    "carriedForward": "{amount} आगे ले जाया गया",
+    "dateRange": "{start} से {end} तक"
   },
   "periodSelector": {
     "label": "अवधि:",
@@ -471,11 +473,18 @@
         "description": "अपने खर्च इतिहास का विश्लेषण करके अपना पहला बजट बनाएं। विज़ार्ड आपके लेनदेन के आधार पर यथार्थवादी राशियां सुझाएगा।",
         "cta": "अपना पहला बजट बनाएं"
       },
+      "loading": "बजट लोड हो रहे हैं...",
+      "columns": {
+        "name": "नाम",
+        "strategy": "रणनीति",
+        "type": "प्रकार",
+        "categories": "श्रेणियां",
+        "started": "प्रारंभ",
+        "status": "स्थिति"
+      },
       "card": {
         "active": "सक्रिय",
-        "inactive": "निष्क्रिय",
-        "categories": "{count} श्रेणियां",
-        "started": "{date} को शुरू हुआ"
+        "inactive": "निष्क्रिय"
       }
     },
     "create": {
@@ -484,6 +493,9 @@
     },
     "detail": {
       "backToBudgets": "बजट पर वापस",
+      "switchBudget": "दूसरे बजट पर जाएँ",
+      "switchPlaceholder": "बजट फ़िल्टर करें...",
+      "switchNoMatches": "कोई मेल खाता बजट नहीं",
       "notFound": "बजट नहीं मिला",
       "delete": {
         "title": "बजट हटाएं",
@@ -501,7 +513,7 @@
     "edit": {
       "subtitlePrefix": "संपादित करें: ",
       "subtitle": "बजट सेटिंग्स और श्रेणी आवंटन अपडेट करें",
-      "backToDashboard": "डैशबोर्ड पर वापस",
+      "backToBudget": "{name} पर वापस",
       "budgetSettings": "बजट सेटिंग्स",
       "categoryAllocations": "श्रेणी आवंटन",
       "income": "आय",
@@ -510,12 +522,19 @@
       "percentUsed": "{percent}% उपयोग",
       "rolloverType": "रोलओवर: {type}",
       "editCategoryTitle": "{name} संपादित करें",
+      "remove": {
+        "title": "श्रेणी हटाएँ",
+        "message": "क्या \"{name}\" को इस बजट से हटाना है? इसका {amount} का आवंटन अब बजट में नहीं रहेगा, और पिछली बजट अवधियों में इसका इतिहास हटा दिया जाएगा। आपके लेन-देन प्रभावित नहीं होंगे। यह क्रिया पूर्ववत नहीं की जा सकती।",
+        "confirm": "हटाएँ"
+      },
       "toasts": {
         "updated": "बजट अपडेट किया गया",
         "updateFailed": "बजट अपडेट करने में विफल",
         "categoryUpdated": "श्रेणी अपडेट की गई",
         "categoryFailed": "श्रेणी अपडेट करने में विफल",
-        "loadFailed": "बजट लोड करने में विफल"
+        "loadFailed": "बजट लोड करने में विफल",
+        "categoryRemoved": "श्रेणी बजट से हटा दी गई",
+        "categoryRemoveFailed": "श्रेणी हटाने में विफल"
       }
     }
   },

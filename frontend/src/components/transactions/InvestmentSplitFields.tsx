@@ -313,7 +313,7 @@ export function InvestmentSplitFields({
           value={price || undefined}
           onChange={(v) => updateField('price', Number(v ?? 0))}
           disabled={disabled}
-          placeholder={t('investmentSplit.amountPlaceholder', { currency: securityCurrency })}
+          placeholder={t('investmentSplit.amountOnlyPlaceholder')}
           prefix={symbol}
           allowNegative={false}
         />

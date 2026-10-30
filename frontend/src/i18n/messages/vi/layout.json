@@ -123,6 +123,8 @@
       "createdTransaction": "Đã tạo giao dịch {payee} {amount}",
       "updatedTransaction": "Đã cập nhật giao dịch {payee} {amount}",
       "deletedTransaction": "Đã xóa giao dịch {payee} {amount}",
+      "convertedToTransfer": "Đã chuyển đổi giao dịch {payee} {amount} thành chuyển khoản",
+      "convertedToTransaction": "Đã chuyển đổi chuyển khoản {payee} {amount} thành giao dịch",
       "bulkUpdatedTransactions": "Đã cập nhật hàng loạt {count, plural, one {# giao dịch} other {# giao dịch}}",
       "createdTransfer": "Đã tạo chuyển khoản {amount} từ {from} đến {to}",
       "createdInvestmentTransaction": "Đã tạo giao dịch {action}",
@@ -131,12 +133,6 @@
       "transferredSecurity": "Đã chuyển chứng khoán giữa các tài khoản",
       "updatedSecurityTransfer": "Đã cập nhật chuyển khoản chứng khoán",
       "ranTransactionRule": "Đã chạy quy tắc “{name}” trên {count, plural, other {# giao dịch}}"
-    },
-    "timeAgo": {
-      "justNow": "vừa xong",
-      "minutes": "{count} phút trước",
-      "hours": "{count} giờ trước",
-      "days": "{count} ngày trước"
     },
     "undonePrefix": "Đã hoàn tác: {description}",
     "redonePrefix": "Đã làm lại: {description}"

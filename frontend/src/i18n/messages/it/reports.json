@@ -4,6 +4,7 @@
     "subtitle": "Genera informazioni sulla tua salute finanziaria",
     "searchPlaceholder": "Cerca report per nome o descrizione...",
     "allReports": "Tutti i report",
+    "categoryWithCount": "{label} ({count})",
     "removeFavourite": "Rimuovi dai preferiti",
     "addFavourite": "Aggiungi ai preferiti",
     "tableReport": "Report",
@@ -137,7 +138,8 @@
   },
   "reportPage": {
     "notFound": "Report non trovato",
-    "notFoundDesc": "Il report richiesto non esiste."
+    "notFoundDesc": "Il report richiesto non esiste.",
+    "viewLabel": "Vista"
   },
   "error": {
     "defaultMessage": "Caricamento dati del report non riuscito. Riprova.",
@@ -514,8 +516,6 @@
     "viewMonthly": "Mensile",
     "viewDaily": "Giornaliero",
     "viewBySecurity": "Per titolo",
-    "displayChart": "Grafico",
-    "displayTable": "Tabella",
     "showLabel": "Mostra:",
     "seriesDividends": "Dividendi",
     "seriesInterest": "Interessi",
@@ -1251,7 +1251,6 @@
     "incompleteTooltip": "Alcuni giorni di questo periodo non hanno un prezzo, un tasso di cambio o un saldo di liquidità, quindi i dati che dipendono da ogni giorno non vengono mostrati.",
     "measuredFromClose": "Dalla chiusura delle contrattazioni del {date}",
     "notAvailable": "N/D",
-    "intradayUnavailable": "Prezzi intraday dettagliati non disponibili",
     "intradayUnavailableTitle": "Vista intraday non disponibile per questa combinazione di conti",
     "intradayUnavailableDesc": "Una o più posizioni utilizzano un fornitore di quotazioni (MSN Money) che non espone dati intraday{skipped}. Passa a un intervallo più lungo per vedere gli snapshot giornalieri.",
     "intradayUnavailableSkipped": ": {symbols}",
@@ -1302,8 +1301,6 @@
     "costBasis": "Costo di acquisto",
     "realizedGainLoss": "Guadagno/Perdita realizzato",
     "securitiesSold": "Titoli venduti",
-    "viewChart": "Grafico",
-    "viewTable": "Tabella",
     "noTransactions": "Nessuna transazione di vendita trovata per questo periodo.",
     "noGainsLosses": "Nessun guadagno o perdita da visualizzare.",
     "bySecurityTitle": "Plusvalenze realizzate per titolo",
@@ -1339,7 +1336,7 @@
     "sixMonthTotal": "Totale 6 mesi",
     "monthlyEstimate": "Stima mensile",
     "identifiedPayees": "beneficiari identificati",
-    "minOccurrencesLabel": "Occorrenze minime:",
+    "minOccurrencesLabel": "Occorrenze minime",
     "inLast6Months": "(negli ultimi 6 mesi)",
     "noRecurring": "Nessuna spesa ricorrente trovata con {count}+ occorrenze negli ultimi 6 mesi.",
     "failedToLoad": "Caricamento dati spese ricorrenti non riuscito.",
@@ -1699,8 +1696,6 @@
     "activeBills": "Fatture attive",
     "overdue": "In scadenza",
     "thisMonth": "Questo mese",
-    "autoPostsTitle": "Registrazione automatica alla scadenza",
-    "manualPostTitle": "Richiede registrazione manuale",
     "autoLabel": "Auto",
     "manualLabel": "Manuale",
     "overdueLabel": "In scadenza",
@@ -1834,6 +1829,7 @@
     "removeAriaLabel": "Rimuovi {title} dal confronto",
     "removeTitle": "Rimuovi dal confronto",
     "runFailed": "Esecuzione non riuscita",
+    "never": "Mai",
     "errors": {
       "loadScenarioFailed": "Impossibile caricare lo scenario.",
       "simulationFailed": "Simulazione non riuscita."
@@ -1847,7 +1843,6 @@
     "backToReports": "Torna ai report",
     "deleteButton": "Elimina report",
     "deleteConfirmMessage": "Sei sicuro di voler eliminare \"{name}\"? Questa operazione non può essere annullata.",
-    "deleting": "Eliminazione...",
     "toasts": {
       "loadFailed": "Caricamento report non riuscito",
       "updated": "Report aggiornato",

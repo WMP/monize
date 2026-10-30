@@ -6,7 +6,7 @@
       "category": "Kategori",
       "amount": "Jumlah",
       "schedule": "Jadwal",
-      "auto": "Otomatis",
+      "auto": "Posting Otomatis",
       "actions": "Tindakan"
     },
     "empty": {
@@ -25,7 +25,6 @@
     "modifiedDateTitle": "Tanggal diubah untuk kejadian ini",
     "splitBadge": "Bagi ({count})",
     "autoPostBadge": "Aktif",
-    "autoPostTitle": "Diposting otomatis saat jatuh tempo",
     "inactiveSuffix": " — Tidak Aktif",
     "actionTitles": {
       "post": "Posting transaksi",
@@ -76,9 +75,7 @@
     "accountsLabel": "Akun",
     "accountsPlaceholder": "Semua akun",
     "categoriesLabel": "Kategori",
-    "categoriesPlaceholder": "Semua kategori",
-    "collapseAriaLabel": "Ciutkan filter",
-    "expandAriaLabel": "Perluas filter"
+    "categoriesPlaceholder": "Semua kategori"
   },
   "postDialog": {
     "title": "Posting Transaksi",
@@ -259,7 +256,7 @@
     "toAccountLabel": "Ke Akun",
     "toAccountPlaceholder": "Pilih akun tujuan...",
     "transferAmountLabel": "Jumlah Transfer",
-    "transferCategoryLabel": "Kategori (Opsional)",
+    "transferCategoryLabel": "Kategori (opsional)",
     "transferCategoryNote": "Opsional: kategorikan transfer ini (mis. kontribusi investasi berulang) agar muncul di rincian kategori bulanan. Ini tidak dihitung sebagai pemasukan atau pengeluaran.",
     "actionLabel": "Tindakan",
     "securityLabel": "Sekuritas",

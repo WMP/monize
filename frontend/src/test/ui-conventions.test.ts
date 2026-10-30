@@ -1925,6 +1925,32 @@ describe("an empty state is the shared EmptyState", () => {
     expect(offenders).toEqual([]);
   });
 
+  /**
+   * The reports grew their own variant: a bare grey paragraph with
+   * `text-center py-8`, in some thirty report components. Scoped to the
+   * report directories, where every one of them was converted; the same class
+   * pair elsewhere in the tree is tracked by the other UI consistency issues.
+   */
+  const REPORT_DIRS = ["/src/components/reports/", "/src/app/reports/"];
+  const REPORT_FINGERPRINT = /\btext-center py-8\b/;
+
+  it("has no hand-rolled empty-state paragraph in a report", () => {
+    const offenders = productionSources()
+      .filter(([path]) => REPORT_DIRS.some((dir) => path.startsWith(dir)))
+      .filter(([, content]) => REPORT_FINGERPRINT.test(withoutComments(content)))
+      .map(([path]) => path);
+    expect(offenders, "Render EmptyState from @/components/ui/EmptyState.").toEqual([]);
+  });
+
+  it("still scans the reports, so the rule cannot pass by accident", () => {
+    expect(
+      productionSources().filter(([path]) => path.startsWith(REPORT_DIRS[0])).length,
+    ).toBeGreaterThan(0);
+    expect(
+      REPORT_FINGERPRINT.test('<p className="text-gray-500 text-center py-8">'),
+    ).toBe(true);
+  });
+
   it("still finds the shared component, so the rule cannot pass by accident", () => {
     const component = sources[EMPTY_STATE];
     expect(component, `${EMPTY_STATE} not found -- update this test`).toBeTruthy();
@@ -2145,7 +2171,6 @@ describe("a keyboard focus ring is focus-visible, never focus", () => {
     "/src/components/reports/FilterBuilder.tsx",
     "/src/components/reports/MonteCarloReport.tsx",
     "/src/components/reports/MonteCarloSaveAsDialog.tsx",
-    "/src/components/reports/ReportError.tsx",
     "/src/components/scheduled-transactions/PostTransactionDialog.tsx",
     "/src/components/scheduled-transactions/ScheduledTransactionForm.tsx",
     "/src/components/securities/SecurityForm.tsx",
@@ -2166,14 +2191,12 @@ describe("a keyboard focus ring is focus-visible, never focus", () => {
     "/src/components/transactions/TransactionList.tsx",
     "/src/components/transactions/TransactionRow.tsx",
     "/src/components/ui/ColorPicker.tsx",
-    "/src/components/ui/ConfirmDialog.tsx",
     "/src/components/ui/DragHandle.tsx",
     "/src/components/ui/IconPicker.tsx",
     "/src/components/ui/MultiSelect.tsx",
     "/src/components/ui/Pagination.tsx",
     "/src/components/ui/Select.tsx",
     "/src/components/ui/ThemeToggle.tsx",
-    "/src/components/ui/UnsavedChangesDialog.tsx",
   ];
 
   function filesWithFocusRing(): string[] {
@@ -2247,14 +2270,9 @@ describe("row hover comes from the shared pair, not a hand-picked grey", () => {
   const BASELINE: ReadonlyArray<string> = [
     "/src/app/bills/page.tsx",
     "/src/app/budgets/[id]/edit/page.tsx",
-    "/src/app/categories/page.tsx",
-    "/src/app/currencies/page.tsx",
     "/src/app/error.tsx",
-    "/src/app/institutions/page.tsx",
     "/src/app/not-found.tsx",
-    "/src/app/payees/page.tsx",
     "/src/app/reports/page.tsx",
-    "/src/app/securities/page.tsx",
     "/src/app/settings/page.tsx",
     "/src/components/accounts/AccountForm.tsx",
     "/src/components/accounts/AccountList.tsx",
@@ -2369,7 +2387,6 @@ describe("row hover comes from the shared pair, not a hand-picked grey", () => {
     "/src/components/transactions/SplitTransactionFields.tsx",
     "/src/components/transactions/StatusCellButton.tsx",
     "/src/components/transactions/TransactionActionSheet.tsx",
-    "/src/components/transactions/TransactionFilterPanel.tsx",
     "/src/components/transactions/TransactionForm.tsx",
     "/src/components/transactions/TransactionRow.tsx",
     "/src/components/ui/ActionMenu.tsx",
@@ -2445,79 +2462,39 @@ describe("a dialog is titled through Modal, not by a hand-rolled heading", () =>
   const MODAL = "/src/components/ui/Modal.tsx";
 
   const BASELINE: ReadonlyArray<string> = [
-    "/src/app/bills/page.tsx",
     "/src/app/budgets/[id]/edit/page.tsx",
     "/src/app/categories/[id]/page.tsx",
     "/src/app/categories/page.tsx",
-    "/src/app/currencies/page.tsx",
     "/src/app/institutions/page.tsx",
-    "/src/app/investments/page.tsx",
     "/src/app/payees/[id]/page.tsx",
     "/src/app/payees/page.tsx",
     "/src/app/reconcile/page.tsx",
-    "/src/app/reports/custom/[id]/edit/page.tsx",
-    "/src/app/reports/investment/[id]/edit/page.tsx",
     "/src/app/securities/[id]/page.tsx",
-    "/src/app/securities/page.tsx",
     "/src/app/settings/emergency-access/page.tsx",
     "/src/app/tags/page.tsx",
-    "/src/app/transactions/page.tsx",
-    "/src/components/accounts/AccountExportModal.tsx",
-    "/src/components/accounts/AccountForm.tsx",
     "/src/components/accounts/AccountFormModal.tsx",
-    "/src/components/accounts/LoanPaymentSetupDialog.tsx",
-    "/src/components/accounts/asset-detail/UpdateValueDialog.tsx",
-    "/src/components/accounts/credit-card-detail/PaymentSetupDialog.tsx",
-    "/src/components/accounts/loan-detail/LoanRateControls.tsx",
-    "/src/components/accounts/loan-detail/SavedScenariosPanel.tsx",
     "/src/components/accounts/shared/ForeignCurrencyFeesSection.tsx",
     "/src/components/accounts/shared/RecurringChargesPanel.tsx",
-    "/src/components/admin/CreateUserModal.tsx",
-    "/src/components/admin/ResetPasswordModal.tsx",
-    "/src/components/auth/StepUpAuthModal.tsx",
-    "/src/components/categories/DeleteCategoryDialog.tsx",
-    "/src/components/categories/ImportDefaultCategoriesDialog.tsx",
     "/src/components/categories/detail/CategoryTransactionsTab.tsx",
-    "/src/components/dashboard/CustomizeDashboardModal.tsx",
-    "/src/components/dashboard/WidgetCard.tsx",
-    "/src/components/import/MnyPasswordDialog.tsx",
-    "/src/components/import/MnyWipeConfirmDialog.tsx",
-    "/src/components/institutions/InstitutionAccountsManager.tsx",
-    "/src/components/investments/InvestmentRegisterPanel.tsx",
     "/src/components/investments/InvestmentTransactionForm.tsx",
     "/src/components/layout/MobileNavDrawer.tsx",
-    "/src/components/payees/AutoMergePayeesDialog.tsx",
-    "/src/components/payees/CategoryAutoAssignDialog.tsx",
-    "/src/components/payees/DeactivateUnusedPayeesDialog.tsx",
-    "/src/components/payees/MergePayeeDialog.tsx",
-    "/src/components/payees/ReactivatePayeeDialog.tsx",
     "/src/components/payees/detail/PayeeTransactionsTab.tsx",
     "/src/components/reports/ForeignCurrencyFeesReport.tsx",
-    "/src/components/reports/MonteCarloSaveAsDialog.tsx",
-    "/src/components/scheduled-transactions/OccurrenceDatePicker.tsx",
-    "/src/components/scheduled-transactions/OverrideEditorDialog.tsx",
-    "/src/components/scheduled-transactions/PostTransactionDialog.tsx",
     "/src/components/scheduled-transactions/ScheduledTransactionForm.tsx",
     "/src/components/securities/SecurityForm.tsx",
-    "/src/components/securities/SecurityLookupPicker.tsx",
     "/src/components/securities/SecurityTransactionHistory.tsx",
-    "/src/components/securities/detail/SecurityDocumentsTab.tsx",
     "/src/components/settings/ApiAccessSection.tsx",
     "/src/components/settings/BackupRestoreSection.tsx",
     "/src/components/settings/SecuritySection.tsx",
     "/src/components/settings/SharedAccessSection.tsx",
     "/src/components/settings/SupportBackupModal.tsx",
     "/src/components/settings/ai/ProviderConfigForm.tsx",
-    "/src/components/strategies/GemScenarioSwitcher.tsx",
-    "/src/components/strategies/GemSettingsForm.tsx",
-    "/src/components/transactions/BulkUpdateModal.tsx",
     "/src/components/transactions/CurrencyPickerButton.tsx",
     "/src/components/transactions/TransactionActionSheet.tsx",
     "/src/components/transactions/TransactionForm.tsx",
     "/src/components/ui/ConfirmDialog.tsx",
     "/src/components/ui/UnsavedChangesDialog.tsx",
     "/src/components/ui/row-actions/RowActionSheet.tsx",
-    "/src/components/whats-new/WhatsNewModal.tsx",
     "/src/hooks/useFormModal.ts",
   ];
 
@@ -2591,12 +2568,10 @@ describe("a status pill is Badge, not a hand-rolled rounded-full", () => {
     /rounded-full[^"'`]*(?:text-xs|text-\[10px\])[^"'`]*font-medium|(?:text-xs|text-\[10px\])[^"'`]*font-medium[^"'`]*rounded-full|rounded-full[^"'`]*font-medium[^"'`]*(?:text-xs|text-\[10px\])/;
 
   const BASELINE: ReadonlyArray<string> = [
-    "/src/app/budgets/page.tsx",
     "/src/components/budgets/BudgetCategoryTrend.tsx",
     "/src/components/budgets/BudgetPeriodDetail.tsx",
     "/src/components/budgets/BudgetWizard.tsx",
     "/src/components/categories/detail/CategoryDetailHeader.tsx",
-    "/src/components/insights/InsightsList.tsx",
     "/src/components/payees/AutoMergePayeesDialog.tsx",
     "/src/components/payees/CategoryAutoAssignDialog.tsx",
     "/src/components/payees/detail/PayeeDetailHeader.tsx",
@@ -2607,7 +2582,6 @@ describe("a status pill is Badge, not a hand-rolled rounded-full", () => {
     "/src/components/reports/SpendingAnomaliesReport.tsx",
     "/src/components/scheduled-transactions/BillsFilterPanel.tsx",
     "/src/components/scheduled-transactions/ScheduledTransactionList.tsx",
-    "/src/components/securities/SecurityList.tsx",
     "/src/components/securities/detail/SecurityDetailHeader.tsx",
     "/src/components/securities/detail/SecurityPositionInfoCard.tsx",
     "/src/components/securities/detail/SecurityPositionState.tsx",
@@ -2679,7 +2653,6 @@ describe("table chrome comes from Table.tsx, not a repeated divide string", () =
     "/src/components/accounts/AccountList.tsx",
     "/src/components/accounts/loan-detail/AmortizationScheduleTable.tsx",
     "/src/components/accounts/loan-detail/SavedScenariosPanel.tsx",
-    "/src/components/admin/UserManagementTable.tsx",
     "/src/components/budgets/BudgetPeriodDetail.tsx",
     "/src/components/categories/CategoryList.tsx",
     "/src/components/categories/detail/CategorySubcategoriesTab.tsx",
@@ -3215,11 +3188,6 @@ describe("a segmented control wears the chrome in segmented-control.ts", () => {
       reason:
         "predates the shared chrome: a range switcher built before segmented-control.ts existed.",
     },
-    {
-      file: "/src/components/reports/BudgetVsActualReport.tsx",
-      reason:
-        "predates the shared chrome: two switchers built before segmented-control.ts existed.",
-    },
   ];
 
   const inliningFiles = () => {
@@ -3484,10 +3452,11 @@ describe("an investment amount is formatted with its own currency", () => {
 
 describe("a relative time is read through useRelativeTime", () => {
   /**
-   * `formatRelativeTime` in `lib/format.ts` hardcodes English ("5m ago",
+   * `formatRelativeTime` in `lib/format.ts` hardcoded English ("5m ago",
    * "Yesterday") and a browser-locale date, so a Polish reader got English
-   * beside a translated page. `useRelativeTime()` goes through
-   * `Intl.RelativeTimeFormat` in the reader's language.
+   * beside a translated page. It had no caller left and was removed;
+   * `useRelativeTime()` goes through `Intl.RelativeTimeFormat` in the reader's
+   * language.
    */
   const RAW_RELATIVE_TIME_IMPORT =
     /import\s*\{[^}]*\bformatRelativeTime\b[^}]*\}\s*from\s*["']@\/lib\/format["']/;
@@ -3512,6 +3481,9 @@ describe("a relative time is read through useRelativeTime", () => {
     expect(
       RAW_RELATIVE_TIME_IMPORT.test("import { useRelativeTime } from '@/hooks/useRelativeTime';"),
     ).toBe(false);
-    expect(sources["/src/lib/format.ts"]).toContain("export function formatRelativeTime");
+  });
+
+  it("has no English-only relative-time helper in lib/format.ts to import", () => {
+    expect(sources["/src/lib/format.ts"]).not.toContain("formatRelativeTime");
   });
 });

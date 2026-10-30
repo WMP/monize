@@ -2346,9 +2346,8 @@ describe('TransactionList', () => {
         expect(screen.getByText('-$50.00')).toBeInTheDocument();
         // Should show the partial indicator asterisk
         expect(screen.getByText('*')).toBeInTheDocument();
-        // Should have tooltip with full amount
-        const indicator = screen.getByText('*').closest('span[title]');
-        expect(indicator?.getAttribute('title')).toContain('200');
+        // The full amount is written out beside the marker, not in a title
+        expect(screen.getByText(/^Filtered amount \(full transaction: .*200/)).toBeInTheDocument();
       });
     });
 

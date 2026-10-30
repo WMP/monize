@@ -77,6 +77,8 @@
     "unsupported": "Ce type de fichier ne peut pas être prévisualisé. Vous pouvez tout de même le télécharger.",
     "fit": "Ajuster à l'écran",
     "actualSize": "Taille réelle",
+    "versionLabel": "Version",
+    "zoomLabel": "Zoom",
     "pageCount": "{count, plural, one {# page} other {# pages}}",
     "page": "Page {page} sur {total}",
     "open": "Aperçu de {name}"

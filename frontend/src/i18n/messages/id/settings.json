@@ -21,7 +21,6 @@
     "passwordConfirmNote": "Konfirmasi kata sandi diperlukan saat mengubah alamat surel Anda.",
     "pendingEmailNotice": "Tautan konfirmasi telah dikirim ke {email}. Alamat surel Anda akan berubah setelah Anda membukanya.",
     "saveButton": "Simpan Profil",
-    "savingButton": "Menyimpan...",
     "toasts": {
       "success": "Profil berhasil diperbarui",
       "confirmationSent": "Periksa {email} untuk tautan konfirmasi alamat surel baru Anda",
@@ -46,7 +45,6 @@
     "confirmPasswordLabel": "Konfirmasi Kata Sandi Baru",
     "confirmPasswordPlaceholder": "Konfirmasi kata sandi baru",
     "changePasswordButton": "Ganti Kata Sandi",
-    "changingPasswordButton": "Mengganti...",
     "toasts": {
       "passwordChanged": "Kata sandi berhasil diubah",
       "passwordChangeFailed": "Gagal mengubah kata sandi"
@@ -106,6 +104,8 @@
       "noDevices": "Tidak ada perangkat tepercaya. Saat Anda mencentang \"Jangan tanya lagi di browser ini\" selama login 2FA, perangkat akan muncul di sini.",
       "currentBadge": "Saat ini",
       "revokeButton": "Cabut",
+      "ipAddress": "IP: {ip}",
+      "dates": "Ditambahkan {added} · Terakhir digunakan {lastUsed} · Kedaluwarsa {expires}",
       "revokeAllModal": {
         "title": "Cabut Semua Perangkat Tepercaya",
         "description": "Ini akan menghapus semua perangkat tepercaya. Anda perlu memasukkan kode 2FA Anda pada login berikutnya dari perangkat mana pun."
@@ -226,7 +226,7 @@
       "hideRegisterYearLabel": "Sembunyikan tahun pada tanggal register",
       "chartCollapsedLabel": "Mulai dengan grafik di halaman Transaksi diciutkan",
       "widgetsCollapsedLabel": "Mulai dengan info akun, penerima, dan kategori diciutkan",
-      "accountOpenTargetLabel": "Saat saya membuka akun",
+      "accountOpenTargetLabel": "Tampilan Akun Default",
       "accountOpenTargetOptions": {
         "register": "Tampilkan transaksinya",
         "dashboard": "Tampilkan dasbornya"
@@ -302,6 +302,10 @@
       "sendTestButton": "Kirim notifikasi uji coba",
       "sendingTestButton": "Mengirim...",
       "removeButton": "Hapus",
+      "removeDialog": {
+        "title": "Hapus Perangkat",
+        "message": "Hapus {device}? Perangkat ini tidak lagi menerima notifikasi push sampai push diaktifkan kembali di sana."
+      },
       "thisDevice": "Perangkat ini",
       "held": "Keluar di perangkat ini. Notifikasi push dilanjutkan saat Anda masuk lagi di sini.",
       "unifiedpushBadge": "UnifiedPush",
@@ -481,7 +485,7 @@
   "supportBackup": {
     "title": "Buat cadangan dukungan",
     "howItWorks": "Menghasilkan salinan cadangan yang dide-identifikasi: nama disamarkan (dua karakter pertama dan terakhir dipertahankan), catatan/deskripsi/nomor rekening dihapus, dan setiap jumlah dikalikan satu faktor tersembunyi, sementara nilai publik (kurs, harga, suku bunga) tetap utuh. Berkas selalu dienkripsi dengan kata sandi di bawah dan dipulihkan seperti cadangan biasa. Ini melindungi dari paparan tak sengaja, bukan dari orang yang sudah mengenal Anda — tanggal, frekuensi, dan struktur dipertahankan agar bug tetap dapat direproduksi.",
-    "sectionsLabel": "Apa yang disertakan",
+    "sectionsLabel": "Bagian yang Disertakan",
     "sections": {
       "investments": "Investasi (sekuritas, kepemilikan, harga)",
       "scheduled": "Transaksi terjadwal",
@@ -647,11 +651,7 @@
       "reason": "Token dapat mengakses akun Anda tanpa masuk, jadi konfirmasikan bahwa ini memang Anda sebelum membuatnya."
     },
     "relative": {
-      "never": "Tidak pernah",
-      "today": "Hari ini",
-      "yesterday": "Kemarin",
-      "daysAgo": "{count} hari yang lalu",
-      "monthsAgo": "{count} bulan yang lalu"
+      "never": "Tidak pernah"
     }
   },
   "autoBackup": {
@@ -695,7 +695,6 @@
       "failed": "Gagal"
     },
     "saveButton": "Simpan Kebijakan",
-    "savingButton": "Menyimpan...",
     "runNowButton": "Cadangkan Semua Akun Sekarang",
     "runningButton": "Mencadangkan...",
     "toasts": {
@@ -816,7 +815,6 @@
     },
     "restoreResult": {
       "title": "Pemulihan Selesai",
-      "description": "Data Anda telah berhasil dipulihkan. Berikut ringkasan apa yang dipulihkan:",
       "totalRecords": "Total rekaman",
       "skippedAttachments": "{count, plural, other {# lampiran tidak dipulihkan}}: backup tidak memuat byte yang dapat digunakan untuk lampiran tersebut — saat diekspor lampiran hilang atau gagal checksum, atau berkas dibuat sebelum backup mandiri. Ekspor backup baru setelah penyimpanan lampiran sehat.",
       "unusableAiProviderKeys": "{count, plural, other {# penyedia AI dipulihkan tanpa kunci API yang dapat digunakan}}: cadangan ini dibuat sebelum kunci penyedia ikut disertakan, jadi kunci yang tersimpan milik server yang membuat berkasnya, atau server ini tidak punya kunci enkripsi untuk menyimpannya. Buka Pengaturan → Penyedia AI lalu masukkan kembali kunci API.",
@@ -878,12 +876,11 @@
         "retryButton": "Coba Lagi",
         "demoNote": "Tujuan luar lokasi tidak dapat diubah dalam mode demo.",
         "saveButton": "Simpan Tujuan",
-        "savingButton": "Menyimpan...",
         "saved": "Tujuan luar lokasi disimpan",
         "saveFailed": "Gagal menyimpan tujuan cadangan luar lokasi Anda",
         "s3": {
           "heading": "Penyimpanan S3",
-          "modeLabel": "Ke mana salinan dikirim",
+          "modeLabel": "Tujuan Salinan",
           "modeOff": "Nonaktif",
           "modeDeployment": "Bucket server ini",
           "modeOwn": "Bucket saya sendiri",
@@ -996,21 +993,57 @@
       "sections": "Bagian",
       "shared": "Data bersama"
     },
+    "ops": {
+      "read": "Baca",
+      "create": "Buat",
+      "edit": "Ubah",
+      "delete": "Hapus",
+      "joint": "Bersama"
+    },
     "sections": {
       "description": "Berikan akses hanya-baca ke seluruh bagian aplikasi. Data yang dicakup akun juga masih memerlukan akses per-akun.",
+      "bills": {
+        "label": "Tagihan & Setoran",
+        "description": "Transaksi terjadwal untuk akun yang diberikan"
+      },
+      "investments": {
+        "label": "Investasi",
+        "description": "Kepemilikan dan transaksi investasi untuk akun yang diberikan"
+      },
+      "budgets": {
+        "label": "Anggaran",
+        "description": "Angka anggaran hanya-baca"
+      },
+      "reports": {
+        "label": "Laporan",
+        "description": "Laporan hanya-baca"
+      },
+      "ai": {
+        "label": "Asisten AI",
+        "description": "Menggunakan penyedia AI yang dikonfigurasi pemilik"
+      },
       "aiRequiresFullAccess": "Asisten AI membaca seluruh akun dan bagian, sehingga hanya menjawab untuk delegasi ini setelah ia dapat membaca semua akun Anda dan setiap bagian lainnya.",
       "warranties": {
         "label": "Garansi",
         "description": "Garansi beserta dokumen dan klaimnya. Pembelian yang ditautkan hanya ditampilkan untuk akun yang dapat dibaca oleh delegasi."
-      }
+      },
+      "toggleLabel": "Bagian {section}"
     },
     "accounts": {
       "noAccounts": "Tidak ada akun untuk diberikan.",
       "grantAll": "Berikan semua",
-      "jointRequiresFullAccount": "Akun bersama hanya dapat dibagikan dengan pengguna yang memiliki akun Monize sendiri"
+      "jointRequiresFullAccount": "Akun bersama hanya dapat dibagikan dengan pengguna yang memiliki akun Monize sendiri",
+      "grantAllLabel": "{op} semua akun {type}",
+      "grantLabel": "Akses {op} ke {account}"
     },
     "shared": {
-      "description": "BACA penerima, kategori dan tag selalu diizinkan. Ini mengendalikan buat/edit/hapus."
+      "description": "BACA penerima, kategori dan tag selalu diizinkan. Ini mengendalikan buat/edit/hapus.",
+      "toggleLabel": "{op} {resource}",
+      "resources": {
+        "payees": "Penerima",
+        "categories": "Kategori",
+        "tags": "Tag"
+      }
     },
     "saveButton": "Simpan",
     "toasts": {
@@ -1164,7 +1197,6 @@
       "editMessageButton": "Edit",
       "messagePlaceholder": "Catatan, instruksi, lokasi dokumen penting...",
       "maxCharsNote": "Maksimum 4000 karakter. Disimpan terenkripsi saat istirahat.",
-      "cancelButton": "Batal",
       "saveButton": "Simpan pesan",
       "toasts": {
         "saved": "Pesan disimpan",
@@ -1209,7 +1241,7 @@
       "grantStatus": "Status pemberian: ",
       "unknown": "tidak diketahui",
       "never": "tidak pernah",
-      "daysAgo": "{count} hari yang lalu",
+      "withRelative": "{timestamp} ({relative})",
       "grantedOn": "diberikan pada {timestamp}",
       "notYetGranted": "belum diberikan",
       "timerNote": "Timer direset secara otomatis setiap kali Anda menggunakan aplikasi -- masuk, melihat halaman, mencatat transaksi, apa pun yang diautentikasi."
@@ -1226,6 +1258,17 @@
     },
     "stepUp": {
       "reason": "Verifikasi ulang identitas Anda untuk melihat atau mengedit pesan akses darurat Anda."
+    },
+    "validation": {
+      "wholeDays": "Hanya hari penuh",
+      "minDays": "{min, plural, other {Minimal # hari}}",
+      "maxDays": "{max, plural, other {Maksimal # hari}}",
+      "reminderBeforeGrant": "Hari pengingat harus kurang dari hari pemberian akses",
+      "messageMax": "Pesan maksimal {max} karakter",
+      "firstNameRequired": "Nama depan wajib diisi",
+      "firstNameMax": "Nama depan maksimal {max} karakter",
+      "emailInvalid": "Masukkan alamat email yang valid",
+      "emailMax": "Email maksimal {max} karakter"
     },
     "toasts": {
       "loadFailed": "Gagal memuat akses darurat",
@@ -1259,6 +1302,10 @@
       "enableButton": "Aktifkan",
       "editButton": "Edit",
       "deleteButton": "Hapus"
+    },
+    "deleteDialog": {
+      "title": "Hapus Penyedia AI",
+      "message": "Hapus {name}? Kunci API yang tersimpan ikut dihapus. Tindakan ini tidak dapat dibatalkan."
     },
     "configForm": {
       "addTitle": "Tambah Penyedia AI",

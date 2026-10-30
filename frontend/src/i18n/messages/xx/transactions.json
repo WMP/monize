@@ -175,7 +175,6 @@
       "viewPayeeTitle": "[XX-View {name} details-XX]",
       "investmentLabel": "[XX-Investment-XX]",
       "linkedInvestmentTitle": "[XX-View in Investments-XX]",
-      "linkedInvestmentBadgeTitle": "[XX-This transaction is linked to an investment transaction-XX]",
       "filterByDate": "[XX-Filter by date \"{date}\"-XX]",
       "filterByAccount": "[XX-Filter by \"{name}\"-XX]",
       "filterByPayee": "[XX-Filter by \"{name}\"-XX]",
@@ -223,10 +222,10 @@
       "show": "[XX-Show filters-XX]"
     },
     "accounts": {
-      "label": "[XX-Show accounts:-XX]",
-      "all": "[XX-All-XX]",
-      "active": "[XX-Active-XX]",
-      "closed": "[XX-Closed-XX]"
+      "label": "[XX-Show Accounts-XX]",
+      "allCount": "[XX-All ({count})-XX]",
+      "activeCount": "[XX-Active ({count})-XX]",
+      "closedCount": "[XX-Closed ({count})-XX]"
     },
     "fields": {
       "accounts": "[XX-Accounts-XX]",
@@ -320,7 +319,7 @@
     },
     "modal": {
       "title": "[XX-Bulk Update Transactions-XX]",
-      "subtitle": "[XX-Update {count, plural, one {# selected transaction} other {# selected transactions}}. Toggle the fields you want to change.-XX]",
+      "help": "[XX-Toggle the fields you want to change.-XX]",
       "submitLabel": "[XX-Update {count, plural, one {# Transaction} other {# Transactions}}-XX]",
       "payee": "[XX-Payee-XX]",
       "category": "[XX-Category-XX]",
@@ -368,10 +367,11 @@
       "fromAccount": "[XX-From Account-XX]",
       "toAccount": "[XX-To Account-XX]",
       "transferAmount": "[XX-Transfer Amount-XX]",
-      "transferAmountWithCurrency": "[XX-Transfer Amount ({currency})-XX]",
-      "amountReceived": "[XX-Amount Received ({currency})-XX]",
-      "payeeOptional": "[XX-Payee (Optional)-XX]",
-      "categoryOptional": "[XX-Category (Optional)-XX]"
+      "amountReceivedLabel": "[XX-Amount Received-XX]",
+      "transferAmountInCurrency": "[XX-Transfer Amount ({currency})-XX]",
+      "amountReceivedInCurrency": "[XX-Amount Received ({currency})-XX]",
+      "payeeOptional": "[XX-Payee (optional)-XX]",
+      "categoryOptional": "[XX-Category (optional)-XX]"
     },
     "placeholders": {
       "selectAccount": "[XX-Select account...-XX]",
@@ -399,10 +399,16 @@
     "submitCreateAndNewDescription": "[XX-Save it and start another, keeping the account and date.-XX]",
     "submitOptions": "[XX-Choose what happens after creating-XX]",
     "submitUpdate": "[XX-Update {mode}-XX]",
+    "submitConvert": "[XX-Convert to {mode}-XX]",
     "reconciledConfirm": {
       "title": "[XX-Edit reconciled transaction?-XX]",
       "message": "[XX-This transaction is reconciled. Changing its date or amount will affect a completed reconciliation. Do you want to save your changes anyway?-XX]",
       "confirm": "[XX-Save changes-XX]"
+    },
+    "counterpartConfirm": {
+      "title": "[XX-Convert this transfer?-XX]",
+      "message": "[XX-The other side of this transfer has already been cleared or reconciled. Converting it to a transaction removes that entry from the other account and changes a balance that was checked against a statement. Do you want to continue?-XX]",
+      "confirm": "[XX-Convert anyway-XX]"
     },
     "modeLabel": {
       "transfer": "[XX-Transfer-XX]",
@@ -432,7 +438,8 @@
       "destinationRequired": "[XX-Please select a destination account-XX]",
       "sameAccount": "[XX-Source and destination accounts must be different-XX]",
       "negativeTransfer": "[XX-Transfer amount must not be negative-XX]",
-      "convertToTransferUnsupported": "[XX-An existing transaction can't be turned into a transfer here. Delete it and create the transfer instead.-XX]",
+      "convertedToTransfer": "[XX-Converted to a transfer-XX]",
+      "convertedToTransaction": "[XX-Converted to a transaction-XX]",
       "payeeCreated": "[XX-Payee \"{name}\" created-XX]",
       "payeeCreateFailed": "[XX-Failed to create payee-XX]",
       "payeeReactivated": "[XX-Payee \"{name}\" reactivated-XX]",
@@ -475,7 +482,8 @@
       "loading": "[XX-Loading warranties-XX]",
       "loadError": "[XX-The warranties for this transaction could not be loaded.-XX]",
       "empty": "[XX-No warranties yet-XX]"
-    }
+    },
+    "conversionLockedNote": "[XX-This transfer belongs to a split transaction or to another owner's account, so it can only stay a transfer here. Change it from the split or delete it and create the entry you want.-XX]"
   },
   "splitEditor": {
     "header": "[XX-Split Details-XX]",
@@ -538,7 +546,7 @@
     "quantityPlaceholder": "[XX-Quantity-XX]",
     "pricePlaceholder": "[XX-Price-XX]",
     "commissionPlaceholder": "[XX-Commission-XX]",
-    "amountPlaceholder": "[XX-Amount ({currency})-XX]",
+    "amountOnlyPlaceholder": "[XX-Amount-XX]",
     "ratePlaceholder": "[XX-{to} per 1 {from}-XX]",
     "ariaRate": "[XX-Exchange rate ({to} per 1 {from})-XX]",
     "rateHint": "[XX-Quantity, price and commission are in {from}; this rate converts the cash impact into {to}.-XX]",

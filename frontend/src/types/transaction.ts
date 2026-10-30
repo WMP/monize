@@ -303,6 +303,12 @@ export interface CreateTransferData {
   status?: TransactionStatus;
   /** Optional category; surfaces the transfer in the monthly category breakdown without counting as income/expense. null clears it. */
   categoryId?: string | null;
+  /** Destination amount for a cross-currency transfer; overrides the rate. */
+  toAmount?: number;
+  payeeId?: string | null;
+  payeeName?: string | null;
+  /** Applied to both legs. */
+  tagIds?: string[];
 }
 
 export interface TransferResult {

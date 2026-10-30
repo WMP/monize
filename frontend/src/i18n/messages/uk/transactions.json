@@ -175,7 +175,6 @@
       "viewPayeeTitle": "Показати відомості про {name}",
       "investmentLabel": "Інвестиція",
       "linkedInvestmentTitle": "Переглянути в Інвестиціях",
-      "linkedInvestmentBadgeTitle": "Ця транзакція пов'язана з інвестиційною транзакцією",
       "filterByDate": "Фільтрувати за датою «{date}»",
       "filterByAccount": "Фільтрувати за «{name}»",
       "filterByPayee": "Фільтрувати за «{name}»",
@@ -223,10 +222,10 @@
       "show": "Показати фільтри"
     },
     "accounts": {
-      "label": "Показати рахунки:",
-      "all": "Всі",
-      "active": "Активні",
-      "closed": "Закриті"
+      "label": "Показати рахунки",
+      "allCount": "Всі ({count})",
+      "activeCount": "Активні ({count})",
+      "closedCount": "Закриті ({count})"
     },
     "fields": {
       "accounts": "Рахунки",
@@ -320,7 +319,7 @@
     },
     "modal": {
       "title": "Масове оновлення транзакцій",
-      "subtitle": "Оновити {count, plural, one {# вибрану транзакцію} other {# вибраних транзакцій}}. Увімкніть поля, які хочете змінити.",
+      "help": "Увімкніть поля, які хочете змінити.",
       "submitLabel": "Оновити {count, plural, one {# транзакцію} other {# транзакцій}}",
       "payee": "Одержувач платежу",
       "category": "Категорія",
@@ -368,8 +367,9 @@
       "fromAccount": "Рахунок-джерело",
       "toAccount": "Рахунок-отримувач",
       "transferAmount": "Сума переказу",
-      "transferAmountWithCurrency": "Сума переказу ({currency})",
-      "amountReceived": "Отримана сума ({currency})",
+      "amountReceivedLabel": "Отримана сума",
+      "transferAmountInCurrency": "Сума переказу ({currency})",
+      "amountReceivedInCurrency": "Отримана сума ({currency})",
       "payeeOptional": "Одержувач платежу (необов'язково)",
       "categoryOptional": "Категорія (необов'язково)"
     },
@@ -399,10 +399,16 @@
     "submitCreateAndNewDescription": "Зберегти й почати наступну з тим самим рахунком і датою.",
     "submitOptions": "Виберіть, що станеться після створення",
     "submitUpdate": "Оновити {mode}",
+    "submitConvert": "Перетворити на {mode}",
     "reconciledConfirm": {
       "title": "Редагувати звірену транзакцію?",
       "message": "Цю транзакцію звірено. Її зміна вплине на завершену звірку. Усе одно зберегти зміни?",
       "confirm": "Зберегти зміни"
+    },
+    "counterpartConfirm": {
+      "title": "Перетворити цей переказ?",
+      "message": "Інша сторона цього переказу вже проведена або звірена. Перетворення на транзакцію видалить цей запис з іншого рахунку та змінить баланс, звірений з випискою. Продовжити?",
+      "confirm": "Усе одно перетворити"
     },
     "modeLabel": {
       "transfer": "Переказ",
@@ -432,7 +438,8 @@
       "destinationRequired": "Оберіть рахунок-отримувач",
       "sameAccount": "Рахунок-джерело та рахунок-отримувач мають бути різними",
       "negativeTransfer": "Сума переказу не може бути від'ємною",
-      "convertToTransferUnsupported": "Наявну транзакцію не можна тут перетворити на переказ. Видаліть її та створіть переказ.",
+      "convertedToTransfer": "Перетворено на переказ",
+      "convertedToTransaction": "Перетворено на транзакцію",
       "payeeCreated": "Одержувача платежу «{name}» створено",
       "payeeCreateFailed": "Не вдалося створити одержувача платежу",
       "payeeReactivated": "Одержувача платежу «{name}» реактивовано",
@@ -475,7 +482,8 @@
       "loading": "Завантаження гарантій",
       "loadError": "Не вдалося завантажити гарантії для цієї транзакції.",
       "empty": "Гарантій ще немає"
-    }
+    },
+    "conversionLockedNote": "Цей переказ належить до розділеної транзакції або до рахунку іншого власника, тому тут він може лишатися лише переказом. Змініть його через розділення або видаліть і створіть потрібний запис."
   },
   "splitEditor": {
     "header": "Деталі розподілу",
@@ -538,7 +546,7 @@
     "quantityPlaceholder": "Кількість",
     "pricePlaceholder": "Ціна",
     "commissionPlaceholder": "Комісія",
-    "amountPlaceholder": "Сума ({currency})",
+    "amountOnlyPlaceholder": "Сума",
     "ratePlaceholder": "{to} за 1 {from}",
     "ariaRate": "Курс обміну ({to} за 1 {from})",
     "rateHint": "Кількість, ціна та комісія вказані у {from}; цей курс переводить грошовий результат у {to}.",

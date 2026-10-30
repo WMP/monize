@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@/test/render';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@/test/render';
 import {
+  SortableTh,
   Th,
   Td,
   CellLabel,
@@ -104,5 +105,40 @@ describe('Table chrome', () => {
     expect(th.className).toContain('px-6');
     expect(th.className).not.toContain('px-4');
     expect(th.className).toContain('uppercase');
+  });
+});
+
+describe('SortableTh', () => {
+  const renderHeader = (field: 'code' | 'name', onSort = vi.fn()) =>
+    render(
+      <table>
+        <thead>
+          <tr>
+            <SortableTh field={field} sortField="code" sortDirection="desc" onSort={onSort} align="right">
+              Label
+            </SortableTh>
+          </tr>
+        </thead>
+      </table>,
+    );
+
+  it('is a th in TH_CLASS holding a button, so the keyboard reaches the sort', () => {
+    const onSort = vi.fn();
+    renderHeader('name', onSort);
+    const button = screen.getByRole('button', { name: /Label/ });
+    const th = button.closest('th')!;
+    expect(th.className).toContain(TH_CLASS);
+    expect(th.className).toContain('text-right');
+    expect(th).not.toHaveAttribute('onclick');
+    fireEvent.click(button);
+    expect(onSort).toHaveBeenCalledWith('name');
+  });
+
+  it('announces the direction on the sorted column only', () => {
+    const { unmount } = renderHeader('code');
+    expect(screen.getByRole('columnheader')).toHaveAttribute('aria-sort', 'descending');
+    unmount();
+    renderHeader('name');
+    expect(screen.getByRole('columnheader')).toHaveAttribute('aria-sort', 'none');
   });
 });

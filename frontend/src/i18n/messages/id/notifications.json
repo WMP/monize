@@ -35,7 +35,7 @@
     "createFailed": "Pengingat tidak dapat diatur",
     "dialogTitle": "Ingatkan saya",
     "dialogDescription": "Dapatkan notifikasi ini lagi nanti hingga Anda menindaklanjutinya.",
-    "modeLabel": "Seberapa sering",
+    "modeLabel": "Frekuensi",
     "modeRepeat": "Ulangi sampai saya hentikan",
     "modeOnce": "Sekali lagi saja",
     "intervalLabelRepeat": "Ingatkan saya setiap",

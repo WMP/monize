@@ -34,7 +34,8 @@
       "WANT": "Desejo",
       "SAVING": "Poupança"
     },
-    "saving": "A guardar..."
+    "saving": "A guardar...",
+    "remove": "Remover do orçamento"
   },
   "categoryList": {
     "title": "Orçamentos por Categoria",
@@ -83,7 +84,6 @@
     "baseIncomePlaceholder": "Receita mensal esperada",
     "active": "Ativo",
     "saveChanges": "Guardar Alterações",
-    "saving": "A guardar...",
     "typeOptions": {
       "MONTHLY": "Mensal",
       "ANNUAL": "Anual",
@@ -109,7 +109,8 @@
     "title": "Mapa de Calor de Despesas - {monthLabel}",
     "ariaLabel": "Mapa de calor de despesas",
     "less": "Menos",
-    "more": "Mais"
+    "more": "Mais",
+    "readout": "{date}: {amount}"
   },
   "periodDetail": {
     "summaryCards": {
@@ -134,7 +135,8 @@
     "rolloverBadge": "+{amount} transição",
     "underBudgetLabel": "{amount} abaixo do orçamento",
     "overBudgetLabel": "{amount} acima do orçamento",
-    "carriedForward": "{amount} transitado"
+    "carriedForward": "{amount} transitado",
+    "dateRange": "{start} a {end}"
   },
   "periodSelector": {
     "label": "Período:",
@@ -471,11 +473,18 @@
         "description": "Crie o seu primeiro orçamento analisando o seu histórico de despesas. O assistente sugerirá montantes realistas com base nas suas transações.",
         "cta": "Criar o Seu Primeiro Orçamento"
       },
+      "loading": "A carregar orçamentos...",
+      "columns": {
+        "name": "Nome",
+        "strategy": "Estratégia",
+        "type": "Tipo",
+        "categories": "Categorias",
+        "started": "Início",
+        "status": "Estado"
+      },
       "card": {
         "active": "Ativo",
-        "inactive": "Inativo",
-        "categories": "{count} categorias",
-        "started": "Iniciado em {date}"
+        "inactive": "Inativo"
       }
     },
     "create": {
@@ -484,6 +493,9 @@
     },
     "detail": {
       "backToBudgets": "Voltar aos Orçamentos",
+      "switchBudget": "Mudar para outro orçamento",
+      "switchPlaceholder": "Filtrar orçamentos...",
+      "switchNoMatches": "Nenhum orçamento corresponde",
       "notFound": "Orçamento não encontrado",
       "delete": {
         "title": "Eliminar Orçamento",
@@ -501,7 +513,7 @@
     "edit": {
       "subtitlePrefix": "Editar: ",
       "subtitle": "Atualizar definições do orçamento e alocações por categoria",
-      "backToDashboard": "Voltar ao Painel",
+      "backToBudget": "Voltar a {name}",
       "budgetSettings": "Definições do Orçamento",
       "categoryAllocations": "Alocações por Categoria",
       "income": "Receita",
@@ -510,12 +522,19 @@
       "percentUsed": "{percent}% utilizado",
       "rolloverType": "Transição: {type}",
       "editCategoryTitle": "Editar {name}",
+      "remove": {
+        "title": "Remover categoria",
+        "message": "Remover \"{name}\" deste orçamento? A sua alocação de {amount} deixará de ser orçamentada e o seu histórico nos períodos de orçamento anteriores será eliminado. As suas transações não são afetadas. Esta ação não pode ser anulada.",
+        "confirm": "Remover"
+      },
       "toasts": {
         "updated": "Orçamento atualizado",
         "updateFailed": "Falha ao atualizar orçamento",
         "categoryUpdated": "Categoria atualizada",
         "categoryFailed": "Falha ao atualizar categoria",
-        "loadFailed": "Falha ao carregar orçamento"
+        "loadFailed": "Falha ao carregar orçamento",
+        "categoryRemoved": "Categoria removida do orçamento",
+        "categoryRemoveFailed": "Falha ao remover a categoria"
       }
     }
   },

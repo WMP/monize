@@ -51,6 +51,7 @@ import { ChartTooltipPanel } from '@/components/reports/ChartTooltip';
 import { ReportError } from '@/components/reports/ReportError';
 import { exportToCsv } from '@/lib/csv-export';
 import type { ChartDatum } from '@/types/chart';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 type SpendingCategorySortField = 'name' | 'value' | 'percentage';
 
@@ -389,9 +390,7 @@ export function SpendingByCategoryReport() {
             <Skeleton className="h-64 w-full" />
           </div>
         ) : chartData.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            {t('spendingByCategory.noData')}
-          </p>
+          <EmptyState title={t('spendingByCategory.noData')} />
         ) : viewType === 'table' ? (
           <>
             {/* Data Table

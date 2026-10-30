@@ -408,7 +408,7 @@ describe('RuleEditor: a loan settlement action', () => {
     await act(async () => {
       fireEvent.change(within(action).getByLabelText('Loan account'), { target: { value: MORTGAGE } });
     });
-    fireEvent.change(within(action).getByLabelText('When the debit is less than the installment'), {
+    fireEvent.change(within(action).getByLabelText('Debit Below the Installment'), {
       target: { value: 'interest_first' },
     });
     pickCombobox(action, "The loan's own interest category", 'Loans: Interest');

@@ -114,8 +114,8 @@
       "matchAll": "[XX-All of these-XX]",
       "matchAny": "[XX-Any of these-XX]",
       "matchLabel": "[XX-Match-XX]",
-      "not": "[XX-Not-XX]",
-      "notLabel": "[XX-Negate this group: it matches when its conditions do not-XX]",
+      "not": "[XX-Negate Group-XX]",
+      "notHelp": "[XX-A negated group matches when its conditions do not.-XX]",
       "title": "[XX-Group-XX]",
       "addCondition": "[XX-+ Add condition-XX]",
       "addGroup": "[XX-+ Add group-XX]",
@@ -201,7 +201,7 @@
       "tags": "[XX-Tags-XX]",
       "category": "[XX-Category-XX]",
       "payee": "[XX-Payee-XX]",
-      "instruction": "[XX-What should be checked-XX]",
+      "instruction": "[XX-Review Instructions-XX]",
       "instructionPlaceholder": "[XX-For example, split this purchase by the receipt-XX]",
       "instructionHelp": "[XX-The rule only asks for a review. A person approves any change before it is made.-XX]",
       "onlyIfEmpty": "[XX-Only if empty-XX]",
@@ -220,7 +220,7 @@
       "createIfMissing": "[XX-Create the payee if it does not exist-XX]",
       "createIfMissingHelp": "[XX-When on, and no payee matches the name (by name, alias or a close match), a new payee is created with it. A payee created by a rule is kept if you undo the run.-XX]",
       "onlyIfEmptyDescriptionHelp": "[XX-When on, the rule writes the description only if the transaction has none. Turn it off to write it every time.-XX]",
-      "mode": "[XX-How to write it-XX]",
+      "mode": "[XX-Description Mode-XX]",
       "modes": {
         "replace": "[XX-Replace the description-XX]",
         "append": "[XX-Add after the description-XX]",
@@ -262,12 +262,12 @@
         "windowHelp": "[XX-How far from the due date the bank may take the payment. A debit up to this many days before or after an installment's due date pays that installment; one outside the window is left alone.-XX]",
         "daysBefore": "[XX-Days before the due date-XX]",
         "daysAfter": "[XX-Days after the due date-XX]",
-        "excess": "[XX-When the debit is more than the installment-XX]",
+        "excess": "[XX-Debit Above the Installment-XX]",
         "excessPolicies": {
           "extra_principal": "[XX-Pay the difference as extra principal-XX]",
           "refuse": "[XX-Leave the transaction alone-XX]"
         },
-        "shortfall": "[XX-When the debit is less than the installment-XX]",
+        "shortfall": "[XX-Debit Below the Installment-XX]",
         "shortfallPolicies": {
           "refuse": "[XX-Leave the transaction alone-XX]",
           "interest_first": "[XX-Pay the interest first, the rest as principal-XX]"

@@ -301,7 +301,7 @@ vi.mock('@/components/investments/InvestmentTransactionList', () => ({
           <button data-testid={`edit-${t.id}`} onClick={() => onEdit(t)}>Edit</button>
         </div>
       ))}
-      <button data-testid="new-tx-btn" onClick={onNewTransaction}>New</button>
+      {onNewTransaction && <button data-testid="new-tx-btn" onClick={onNewTransaction}>New</button>}
       <button data-testid="clear-filters" onClick={() => onFiltersChange({})}>Clear Filters</button>
       <button data-testid="set-symbol-filter" onClick={() => onFiltersChange({ symbol: 'AAPL' })}>Filter AAPL</button>
       {filters?.symbol && <span data-testid="symbol-filter">{filters.symbol}</span>}
@@ -988,15 +988,12 @@ describe('InvestmentsPage', () => {
   });
 
   describe('New Transaction from list', () => {
-    it('opens create form when new transaction button clicked in list', async () => {
+    it('offers no second New button in the list: the PageHeader one is the only primary', async () => {
       await renderPage();
       await waitFor(() => {
-        expect(screen.getByTestId('new-tx-btn')).toBeInTheDocument();
+        expect(screen.getByTestId('transaction-list')).toBeInTheDocument();
       });
-
-      fireEvent.click(screen.getByTestId('new-tx-btn'));
-
-      expect(mockOpenCreate).toHaveBeenCalled();
+      expect(screen.queryByTestId('new-tx-btn')).not.toBeInTheDocument();
     });
   });
 

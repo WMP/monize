@@ -4,7 +4,7 @@ import { PerformanceSummary } from '@/lib/monte-carlo';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { useTranslations } from 'next-intl';
 import type { NumberFormatters } from '@/hooks/useNumberFormat';
-import { CAPTION_CLASS, CellLabel } from '@/components/ui/Table';
+import { CAPTION_CLASS, CellLabel, Th } from '@/components/ui/Table';
 
 // A value cell inside a wrapped row: no padding of its own below `sm` (the row
 // supplies it and the grid does the spacing), this table's own `px-3 py-1.5`
@@ -158,16 +158,16 @@ export function PerformanceSummaryTable({
           className="hidden bg-gray-50 dark:bg-gray-900/40 text-gray-500 dark:text-gray-400 sm:table-header-group"
         >
           <tr role="row">
-            <th role="columnheader" className="px-3 py-2 text-left font-medium">
+            <Th role="columnheader" className="px-3 py-2">
               {t('monteCarloPerformance.colSummaryStatistics')}
-            </th>
-            <th role="columnheader" className="px-3 py-2 text-right font-medium">{t('monteCarloPerformance.col10thPercentile')}</th>
-            <th role="columnheader" className="px-3 py-2 text-right font-medium">{t('monteCarloPerformance.col25thPercentile')}</th>
-            <th role="columnheader" className={`px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-200 ${MEDIAN_HIGHLIGHT}`}>
+            </Th>
+            <Th role="columnheader" align="right" className="px-3 py-2">{t('monteCarloPerformance.col10thPercentile')}</Th>
+            <Th role="columnheader" align="right" className="px-3 py-2">{t('monteCarloPerformance.col25thPercentile')}</Th>
+            <Th role="columnheader" align="right" className={`px-3 py-2 font-semibold text-gray-700 dark:text-gray-200 ${MEDIAN_HIGHLIGHT}`}>
               {t('monteCarloPerformance.col50thPercentile')}
-            </th>
-            <th role="columnheader" className="px-3 py-2 text-right font-medium">{t('monteCarloPerformance.col75thPercentile')}</th>
-            <th role="columnheader" className="px-3 py-2 text-right font-medium">{t('monteCarloPerformance.col90thPercentile')}</th>
+            </Th>
+            <Th role="columnheader" align="right" className="px-3 py-2">{t('monteCarloPerformance.col75thPercentile')}</Th>
+            <Th role="columnheader" align="right" className="px-3 py-2">{t('monteCarloPerformance.col90thPercentile')}</Th>
           </tr>
         </thead>
         <tbody

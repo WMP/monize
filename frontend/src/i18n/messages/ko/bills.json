@@ -16,12 +16,13 @@
     "chartUnavailable": "차트를 일시적으로 사용할 수 없습니다"
   },
   "viewTabs": {
-    "list": "목록",
-    "calendar": "달력",
+    "filterLabel": "일정 유형",
     "filterAll": "전체 ({count})",
     "filterBills": "청구서 ({count})",
     "filterDeposits": "입금 ({count})",
-    "todayButton": "오늘"
+    "todayButton": "오늘",
+    "previousMonth": "이전 달",
+    "nextMonth": "다음 달"
   },
   "form": {
     "titleNew": "새 예정 거래",

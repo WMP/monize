@@ -116,7 +116,7 @@ describe('ProfileWizard', () => {
 
     await click(screen.getByRole('button', { name: 'Back to AI' }));
     await act(async () => {
-      fireEvent.change(screen.getByLabelText('What should change'), { target: { value: 'Use the paid line' } });
+      fireEvent.change(screen.getByLabelText('Requested Changes'), { target: { value: 'Use the paid line' } });
     });
     await click(screen.getByRole('button', { name: 'Send note to AI' }));
     expect(api.generateWithAi).toHaveBeenLastCalledWith({

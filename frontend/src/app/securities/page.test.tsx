@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useState } from 'react';
-import { render, screen, waitFor, fireEvent, act } from '@/test/render';
+import { render, screen, waitFor, fireEvent, act, within } from '@/test/render';
 import SecuritiesPage from './page';
+import { SEGMENTED_TOOLBAR_GROUP_CLASS, toolbarSegmentClass } from '@/components/ui/segmented-control';
 import toast from 'react-hot-toast';
 
 // Per-test query string, so the `?price=<id>` deep link can be exercised.
@@ -185,7 +186,14 @@ vi.mock('@/components/securities/BondRefreshProgress', () => ({
 }));
 
 vi.mock('@/components/ui/Modal', () => ({
-  Modal: ({ children, isOpen }: any) => isOpen ? <div data-testid="modal">{children}</div> : null,
+  Modal: ({ children, isOpen, title, footer }: any) =>
+    isOpen ? (
+      <div data-testid="modal">
+        {title && <h2>{title}</h2>}
+        {children}
+        {footer}
+      </div>
+    ) : null,
 }));
 
 vi.mock('@/components/ui/UnsavedChangesDialog', () => ({
@@ -935,14 +943,26 @@ describe('SecuritiesPage', () => {
   });
 
   describe('refresh prices', () => {
-    it('sits right-justified on the search and filter line', async () => {
+    it('sits in the page header actions, never in the toolbar row', async () => {
       render(<SecuritiesPage />);
       await waitFor(() => expect(screen.getByTestId('security-list')).toBeInTheDocument());
 
       const button = screen.getByRole('button', { name: 'Refresh' });
+      expect(screen.getByTestId('page-header')).toContainElement(button);
       const filterRow = screen.getByPlaceholderText('Search by symbol or name...').parentElement!;
-      expect(filterRow).toContainElement(button);
-      expect(button.closest('div')).toHaveClass('sm:ml-auto');
+      expect(filterRow).not.toContainElement(button);
+    });
+
+    it('draws the status filter as the shared segmented control in a wrapping toolbar', async () => {
+      render(<SecuritiesPage />);
+      await waitFor(() => expect(screen.getByTestId('security-list')).toBeInTheDocument());
+
+      const group = screen.getByRole('group', { name: 'Status' });
+      expect(group.className).toBe(SEGMENTED_TOOLBAR_GROUP_CLASS);
+      const active = within(group).getByRole('button', { name: /^Active/ });
+      expect(active).toHaveAttribute('aria-pressed', 'true');
+      expect(active.className).toBe(toolbarSegmentClass(true));
+      expect(group.parentElement!.className).toContain('flex-wrap');
     });
 
     it('refreshes every eligible security and re-reads the list', async () => {

@@ -34,7 +34,8 @@
       "WANT": "Zachcianka",
       "SAVING": "Oszczędność"
     },
-    "saving": "Zapisywanie..."
+    "saving": "Zapisywanie...",
+    "remove": "Usuń z budżetu"
   },
   "categoryList": {
     "title": "Budżety kategorii",
@@ -83,7 +84,6 @@
     "baseIncomePlaceholder": "Oczekiwany przychód miesięczny",
     "active": "Aktywny",
     "saveChanges": "Zapisz zmiany",
-    "saving": "Zapisywanie...",
     "typeOptions": {
       "MONTHLY": "Miesięczny",
       "ANNUAL": "Roczny",
@@ -109,7 +109,8 @@
     "title": "Mapa cieplna wydatków - {monthLabel}",
     "ariaLabel": "Mapa cieplna wydatków",
     "less": "Mniej",
-    "more": "Więcej"
+    "more": "Więcej",
+    "readout": "{date}: {amount}"
   },
   "periodDetail": {
     "summaryCards": {
@@ -134,7 +135,8 @@
     "rolloverBadge": "+{amount} przeniesione",
     "underBudgetLabel": "{amount} poniżej budżetu",
     "overBudgetLabel": "{amount} powyżej budżetu",
-    "carriedForward": "{amount} przeniesione dalej"
+    "carriedForward": "{amount} przeniesione dalej",
+    "dateRange": "Od {start} do {end}"
   },
   "periodSelector": {
     "label": "Okres:",
@@ -471,11 +473,18 @@
         "description": "Utwórz pierwszy budżet, analizując historię wydatków. Kreator zaproponuje realistyczne kwoty na podstawie Twoich transakcji.",
         "cta": "Utwórz pierwszy budżet"
       },
+      "loading": "Wczytywanie budżetów...",
+      "columns": {
+        "name": "Nazwa",
+        "strategy": "Strategia",
+        "type": "Typ",
+        "categories": "Kategorie",
+        "started": "Data rozpoczęcia",
+        "status": "Status"
+      },
       "card": {
         "active": "Aktywny",
-        "inactive": "Nieaktywny",
-        "categories": "{count} kategorii",
-        "started": "Rozpoczęto {date}"
+        "inactive": "Nieaktywny"
       }
     },
     "create": {
@@ -484,6 +493,9 @@
     },
     "detail": {
       "backToBudgets": "Powrót do budżetów",
+      "switchBudget": "Przejdź do innego budżetu",
+      "switchPlaceholder": "Filtruj budżety...",
+      "switchNoMatches": "Brak pasujących budżetów",
       "notFound": "Nie znaleziono budżetu",
       "delete": {
         "title": "Usuń budżet",
@@ -501,7 +513,7 @@
     "edit": {
       "subtitlePrefix": "Edycja: ",
       "subtitle": "Zaktualizuj ustawienia budżetu i przydziały kategorii",
-      "backToDashboard": "Powrót do panelu",
+      "backToBudget": "Powrót do budżetu {name}",
       "budgetSettings": "Ustawienia budżetu",
       "categoryAllocations": "Przydziały kategorii",
       "income": "Przychody",
@@ -510,12 +522,19 @@
       "percentUsed": "{percent}% wykorzystane",
       "rolloverType": "Przenoszenie: {type}",
       "editCategoryTitle": "Edytuj {name}",
+      "remove": {
+        "title": "Usuń kategorię",
+        "message": "Usunąć \"{name}\" z tego budżetu? Przydział {amount} nie będzie już budżetowany, a jego historia z poprzednich okresów budżetu zostanie usunięta. Twoje transakcje pozostaną bez zmian. Tej operacji nie można cofnąć.",
+        "confirm": "Usuń"
+      },
       "toasts": {
         "updated": "Budżet zaktualizowany",
         "updateFailed": "Nie udało się zaktualizować budżetu",
         "categoryUpdated": "Kategoria zaktualizowana",
         "categoryFailed": "Nie udało się zaktualizować kategorii",
-        "loadFailed": "Nie udało się załadować budżetu"
+        "loadFailed": "Nie udało się załadować budżetu",
+        "categoryRemoved": "Kategoria usunięta z budżetu",
+        "categoryRemoveFailed": "Nie udało się usunąć kategorii"
       }
     }
   },

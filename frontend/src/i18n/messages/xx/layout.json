@@ -123,6 +123,8 @@
       "createdTransaction": "[XX-Created transaction {payee} {amount}-XX]",
       "updatedTransaction": "[XX-Updated transaction {payee} {amount}-XX]",
       "deletedTransaction": "[XX-Deleted transaction {payee} {amount}-XX]",
+      "convertedToTransfer": "[XX-Converted transaction {payee} {amount} to a transfer-XX]",
+      "convertedToTransaction": "[XX-Converted transfer {payee} {amount} to a transaction-XX]",
       "bulkUpdatedTransactions": "[XX-Bulk updated {count, plural, one {# transaction} other {# transactions}}-XX]",
       "createdTransfer": "[XX-Created transfer {amount} from {from} to {to}-XX]",
       "createdInvestmentTransaction": "[XX-Created {action} transaction-XX]",
@@ -131,12 +133,6 @@
       "transferredSecurity": "[XX-Transferred security between accounts-XX]",
       "updatedSecurityTransfer": "[XX-Updated security transfer-XX]",
       "ranTransactionRule": "[XX-Ran rule \"{name}\" on {count, plural, one {# transaction} other {# transactions}}-XX]"
-    },
-    "timeAgo": {
-      "justNow": "[XX-just now-XX]",
-      "minutes": "[XX-{count}m ago-XX]",
-      "hours": "[XX-{count}h ago-XX]",
-      "days": "[XX-{count}d ago-XX]"
     },
     "undonePrefix": "[XX-Undone: {description}-XX]",
     "redonePrefix": "[XX-Redone: {description}-XX]"

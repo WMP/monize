@@ -23,6 +23,7 @@ import { useTableDensity, type DensityLevel } from '@/hooks/useTableDensity';
 import { useDensityPreference } from '@/store/densityStore';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { CellLabel } from '@/components/ui/Table';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import {
   buildScheduledActions,
   runScheduledAction,
@@ -184,7 +185,6 @@ function ScheduledAutoMarker({
   return transaction.autoPost ? (
     <span
       className={`inline-flex items-center text-xs font-medium rounded-full ${badgePadding} bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200`}
-      title={t('list.autoPostTitle')}
     >
       {t('list.autoPostBadge')}
     </span>
@@ -226,8 +226,15 @@ function ScheduledScheduleDetails({
             <span className="text-xs text-gray-400 dark:text-gray-500 line-through leading-tight">
               {formatDate(transaction.nextDueDate)}
             </span>
-            <span className="leading-tight" title={t('list.modifiedDateTitle')}>
-              {formatDate(transaction.nextOverride.overrideDate)}
+            {/* What the struck-through pair means is an InfoTooltip, not a
+                hover-only `title`: a phone and a keyboard reach it too. */}
+            <span className="inline-flex items-center gap-1 leading-tight">
+              <span>{formatDate(transaction.nextOverride.overrideDate)}</span>
+              <InfoTooltip
+                text={t('list.modifiedDateTitle')}
+                iconClassName="h-3.5 w-3.5"
+                usePortal
+              />
             </span>
           </span>
         ) : (
@@ -247,11 +254,15 @@ function ScheduledScheduleDetails({
           <span className="ml-1">{'\u00b7'} {t('list.occurrencesRemaining', { count: transaction.occurrencesRemaining })}</span>
         )}
         {transaction.overrideCount !== undefined && transaction.overrideCount > 0 && (
-          <span
-            className="ml-1.5 inline-flex text-xs font-medium rounded-full px-1.5 py-0.5 bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
-            title={t('list.modifiedTitle', { count: transaction.overrideCount })}
-          >
-            {t('list.modifiedBadge', { count: transaction.overrideCount })}
+          <span className="ml-1.5 inline-flex items-center gap-1 align-middle">
+            <span className="inline-flex text-xs font-medium rounded-full px-1.5 py-0.5 bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+              {t('list.modifiedBadge', { count: transaction.overrideCount })}
+            </span>
+            <InfoTooltip
+              text={t('list.modifiedTitle', { count: transaction.overrideCount })}
+              iconClassName="h-3.5 w-3.5"
+              usePortal
+            />
           </span>
         )}
       </div>
@@ -292,15 +303,20 @@ function ScheduledAmountValue({
   // under the converted estimate, as a foreign-entered transaction row does.
   const foreignLine =
     transaction.originalCurrencyCode && transaction.originalAmount != null ? (
-      <div
-        className="text-xs font-normal text-gray-500 dark:text-gray-400"
-        title={t('list.foreignAmountTitle')}
-      >
-        {transaction.originalCurrencyCode}{' '}
-        {formatAmountLocal(
-          Math.abs(Number(transaction.originalAmount)),
-          getDecimalPlacesForCurrency(transaction.originalCurrencyCode),
-        )}
+      <div className="flex items-center justify-end gap-1 text-xs font-normal text-gray-500 dark:text-gray-400">
+        <span>
+          {transaction.originalCurrencyCode}{' '}
+          {formatAmountLocal(
+            Math.abs(Number(transaction.originalAmount)),
+            getDecimalPlacesForCurrency(transaction.originalCurrencyCode),
+          )}
+        </span>
+        <InfoTooltip
+          text={t('list.foreignAmountTitle')}
+          iconClassName="h-3.5 w-3.5"
+          align="right"
+          usePortal
+        />
       </div>
     ) : null;
   if (isModified) {
@@ -309,8 +325,14 @@ function ScheduledAmountValue({
         <span className="text-xs text-gray-400 dark:text-gray-500 line-through">
           {formatAmount(baseAmount, amountCurrency)}
         </span>
-        <span title={t('list.modifiedAmountTitle')}>
-          {formatAmount(overrideAmount, amountCurrency)}
+        <span className="inline-flex items-center gap-1">
+          <span>{formatAmount(overrideAmount, amountCurrency)}</span>
+          <InfoTooltip
+            text={t('list.modifiedAmountTitle')}
+            iconClassName="h-3.5 w-3.5"
+            align="right"
+            usePortal
+          />
         </span>
         {foreignLine}
       </div>

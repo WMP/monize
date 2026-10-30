@@ -37,6 +37,9 @@ interface TransferTransactionFieldsProps {
   setTransferToAccountId: (id: string) => void;
   transferTargetAmount: number | undefined;
   setTransferTargetAmount: (amount: number | undefined) => void;
+  /** Edit handlers for the two amount fields; default to plain setters. */
+  onTransferAmountChange?: (amount: number | undefined) => void;
+  onTransferTargetAmountChange?: (amount: number | undefined) => void;
   transferPayeeId: string;
   transferPayeeName: string;
   setTransferPayeeId: (id: string) => void;
@@ -68,6 +71,8 @@ export function TransferTransactionFields({
   setTransferToAccountId,
   transferTargetAmount,
   setTransferTargetAmount,
+  onTransferAmountChange,
+  onTransferTargetAmountChange,
   transferPayeeId,
   transferPayeeName,
   setTransferPayeeId,
@@ -222,10 +227,21 @@ export function TransferTransactionFields({
       <div className={`grid grid-cols-1 gap-4 ${crossCurrencyInfo ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
         <div>
           <CurrencyInput
-            label={crossCurrencyInfo ? t('form.fields.transferAmountWithCurrency', { currency: crossCurrencyInfo.fromCurrency }) : t('form.fields.transferAmount')}
+            label={
+              crossCurrencyInfo
+                ? t('form.fields.transferAmountInCurrency', { currency: crossCurrencyInfo.fromCurrency })
+                : t('form.fields.transferAmount')
+            }
             prefix={getCurrencySymbol(watchedCurrencyCode)}
             value={watchedAmount}
-            onChange={(value) => setValue('amount', value !== undefined ? Math.abs(value) : 0, { shouldValidate: true })}
+            onChange={(value) => {
+              const next = value !== undefined ? Math.abs(value) : undefined;
+              if (onTransferAmountChange) {
+                onTransferAmountChange(next);
+              } else {
+                setValue('amount', next ?? 0, { shouldValidate: true });
+              }
+            }}
             allowNegative={false}
             disabled={counterpartLocked}
             error={errors.amount?.message as string | undefined}
@@ -241,10 +257,14 @@ export function TransferTransactionFields({
         {crossCurrencyInfo && (
           <div>
             <CurrencyInput
-              label={t('form.fields.amountReceived', { currency: crossCurrencyInfo.toCurrency })}
+              label={t('form.fields.amountReceivedInCurrency', { currency: crossCurrencyInfo.toCurrency })}
               prefix={getCurrencySymbol(crossCurrencyInfo.toCurrency)}
               value={transferTargetAmount}
-              onChange={(value) => setTransferTargetAmount(value !== undefined ? Math.abs(value) : undefined)}
+              onChange={(value) =>
+                (onTransferTargetAmountChange ?? setTransferTargetAmount)(
+                  value !== undefined ? Math.abs(value) : undefined,
+                )
+              }
               allowNegative={false}
               disabled={counterpartLocked}
             />

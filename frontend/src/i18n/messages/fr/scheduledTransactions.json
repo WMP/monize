@@ -6,7 +6,7 @@
       "category": "Catégorie",
       "amount": "Montant",
       "schedule": "Planification",
-      "auto": "Auto",
+      "auto": "Enregistrement automatique",
       "actions": "Actions"
     },
     "empty": {
@@ -25,7 +25,6 @@
     "modifiedDateTitle": "Date modifiée pour cette occurrence",
     "splitBadge": "Répartition ({count})",
     "autoPostBadge": "Activé",
-    "autoPostTitle": "Enregistrement automatique à l'échéance",
     "inactiveSuffix": " — Inactif",
     "actionTitles": {
       "post": "Enregistrer la transaction",
@@ -76,9 +75,7 @@
     "accountsLabel": "Comptes",
     "accountsPlaceholder": "Tous les comptes",
     "categoriesLabel": "Catégories",
-    "categoriesPlaceholder": "Toutes les catégories",
-    "collapseAriaLabel": "Réduire les filtres",
-    "expandAriaLabel": "Développer les filtres"
+    "categoriesPlaceholder": "Toutes les catégories"
   },
   "postDialog": {
     "title": "Enregistrer la transaction",

@@ -763,8 +763,7 @@
     },
     "search": {
       "label": "搜索邮件",
-      "text": "搜索",
-      "placeholder": "主题、发件人或内容",
+      "placeholder": "按主题、发件人或内容搜索...",
       "in": "搜索范围",
       "fields": {
         "all": "所有字段",
@@ -806,10 +805,10 @@
       "body": "读取邮箱后，订单确认邮件会显示在这里。",
       "filteredTitle": "没有此状态的邮件",
       "filteredBody": "选择其他状态以查看其余邮件。",
-      "noMailboxBody": "尚未连接邮箱。请连接一个邮箱以开始读取订单确认邮件。",
-      "connectButton": "连接邮箱",
       "searchTitle": "没有与搜索匹配的邮件",
-      "searchBody": "请更改关键词或日期，或清除搜索以查看所有邮件。"
+      "searchBody": "请更改关键词或日期，或清除搜索以查看所有邮件。",
+      "noMailboxBody": "尚未连接邮箱。请连接一个邮箱以开始读取订单确认邮件。",
+      "connectButton": "连接邮箱"
     },
     "actions": {
       "view": "查看",
@@ -1092,9 +1091,7 @@
     "help": "没有自动匹配到交易。以下是下方日期范围内的交易，范围起初为购买前后几天。请选择它所支付的那一笔，或修改日期以查看更早或更晚的交易。",
     "fromLabel": "开始日期",
     "toLabel": "结束日期",
-    "searchLabel": "搜索",
-    "searchPlaceholder": "收款人、说明或金额",
-    "searchButton": "搜索",
+    "searchPlaceholder": "按收款人、说明或金额搜索...",
     "loading": "正在加载交易",
     "error": "无法加载交易。",
     "retry": "重试",
@@ -1331,7 +1328,7 @@
       "reviseHelp": "告诉助手需要更改什么。它会根据这些邮件和交易更新同一份草稿。",
       "tradeHelp": "助手会读取这些交易确认，并为 {domain} 编写一个解析器草稿，提出每封邮件所报告的投资交易。目前还没有批准任何内容。",
       "tradeSample": "交易确认",
-      "feedbackLabel": "需要更改什么",
+      "feedbackLabel": "要求的更改",
       "feedbackPlaceholder": "例如：合计是标有“实付金额”的那一行，而不是小计。",
       "send": "发送给 AI",
       "sendFeedback": "向 AI 发送备注",

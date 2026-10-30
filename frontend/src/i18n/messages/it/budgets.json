@@ -34,7 +34,8 @@
       "WANT": "Desiderio",
       "SAVING": "Risparmio"
     },
-    "saving": "Salvataggio..."
+    "saving": "Salvataggio...",
+    "remove": "Rimuovi dal budget"
   },
   "categoryList": {
     "title": "Budget per categoria",
@@ -83,7 +84,6 @@
     "baseIncomePlaceholder": "Entrate mensili previste",
     "active": "Attivo",
     "saveChanges": "Salva modifiche",
-    "saving": "Salvataggio...",
     "typeOptions": {
       "MONTHLY": "Mensile",
       "ANNUAL": "Annuale",
@@ -109,7 +109,8 @@
     "title": "Mappa di calore spese - {monthLabel}",
     "ariaLabel": "Mappa di calore spese",
     "less": "Meno",
-    "more": "Più"
+    "more": "Più",
+    "readout": "{date}: {amount}"
   },
   "periodDetail": {
     "summaryCards": {
@@ -134,7 +135,8 @@
     "rolloverBadge": "+{amount} riportato",
     "underBudgetLabel": "{amount} sotto il budget",
     "overBudgetLabel": "{amount} oltre il budget",
-    "carriedForward": "{amount} riportato al periodo successivo"
+    "carriedForward": "{amount} riportato al periodo successivo",
+    "dateRange": "Dal {start} al {end}"
   },
   "periodSelector": {
     "label": "Periodo:",
@@ -471,11 +473,18 @@
         "description": "Crea il tuo primo budget analizzando la cronologia delle spese. La procedura guidata suggerirà importi realistici basati sulle tue transazioni.",
         "cta": "Crea il tuo primo budget"
       },
+      "loading": "Caricamento dei budget...",
+      "columns": {
+        "name": "Nome",
+        "strategy": "Strategia",
+        "type": "Tipo",
+        "categories": "Categorie",
+        "started": "Inizio",
+        "status": "Stato"
+      },
       "card": {
         "active": "Attivo",
-        "inactive": "Inattivo",
-        "categories": "{count} categorie",
-        "started": "Iniziato il {date}"
+        "inactive": "Inattivo"
       }
     },
     "create": {
@@ -484,6 +493,9 @@
     },
     "detail": {
       "backToBudgets": "Torna ai budget",
+      "switchBudget": "Passa a un altro budget",
+      "switchPlaceholder": "Filtra budget...",
+      "switchNoMatches": "Nessun budget corrispondente",
       "notFound": "Budget non trovato",
       "delete": {
         "title": "Elimina budget",
@@ -501,7 +513,7 @@
     "edit": {
       "subtitlePrefix": "Modifica: ",
       "subtitle": "Aggiorna le impostazioni del budget e le allocazioni per categoria",
-      "backToDashboard": "Torna alla dashboard",
+      "backToBudget": "Torna a {name}",
       "budgetSettings": "Impostazioni budget",
       "categoryAllocations": "Allocazioni per categoria",
       "income": "Entrate",
@@ -510,12 +522,19 @@
       "percentUsed": "{percent}% utilizzato",
       "rolloverType": "Riporto: {type}",
       "editCategoryTitle": "Modifica {name}",
+      "remove": {
+        "title": "Rimuovi categoria",
+        "message": "Rimuovere \"{name}\" da questo budget? La sua allocazione di {amount} non sarà più a budget e la sua cronologia nei periodi di budget passati verrà eliminata. Le tue transazioni non sono interessate. Questa azione non può essere annullata.",
+        "confirm": "Rimuovi"
+      },
       "toasts": {
         "updated": "Budget aggiornato",
         "updateFailed": "Impossibile aggiornare il budget",
         "categoryUpdated": "Categoria aggiornata",
         "categoryFailed": "Impossibile aggiornare la categoria",
-        "loadFailed": "Impossibile caricare il budget"
+        "loadFailed": "Impossibile caricare il budget",
+        "categoryRemoved": "Categoria rimossa dal budget",
+        "categoryRemoveFailed": "Impossibile rimuovere la categoria"
       }
     }
   },

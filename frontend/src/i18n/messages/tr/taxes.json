@@ -12,7 +12,7 @@
   "payroll": {
     "title": "Bordro Kesintileri",
     "subtitle": "Bordro faturanızın kesinti satırları için yıllık üst sınırlar",
-    "backToTaxes": "Vergiler",
+    "backToTaxes": "Vergiler'e Dön",
     "newButton": "+ Yeni Kural",
     "loading": "Bordro kesintileri yükleniyor...",
     "emptyState": {

@@ -123,6 +123,8 @@
       "createdTransaction": "Transaction {payee} {amount} créée",
       "updatedTransaction": "Transaction {payee} {amount} mise à jour",
       "deletedTransaction": "Transaction {payee} {amount} supprimée",
+      "convertedToTransfer": "Transaction {payee} {amount} convertie en virement",
+      "convertedToTransaction": "Virement {payee} {amount} converti en transaction",
       "bulkUpdatedTransactions": "Mise à jour groupée de {count, plural, one {# transaction} other {# transactions}}",
       "createdTransfer": "Virement {amount} de {from} vers {to} créé",
       "createdInvestmentTransaction": "Transaction {action} créée",
@@ -131,12 +133,6 @@
       "transferredSecurity": "Titre transféré entre comptes",
       "updatedSecurityTransfer": "Transfert de titres mis à jour",
       "ranTransactionRule": "Règle « {name} » exécutée sur {count, plural, one {# transaction} other {# transactions}}"
-    },
-    "timeAgo": {
-      "justNow": "à l'instant",
-      "minutes": "il y a {count} min",
-      "hours": "il y a {count} h",
-      "days": "il y a {count} j"
     },
     "undonePrefix": "Annulé : {description}",
     "redonePrefix": "Rétabli : {description}"

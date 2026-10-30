@@ -58,6 +58,13 @@ describe('CustomizeDashboardModal', () => {
     }));
   });
 
+  it('is named by its title and keeps its explanation in a tooltip', async () => {
+    await renderModal();
+    expect(screen.getByRole('dialog', { name: 'Customize dashboard' })).toHaveAccessibleDescription(
+      /mirrors your dashboard/,
+    );
+  });
+
   it('shows visible widgets as grid tiles and the rest as hidden chips', async () => {
     await renderModal();
     for (const id of DEFAULT_DASHBOARD_WIDGET_IDS) {

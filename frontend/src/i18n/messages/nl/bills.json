@@ -16,12 +16,13 @@
     "chartUnavailable": "Grafiek tijdelijk niet beschikbaar"
   },
   "viewTabs": {
-    "list": "Lijst",
-    "calendar": "Kalender",
+    "filterLabel": "Schematype",
     "filterAll": "Alle ({count})",
     "filterBills": "Facturen ({count})",
     "filterDeposits": "Stortingen ({count})",
-    "todayButton": "Vandaag"
+    "todayButton": "Vandaag",
+    "previousMonth": "Vorige maand",
+    "nextMonth": "Volgende maand"
   },
   "form": {
     "titleNew": "Nieuwe geplande transactie",

@@ -175,7 +175,6 @@
       "viewPayeeTitle": "Zobacz szczegóły {name}",
       "investmentLabel": "Inwestycja",
       "linkedInvestmentTitle": "Zobacz w Inwestycjach",
-      "linkedInvestmentBadgeTitle": "Ta transakcja jest powiązana z transakcją inwestycyjną",
       "filterByDate": "Filtruj według daty \"{date}\"",
       "filterByAccount": "Filtruj według \"{name}\"",
       "filterByPayee": "Filtruj według \"{name}\"",
@@ -223,10 +222,10 @@
       "show": "Pokaż filtry"
     },
     "accounts": {
-      "label": "Pokaż konta:",
-      "all": "Wszystkie",
-      "active": "Aktywny",
-      "closed": "Zamknięte"
+      "label": "Pokaż konta",
+      "allCount": "Wszystkie ({count})",
+      "activeCount": "Aktywny ({count})",
+      "closedCount": "Zamknięte ({count})"
     },
     "fields": {
       "accounts": "Konta",
@@ -320,7 +319,7 @@
     },
     "modal": {
       "title": "Zbiorcza aktualizacja transakcji",
-      "subtitle": "Zaktualizuj {count, plural, one {# zaznaczoną transakcję} few {# zaznaczone transakcje} many {# zaznaczonych transakcji} other {# zaznaczonych transakcji}}. Przełącz pola, które chcesz zmienić.",
+      "help": "Przełącz pola, które chcesz zmienić.",
       "submitLabel": "{count, plural, one {Zaktualizuj # transakcję} few {Zaktualizuj # transakcje} many {Zaktualizuj # transakcji} other {Zaktualizuj # transakcji}}",
       "payee": "Odbiorca",
       "category": "Kategoria",
@@ -368,8 +367,9 @@
       "fromAccount": "Konto źródłowe",
       "toAccount": "Konto docelowe",
       "transferAmount": "Kwota przelewu",
-      "transferAmountWithCurrency": "Kwota przelewu ({currency})",
-      "amountReceived": "Kwota otrzymana ({currency})",
+      "amountReceivedLabel": "Kwota otrzymana",
+      "transferAmountInCurrency": "Kwota przelewu ({currency})",
+      "amountReceivedInCurrency": "Kwota otrzymana ({currency})",
       "payeeOptional": "Odbiorca (opcjonalnie)",
       "categoryOptional": "Kategoria (opcjonalnie)"
     },
@@ -399,10 +399,16 @@
     "submitCreateAndNewDescription": "Zapisz i zacznij kolejną, zachowując konto i datę.",
     "submitOptions": "Wybierz, co dzieje się po utworzeniu",
     "submitUpdate": "Zaktualizuj: {mode}",
+    "submitConvert": "Przekonwertuj na {mode}",
     "reconciledConfirm": {
       "title": "Edytować uzgodnioną transakcję?",
       "message": "Ta transakcja jest uzgodniona. Jej zmiana wpłynie na zakończone uzgodnienie. Czy mimo to chcesz zapisać zmiany?",
       "confirm": "Zapisz zmiany"
+    },
+    "counterpartConfirm": {
+      "title": "Przekonwertować ten przelew?",
+      "message": "Druga strona tego przelewu została już rozliczona lub uzgodniona. Przekonwertowanie go na transakcję usunie ten wpis z drugiego konta i zmieni saldo sprawdzone z wyciągiem. Czy chcesz kontynuować?",
+      "confirm": "Przekonwertuj mimo to"
     },
     "modeLabel": {
       "transfer": "Przelew",
@@ -432,7 +438,8 @@
       "destinationRequired": "Wybierz konto docelowe",
       "sameAccount": "Konto źródłowe i docelowe muszą być różne",
       "negativeTransfer": "Kwota przelewu nie może być ujemna",
-      "convertToTransferUnsupported": "Istniejącej transakcji nie można tutaj zmienić w przelew. Usuń ją i utwórz przelew.",
+      "convertedToTransfer": "Przekonwertowano na przelew",
+      "convertedToTransaction": "Przekonwertowano na transakcję",
       "payeeCreated": "Utworzono odbiorcę \"{name}\"",
       "payeeCreateFailed": "Nie udało się utworzyć odbiorcy",
       "payeeReactivated": "Odbiorca \"{name}\" został przywrócony",
@@ -475,7 +482,8 @@
       "loading": "Wczytywanie gwarancji",
       "loadError": "Nie udało się wczytać gwarancji tej transakcji.",
       "empty": "Nie ma jeszcze gwarancji"
-    }
+    },
+    "conversionLockedNote": "Ten przelew należy do transakcji podzielonej lub do konta innego właściciela, więc tutaj może pozostać tylko przelewem. Zmień go w podziale albo usuń i utwórz żądany wpis."
   },
   "splitEditor": {
     "header": "Szczegóły podziału",
@@ -538,7 +546,7 @@
     "quantityPlaceholder": "Ilość",
     "pricePlaceholder": "Cena",
     "commissionPlaceholder": "Prowizja",
-    "amountPlaceholder": "Kwota ({currency})",
+    "amountOnlyPlaceholder": "Kwota",
     "ratePlaceholder": "{to} za 1 {from}",
     "ariaRate": "Kurs wymiany ({to} za 1 {from})",
     "rateHint": "Ilość, cena i prowizja są w {from}; ten kurs przelicza wpływ gotówkowy na {to}.",

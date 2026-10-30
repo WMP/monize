@@ -17,7 +17,8 @@
     "label": "依類型篩選",
     "all": "全部",
     "email_receipt": "郵件收據",
-    "transaction_review": "規則"
+    "transaction_review": "規則",
+    "option": "{label}（{count}）"
   },
   "status": {
     "pending": "待處理",

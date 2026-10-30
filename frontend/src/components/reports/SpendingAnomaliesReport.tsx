@@ -12,6 +12,8 @@ import { useReportData } from '@/hooks/useReportData';
 import { ReportError } from '@/components/reports/ReportError';
 import { PartialDataNotice } from '@/components/reports/PartialDataNotice';
 import { quoteSearchValue } from '@/lib/search-query';
+import { CheckCircleIcon } from '@heroicons/react/24/outline';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 export function SpendingAnomaliesReport() {
   const t = useTranslations('reports');
@@ -198,14 +200,7 @@ export function SpendingAnomaliesReport() {
       {/* Anomalies List */}
       {anomalies.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-          <div className="text-center py-8">
-            <svg className="h-12 w-12 mx-auto text-green-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p className="text-gray-500 dark:text-gray-400">
-              {t('spendingAnomalies.noAnomalies')}
-            </p>
-          </div>
+          <EmptyState icon={<CheckCircleIcon />} title={t('spendingAnomalies.noAnomalies')} />
         </div>
       ) : (
         <div className="space-y-4">

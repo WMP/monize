@@ -123,6 +123,8 @@
       "createdTransaction": "已建立交易 {payee} {amount}",
       "updatedTransaction": "已更新交易 {payee} {amount}",
       "deletedTransaction": "已刪除交易 {payee} {amount}",
+      "convertedToTransfer": "已將交易 {payee} {amount} 轉換為轉帳",
+      "convertedToTransaction": "已將轉帳 {payee} {amount} 轉換為交易",
       "bulkUpdatedTransactions": "已批次更新 {count, plural, one {# 筆交易} other {# 筆交易}}",
       "createdTransfer": "已建立轉帳 {amount} 從 {from} 至 {to}",
       "createdInvestmentTransaction": "已建立 {action} 交易",
@@ -131,12 +133,6 @@
       "transferredSecurity": "已在科目間移轉證券",
       "updatedSecurityTransfer": "已更新證券移轉",
       "ranTransactionRule": "已在 {count, plural, other {# 筆交易}}上執行規則「{name}」"
-    },
-    "timeAgo": {
-      "justNow": "剛剛",
-      "minutes": "{count} 分鐘前",
-      "hours": "{count} 小時前",
-      "days": "{count} 天前"
     },
     "undonePrefix": "已復原：{description}",
     "redonePrefix": "已重做：{description}"

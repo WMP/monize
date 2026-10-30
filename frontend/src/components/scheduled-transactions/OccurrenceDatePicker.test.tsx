@@ -269,17 +269,18 @@ describe('OccurrenceDatePicker', () => {
     expect(badges.length).toBe(1);
   });
 
-  // --- Close button (X) ---
-  it('calls onClose when X button is clicked', () => {
+  // --- Dialog chrome ---
+  it('is named by its title through Modal and draws no corner X', () => {
     render(
       <OccurrenceDatePicker isOpen={true} scheduledTransaction={scheduledTransaction} onSelect={onSelect} onClose={onClose} />
     );
-    const closeButtons = screen.getAllByRole('button');
-    const xButton = closeButtons.find(b => b.querySelector('svg path[d*="M6 18L18 6"]'));
-    if (xButton) {
-      fireEvent.click(xButton);
-      expect(onClose).toHaveBeenCalled();
-    }
+    expect(screen.getByRole('dialog', { name: 'Select Occurrence Date' })).toBeInTheDocument();
+    // Cancel is the one control that closes it: no icon-only button sits
+    // beside the title.
+    const iconOnly = screen
+      .getAllByRole('button')
+      .filter((b) => b.querySelector('svg') && !b.textContent?.trim());
+    expect(iconOnly).toHaveLength(0);
   });
 
   // --- Semimonthly frequency ---

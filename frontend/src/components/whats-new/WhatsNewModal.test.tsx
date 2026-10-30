@@ -132,10 +132,21 @@ describe('WhatsNewModal', () => {
     expect(
       screen.queryByRole('button', { name: 'Show at next login' }),
     ).not.toBeInTheDocument();
-    // Only close affordances remain (the header X and the footer button).
-    expect(
-      screen.getAllByRole('button', { name: 'Close' }).length,
-    ).toBeGreaterThan(0);
+    // Only the footer's Close remains.
+    expect(screen.getAllByRole('button', { name: 'Close' })).toHaveLength(1);
+  });
+
+  it('is named by its title, with Close in the button row and no X', () => {
+    const onClose = vi.fn();
+    renderModal({ onClose });
+
+    const dialog = screen.getByRole('dialog', { name: "What's New" });
+    // One Close, beside the two acknowledgement choices, not a corner X.
+    expect(screen.getAllByRole('button', { name: 'Close' })).toHaveLength(1);
+    expect(dialog.querySelector('.border-t, .border-b')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it('shows an unavailable message when there are no notes', () => {

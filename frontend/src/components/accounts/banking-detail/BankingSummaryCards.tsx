@@ -8,6 +8,7 @@ import {
   summaryGridClass,
 } from '@/components/accounts/shared/SummaryCardGrid';
 import { UnknownAmount } from '@/components/ui/UnknownAmount';
+import { balanceColor } from '@/lib/format';
 import type { Account } from '@/types/account';
 import type { BalanceForecastOverdue } from '@/types/banking-detail';
 
@@ -34,10 +35,6 @@ interface BankingSummaryCardsProps {
   onInterestClick?: () => void;
 }
 
-function signClass(value: number): string {
-  return value < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100';
-}
-
 /** Key figures for a chequing/savings/cash account. */
 export function BankingSummaryCards({
   account,
@@ -61,7 +58,7 @@ export function BankingSummaryCards({
     {
       label: t('summary.currentBalance'),
       value: formatCurrency(currentBalance, currency),
-      valueClass: signClass(currentBalance),
+      valueClass: balanceColor(currentBalance),
     },
     {
       label: t('summary.projectedBalance'),
@@ -71,7 +68,7 @@ export function BankingSummaryCards({
         ) : (
           formatCurrency(projectedBalance, currency)
         ),
-      valueClass: projectedBalance === null ? undefined : signClass(projectedBalance),
+      valueClass: projectedBalance === null ? undefined : balanceColor(projectedBalance),
       note:
         projectedBalance !== null && overdue !== null ? (
           <>

@@ -77,6 +77,7 @@ export function ParserEditorDialog({
   onConflict,
 }: ParserEditorDialogProps) {
   const t = useTranslations('emailReceipts.editor');
+  const tc = useTranslations('common');
 
   let body;
   if (lookups.status === 'error') {
@@ -114,6 +115,14 @@ export function ParserEditorDialog({
       padding="md"
       pushHistory
       title={parser ? t('editTitle') : t('createTitle')}
+      footer={
+        // The form draws its own Cancel; until it is there, this is the way out.
+        lookups.status === 'ready' ? undefined : (
+          <Button type="button" variant="outline" onClick={onClose}>
+            {tc('cancel')}
+          </Button>
+        )
+      }
     >
       {body}
     </Modal>

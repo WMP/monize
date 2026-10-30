@@ -215,7 +215,7 @@ describe('TransferTransactionFields', () => {
       />,
     );
 
-    expect(screen.getByText('Category (Optional)')).toBeInTheDocument();
+    expect(screen.getByText('Category (optional)')).toBeInTheDocument();
     expect(
       screen.getByText(/won't count as income or expense/i),
     ).toBeInTheDocument();
@@ -390,6 +390,36 @@ describe('TransferTransactionFields', () => {
     expect(screen.getByText('Amount Received (USD)')).toBeInTheDocument();
   });
 
+  it('routes cross-currency amount edits through the supplied handlers', () => {
+    const onTransferAmountChange = vi.fn();
+    const onTransferTargetAmountChange = vi.fn();
+    render(
+      <TransferTransactionFields
+        {...defaultProps}
+        onTransferAmountChange={onTransferAmountChange}
+        onTransferTargetAmountChange={onTransferTargetAmountChange}
+        crossCurrencyInfo={{
+          fromCurrency: 'CAD',
+          toCurrency: 'USD',
+          fromAccountName: 'CAD Account',
+          toAccountName: 'USD Account',
+        }}
+      />
+    );
+
+    fireEvent.change(screen.getByTestId('currency-input-field-Transfer Amount (CAD)'), {
+      target: { value: '100' },
+    });
+    fireEvent.change(screen.getByTestId('currency-input-field-Amount Received (USD)'), {
+      target: { value: '73' },
+    });
+
+    expect(onTransferAmountChange).toHaveBeenCalledWith(100);
+    expect(onTransferTargetAmountChange).toHaveBeenCalledWith(73);
+    expect(defaultProps.setValue).not.toHaveBeenCalledWith('amount', expect.anything(), expect.anything());
+    expect(defaultProps.setTransferTargetAmount).not.toHaveBeenCalled();
+  });
+
   it('does not show "Amount must be positive" hint when in cross-currency mode', () => {
     render(
       <TransferTransactionFields
@@ -480,7 +510,7 @@ describe('TransferTransactionFields', () => {
       />
     );
 
-    const payeeSelect = screen.getByTestId('combobox-select-Payee (Optional)');
+    const payeeSelect = screen.getByTestId('combobox-select-Payee (optional)');
     const options = Array.from(payeeSelect.querySelectorAll('option'));
     const labels = options.map(o => o.textContent);
 
@@ -500,7 +530,7 @@ describe('TransferTransactionFields', () => {
       />
     );
 
-    const payeeSelect = screen.getByTestId('combobox-select-Payee (Optional)');
+    const payeeSelect = screen.getByTestId('combobox-select-Payee (optional)');
     fireEvent.change(payeeSelect, { target: { value: 'p1' } });
 
     expect(defaultProps.setTransferPayeeId).toHaveBeenCalledWith('p1');

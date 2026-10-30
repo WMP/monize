@@ -77,3 +77,28 @@ cover the numerical table, cancellation, stale preview, navigation, visibility,
 upload retry and managed-account controls. Check actual browser persistence and
 320/390px layouts; capture synthetic-data screenshots after the production build.
 
+
+## Final review refinements, 30 October 2026
+
+Requester-authorized follow-up to [Ken's layout review](https://github.com/kenlasko/monize/pull/1890#issuecomment-6511645356)
+and [notification review](https://github.com/kenlasko/monize/pull/1890#issuecomment-6511698709).
+Main's common Modal changes have landed and are adopted through a normal merge.
+
+- Give overview and group tab panels explicit top padding, and separate expense
+  attachments from the preceding fields/preview. Verify rendered gaps on desktop
+  and phone; layout spacing must not depend on component fragments.
+- Use ListTopToolbar inside the group/expense list card with all paging props,
+  including filtered single-page counts; retain ListBottomPager outside it.
+  Both controls share page state and cannot act on stale server results.
+- Remove shared review notices from the global financial shell. Real activity
+  already uses Notifications with recipient preferences and delivery receipts.
+  The explicit review page shows actionable/revoked groups only, with a plain
+  empty state for known zero, retry for failure and no old-user response leak.
+- Preserve group-only creation, all financial/authorization rules and legacy
+  private-record access. No new API, financial calculation or translation key
+  is planned. Existing dialog cancel/close actions must survive main's new chrome.
+
+Regression matrix: empty/current/changed/revoked/failed review; delegate, sign-out
+and late old-user response; filtered single-page and multi-page lists; actual tab
+and attachment geometry at 390px and desktop. Run focused tests and the frontend
+gate once, then native PostgreSQL/browser acceptance without Docker.

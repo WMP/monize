@@ -123,6 +123,8 @@
       "createdTransaction": "Створено транзакцію {payee} {amount}",
       "updatedTransaction": "Оновлено транзакцію {payee} {amount}",
       "deletedTransaction": "Видалено транзакцію {payee} {amount}",
+      "convertedToTransfer": "Транзакцію {payee} {amount} перетворено на переказ",
+      "convertedToTransaction": "Переказ {payee} {amount} перетворено на транзакцію",
       "bulkUpdatedTransactions": "Масово оновлено {count, plural, one {# транзакцію} other {# транзакцій}}",
       "createdTransfer": "Створено переказ {amount} з {from} на {to}",
       "createdInvestmentTransaction": "Створено транзакцію {action}",
@@ -131,12 +133,6 @@
       "transferredSecurity": "Переведено цінні папери між рахунками",
       "updatedSecurityTransfer": "Оновлено переказ цінних паперів",
       "ranTransactionRule": "{count, plural, one {Правило «{name}» запущено для # транзакції} few {Правило «{name}» запущено для # транзакцій} many {Правило «{name}» запущено для # транзакцій} other {Правило «{name}» запущено для # транзакцій}}"
-    },
-    "timeAgo": {
-      "justNow": "щойно",
-      "minutes": "{count} хв тому",
-      "hours": "{count} год тому",
-      "days": "{count} д тому"
     },
     "undonePrefix": "Скасовано: {description}",
     "redonePrefix": "Повторено: {description}"

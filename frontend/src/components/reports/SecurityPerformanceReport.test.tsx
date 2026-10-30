@@ -346,7 +346,7 @@ describe('SecurityPerformanceReport', () => {
     await waitFor(() => {
       expect(screen.getByText(/Failed to load report data/)).toBeInTheDocument();
     });
-    expect(screen.getByRole('button', { name: /Try again/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Try Again/ })).toBeInTheDocument();
   });
 
   it('exports pdf in chart view', async () => {

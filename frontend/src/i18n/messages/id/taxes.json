@@ -12,7 +12,7 @@
   "payroll": {
     "title": "Potongan Gaji",
     "subtitle": "Batas maksimum tahunan pada baris potongan tagihan gaji Anda",
-    "backToTaxes": "Pajak",
+    "backToTaxes": "Kembali ke Pajak",
     "newButton": "+ Aturan Baru",
     "loading": "Memuat potongan gaji...",
     "emptyState": {

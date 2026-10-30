@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useState } from 'react';
-import { render, screen, waitFor, fireEvent } from '@/test/render';
+import { render, screen, waitFor, fireEvent, within } from '@/test/render';
 import CurrenciesPage from './page';
+import { SEGMENTED_TOOLBAR_GROUP_CLASS, toolbarSegmentClass } from '@/components/ui/segmented-control';
 import toast from 'react-hot-toast';
 
 // Mock next/image
@@ -174,7 +175,14 @@ vi.mock('@/components/currencies/RateHistoryCoverage', () => ({
 }));
 
 vi.mock('@/components/ui/Modal', () => ({
-  Modal: ({ children, isOpen }: any) => isOpen ? <div data-testid="modal">{children}</div> : null,
+  Modal: ({ children, isOpen, title, footer }: any) =>
+    isOpen ? (
+      <div data-testid="modal">
+        {title && <h2>{title}</h2>}
+        {children}
+        {footer}
+      </div>
+    ) : null,
 }));
 
 vi.mock('@/components/ui/UnsavedChangesDialog', () => ({
@@ -397,6 +405,27 @@ describe('CurrenciesPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Refresh Rates')).toBeInTheDocument();
     });
+  });
+
+  it('shows the age of the stored rates on Refresh Rates, with an icon', async () => {
+    mockGetRateStatus.mockResolvedValue({
+      lastUpdated: new Date(Date.now() - 3 * 3_600_000).toISOString(),
+      providers: [],
+    });
+    render(<CurrenciesPage />);
+    const button = await screen.findByRole('button', { name: /Refresh Rates/ });
+    await waitFor(() => expect(button).toHaveTextContent(/\(3 hours ago\)/));
+    expect(button.querySelector('svg')).not.toBeNull();
+  });
+
+  it('draws the status filter as the shared segmented control in a wrapping toolbar', async () => {
+    render(<CurrenciesPage />);
+    const group = await screen.findByRole('group', { name: 'Status' });
+    expect(group.className).toBe(SEGMENTED_TOOLBAR_GROUP_CLASS);
+    const active = within(group).getByRole('button', { name: /^Active/ });
+    expect(active).toHaveAttribute('aria-pressed', 'true');
+    expect(active.className).toBe(toolbarSegmentClass(true));
+    expect(group.parentElement!.className).toContain('flex-wrap');
   });
 
   it('calls refreshRates when Refresh Rates button is clicked', async () => {

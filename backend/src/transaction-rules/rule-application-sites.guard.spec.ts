@@ -96,6 +96,8 @@ export const EXEMPT_INSERT_SITES: Readonly<Record<string, string>> = {
     "the counterpart leg of a split transfer, created by createSplits and addSplit; not evaluated until Q2 of the design is decided",
   "transactions/convert-to-transfer.ts":
     "the counterpart leg of a rule's own convert_to_transfer action, written by the applier as that rule's effect (spec transaction-rules-structural-actions.md section 5); rules never re-evaluate a row a rule created, and a structural action is refused on any transfer leg",
+  "transactions/transaction-conversion.service.ts":
+    "the counterpart leg of a row the user converts into a transfer in place (issue #1937, spec transaction-transfer-conversion.md): the kept row had the rules applied when it was created, and the new leg is derived from it with the create's own column set, as convert-to-transfer.ts's is",
 };
 
 type SiteKind =

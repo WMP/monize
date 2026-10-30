@@ -114,8 +114,8 @@
       "matchAll": "Tất cả những điều sau",
       "matchAny": "Bất kỳ điều nào sau đây",
       "matchLabel": "Khớp",
-      "not": "Không",
-      "notLabel": "Đảo ngược nhóm này: nhóm khớp khi các điều kiện của nó không được thỏa mãn",
+      "not": "Đảo ngược nhóm",
+      "notHelp": "Nhóm bị đảo ngược sẽ khớp khi các điều kiện của nó không được thỏa mãn.",
       "title": "Nhóm",
       "addCondition": "+ Thêm điều kiện",
       "addGroup": "+ Thêm nhóm",
@@ -201,7 +201,7 @@
       "tags": "Thẻ",
       "category": "Danh mục",
       "payee": "Người nhận",
-      "instruction": "Cần kiểm tra điều gì",
+      "instruction": "Hướng dẫn xem xét",
       "instructionPlaceholder": "Ví dụ: chia khoản mua này theo hóa đơn",
       "instructionHelp": "Quy tắc chỉ yêu cầu xem xét. Một người sẽ duyệt mọi thay đổi trước khi thực hiện.",
       "onlyIfEmpty": "Chỉ khi trống",
@@ -220,7 +220,7 @@
       "createIfMissing": "Tạo người nhận nếu chưa có",
       "createIfMissingHelp": "Khi bật, và không có người nhận nào khớp với tên (theo tên, bí danh hoặc khớp gần đúng), một người nhận mới sẽ được tạo. Người nhận do quy tắc tạo ra vẫn được giữ lại nếu bạn hoàn tác lần chạy.",
       "onlyIfEmptyDescriptionHelp": "Khi bật, quy tắc chỉ ghi mô tả nếu giao dịch chưa có mô tả. Tắt để ghi mỗi lần.",
-      "mode": "Cách ghi",
+      "mode": "Chế độ mô tả",
       "modes": {
         "replace": "Thay thế mô tả",
         "append": "Thêm vào sau mô tả",
@@ -262,12 +262,12 @@
         "windowHelp": "Khoảng thời gian trước hoặc sau ngày đến hạn mà ngân hàng có thể thực hiện khoản thanh toán. Một khoản ghi nợ trong vòng số ngày này trước hoặc sau ngày đến hạn của một kỳ trả góp sẽ thanh toán kỳ đó; một khoản ghi nợ ngoài khoảng này được giữ nguyên.",
         "daysBefore": "Số ngày trước ngày đến hạn",
         "daysAfter": "Số ngày sau ngày đến hạn",
-        "excess": "Khi khoản ghi nợ lớn hơn kỳ trả góp",
+        "excess": "Ghi nợ lớn hơn kỳ trả góp",
         "excessPolicies": {
           "extra_principal": "Trả phần chênh lệch như gốc trả thêm",
           "refuse": "Giữ nguyên giao dịch"
         },
-        "shortfall": "Khi khoản ghi nợ nhỏ hơn kỳ trả góp",
+        "shortfall": "Ghi nợ nhỏ hơn kỳ trả góp",
         "shortfallPolicies": {
           "refuse": "Giữ nguyên giao dịch",
           "interest_first": "Trả lãi trước, phần còn lại là gốc"

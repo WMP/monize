@@ -32,7 +32,7 @@ import { ReportAccountMultiSelect } from '@/components/reports/ReportAccountMult
 import { ReportError } from '@/components/reports/ReportError';
 import { exportToCsv, exportCsvSections } from '@/lib/csv-export';
 import { SortableHeader } from '@/components/ui/SortableHeader';
-import { CAPTION_CLASS, CellLabel, PHONE_HEADER_CLASS } from '@/components/ui/Table';
+import { CAPTION_CLASS, CellLabel, PHONE_HEADER_CLASS, TH_CLASS } from '@/components/ui/Table';
 import { PartialTotal } from '@/components/ui/PartialTotal';
 import { UnknownAmount } from '@/components/ui/UnknownAmount';
 import type { ConvertedTotal } from '@/lib/currency-total';
@@ -44,12 +44,12 @@ import { useMainAccountName } from '@/hooks/useMainAccountName';
 import {
   ACTION_COLORS,
   DATE_CELL,
-  HEADER_CLASS,
   MONEY_CELL,
   type InvestmentTxSortField,
   type SortColumn,
   type SortColumnsByField,
 } from '@/components/reports/InvestmentTransactionHistoryReportParts';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 const logger = createLogger('InvestmentTransactionHistoryReport');
 
@@ -774,9 +774,7 @@ export function InvestmentTransactionHistoryReport() {
       {/* Transaction List */}
       {filteredTransactions.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            {t('investmentTransactions.noTransactions')}
-          </p>
+          <EmptyState title={t('investmentTransactions.noTransactions')} />
         </div>
       ) : (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 overflow-hidden">
@@ -934,7 +932,7 @@ export function InvestmentTransactionHistoryReport() {
                       sortDirection={sortDirection}
                       onSort={handleSort}
                       align={col.align}
-                      className={col.headerClass ? `${HEADER_CLASS} ${col.headerClass}` : HEADER_CLASS}
+                      className={col.headerClass ? `${TH_CLASS} ${col.headerClass}` : TH_CLASS}
                     >
                       {col.label}
                     </SortableHeader>

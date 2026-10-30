@@ -687,30 +687,59 @@ describe('Modal header, footer and body', () => {
     expect(screen.getByRole('dialog')).not.toHaveAttribute('aria-labelledby');
   });
 
-  it('closes from the header button, through the same path as Escape', () => {
-    const onClose = vi.fn();
-    const onBeforeClose = vi.fn(() => false);
+  it('draws the title as the New Transaction heading, with no close button or rule', () => {
+    // Cancel / Close in the button row, Escape and the backdrop close a dialog;
+    // an X beside the title and a strip under it are the drift the reference
+    // dialog does not have.
     render(
-      <Modal isOpen={true} title="Edit" onClose={onClose} onBeforeClose={onBeforeClose}>
+      <Modal isOpen={true} title="Edit" onClose={vi.fn()} footer={<button>Save</button>}>
         <p>body</p>
       </Modal>,
     );
-
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
-
-    // onBeforeClose returning false must veto the close here too -- a second
-    // close path that skipped the guard would discard unsaved edits.
-    expect(onBeforeClose).toHaveBeenCalled();
-    expect(onClose).not.toHaveBeenCalled();
-  });
-
-  it('draws no close button when the modal cannot be closed', () => {
-    render(
-      <Modal isOpen={true} title="Working">
-        <p>body</p>
-      </Modal>,
+    const heading = screen.getByRole('heading', { name: 'Edit' });
+    expect(heading.className).toContain('text-2xl');
+    expect(heading.className).toContain('font-bold');
+    expect(heading.parentElement!.className).not.toContain('border-b');
+    expect(screen.getByRole('button', { name: 'Save' }).parentElement!.className).not.toContain(
+      'border-t',
     );
     expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument();
+  });
+
+  it('shows the description in a tooltip beside the title, not a paragraph under it', () => {
+    render(
+      <Modal isOpen={true} title="Import" description="Rows are previewed first.">
+        <p>body</p>
+      </Modal>,
+    );
+    expect(screen.getByRole('button', { name: 'Rows are previewed first.' })).toBeInTheDocument();
+    expect(screen.queryByRole('paragraph')).not.toHaveTextContent('Rows are previewed first.');
+  });
+
+  it('does not open the description tooltip by focusing it when the dialog opens', () => {
+    const raf = vi.spyOn(globalThis, 'requestAnimationFrame').mockImplementation((cb) => {
+      cb(0);
+      return 0;
+    });
+    render(
+      <Modal isOpen={true} title="Import" description="Rows are previewed first.">
+        <input aria-label="File" />
+      </Modal>,
+    );
+    expect(screen.getByLabelText('File')).toHaveFocus();
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    raf.mockRestore();
+  });
+
+  it('puts the heading inside the panel padding the caller gives at the default padding', () => {
+    render(
+      <Modal isOpen={true} title="New Transaction" className="p-6">
+        <p>body</p>
+      </Modal>,
+    );
+    const block = screen.getByRole('heading', { name: 'New Transaction' }).parentElement!;
+    expect(block.className).toContain('mb-4');
+    expect(block.className).not.toContain('px-4');
   });
 
   it('renders a footer when given one', () => {
@@ -765,7 +794,7 @@ describe('Modal header, footer and body', () => {
     it('keeps the header and the footer at their own height around a body that takes the rest', () => {
       open({ fixedHeight: true });
       const dialog = screen.getByRole('dialog');
-      const header = screen.getByRole('heading', { name: 'Heading' }).parentElement!.parentElement!;
+      const header = screen.getByRole('heading', { name: 'Heading' }).parentElement!;
       const body = screen.getByText('Body text').parentElement!;
       const footer = screen.getByRole('button', { name: 'Save' }).parentElement!;
       expect(header.className).toContain('shrink-0');
@@ -798,7 +827,7 @@ describe('Modal header, footer and body', () => {
       expect(dialog.className).toContain('overflow-y-auto');
       expect(dialog.className).not.toContain('h-[min(90vh,56rem)]');
       expect(dialog.className).not.toContain('flex-col');
-      const header = screen.getByRole('heading', { name: 'Heading' }).parentElement!.parentElement!;
+      const header = screen.getByRole('heading', { name: 'Heading' }).parentElement!;
       const footer = screen.getByRole('button', { name: 'Save' }).parentElement!;
       expect(header.className).not.toContain('shrink-0');
       expect(footer.className).not.toContain('shrink-0');

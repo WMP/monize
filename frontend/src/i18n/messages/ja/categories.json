@@ -7,6 +7,7 @@
     "filterAll": "すべて ({count})",
     "filterExpenses": "支出 ({count})",
     "filterIncome": "収入 ({count})",
+    "typeFilterLabel": "種類",
     "modalTitleNew": "新規カテゴリ",
     "modalTitleEdit": "カテゴリを編集",
     "countSingle": "1 カテゴリ",
@@ -71,8 +72,8 @@
     "submitUpdate": "カテゴリを更新"
   },
   "list": {
-    "emptyHeading": "カテゴリがありません",
-    "emptyDescription": "新しいカテゴリを作成して始めましょう。",
+    "emptyHeading": "カテゴリが見つかりません",
+    "emptyDescription": "現在の検索条件またはフィルターに一致するカテゴリはありません。",
     "colName": "名前",
     "colType": "種類",
     "colCount": "件数",
@@ -85,7 +86,7 @@
     "viewTransactionsTitle": "このカテゴリの取引を表示"
   },
   "deleteDialog": {
-    "title": "「{name}」を削除しますか？",
+    "title": "「{name}」を削除",
     "checkingUsage": "使用状況を確認中...",
     "usedBy": "このカテゴリは {count, plural, one {# 件} other {# 件}}（取引またはスケジュール済み請求・入金）で使用されています。",
     "reassignLabel": "再割り当て先：",

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, act } from '@/test/render';
 import BillsPage from './page';
 import { useDensityStore } from '@/store/densityStore';
+import { useViewModeStore } from '@/store/viewModeStore';
 import { notifyAiAction } from '@/lib/aiActionSignal';
 
 // Mock next/image
@@ -86,7 +87,8 @@ vi.mock('@/lib/errors', () => ({
   getErrorMessage: (_error: any, fallback: string) => fallback,
 }));
 
-vi.mock('@/lib/utils', () => ({
+vi.mock('@/lib/utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/utils')>()),
   parseLocalDate: (dateStr: string) => new Date(dateStr + 'T00:00:00'),
 }));
 
@@ -187,10 +189,11 @@ vi.mock('@/hooks/useExchangeRates', () => ({
 const mockOpenCreate = vi.fn();
 const mockOpenEdit = vi.fn();
 const mockClose = vi.fn();
+const formModal = vi.hoisted(() => ({ showForm: false }));
 
 vi.mock('@/hooks/useFormModal', () => ({
   useFormModal: () => ({
-    showForm: false,
+    showForm: formModal.showForm,
     editingItem: null,
     openCreate: mockOpenCreate,
     openEdit: mockOpenEdit,
@@ -223,8 +226,16 @@ vi.mock('@/components/ui/Button', () => ({
   ),
 }));
 
+// The mock keeps Modal's contract that matters here: a `title` names the
+// dialog, so a host that drew its own heading instead has no name.
 vi.mock('@/components/ui/Modal', () => ({
-  Modal: ({ children, isOpen }: any) => isOpen ? <div data-testid="modal">{children}</div> : null,
+  Modal: ({ children, isOpen, title }: any) =>
+    isOpen ? (
+      <div data-testid="modal" role="dialog" aria-label={typeof title === 'string' ? title : undefined}>
+        {title ? <h2>{title}</h2> : null}
+        {children}
+      </div>
+    ) : null,
 }));
 
 vi.mock('@/components/ui/UnsavedChangesDialog', () => ({
@@ -332,6 +343,10 @@ describe('BillsPage', () => {
     // Filters (type tab + panel selections) now persist to localStorage;
     // reset it so each case starts from the default unfiltered view.
     localStorage.clear();
+    // The Table / Calendar choice lives in the shared view-mode store, which
+    // outlives a render: start every case on the list.
+    useViewModeStore.getState().setView('bills', 'table');
+    formModal.showForm = false;
     nav.searchParams = new URLSearchParams();
     vi.useFakeTimers({ now, shouldAdvanceTime: true });
     mockGetAll.mockResolvedValue(mockScheduledTransactions);
@@ -451,6 +466,22 @@ describe('BillsPage', () => {
       expect(screen.queryByText('Rent')).not.toBeInTheDocument();
     });
 
+    it('is a segmented control whose pressed segment is the active filter', async () => {
+      render(<BillsPage />);
+      await waitFor(() => expect(screen.getByTestId('scheduled-transaction-list')).toBeInTheDocument());
+
+      const group = screen.getByRole('group', { name: 'Schedule type' });
+      const all = screen.getByRole('button', { name: 'All (6)' });
+      const bills = screen.getByRole('button', { name: 'Bills (3)' });
+      expect(group).toContainElement(all);
+      expect(all).toHaveAttribute('aria-pressed', 'true');
+      expect(bills).toHaveAttribute('aria-pressed', 'false');
+
+      fireEvent.click(bills);
+      expect(bills).toHaveAttribute('aria-pressed', 'true');
+      expect(all).toHaveAttribute('aria-pressed', 'false');
+    });
+
     it('shows correct filter counts', async () => {
       render(<BillsPage />);
       await waitFor(() => {
@@ -464,18 +495,62 @@ describe('BillsPage', () => {
   });
 
   describe('View Toggle', () => {
-    it('renders list and calendar tabs', async () => {
+    it('switches with the shared Table / Calendar toggle, not a hand-rolled tab bar', async () => {
       render(<BillsPage />);
-      await waitFor(() => {
-        expect(screen.getByText('List')).toBeInTheDocument();
-        expect(screen.getByText('Calendar')).toBeInTheDocument();
-      });
+      await waitFor(() => expect(screen.getByTestId('scheduled-transaction-list')).toBeInTheDocument());
+
+      const group = screen.getByRole('group', { name: 'View' });
+      const table = screen.getByRole('button', { name: 'Table' });
+      const calendar = screen.getByRole('button', { name: 'Calendar' });
+      expect(group).toContainElement(table);
+      expect(group).toContainElement(calendar);
+      expect(table).toHaveAttribute('aria-pressed', 'true');
+      expect(calendar).toHaveAttribute('aria-pressed', 'false');
+      expect(document.querySelector('nav')).toBeNull();
+    });
+
+    it('remembers the choice in the view-mode store for the bills surface', async () => {
+      render(<BillsPage />);
+      await waitFor(() => expect(screen.getByTestId('scheduled-transaction-list')).toBeInTheDocument());
+
+      fireEvent.click(screen.getByRole('button', { name: 'Calendar' }));
+
+      expect(useViewModeStore.getState().surfaces.bills.view).toBe('calendar');
+      expect(useViewModeStore.getState().surfaces.transactions.view).toBe('table');
+    });
+
+    it('opens on the calendar when that is the stored choice', async () => {
+      useViewModeStore.getState().setView('bills', 'calendar');
+      render(<BillsPage />);
+      await waitFor(() => expect(screen.getByText('February 2026')).toBeInTheDocument());
+      expect(screen.queryByTestId('scheduled-transaction-list')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Calendar' })).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('opens the list for a ?highlight= link even when the calendar is the stored choice', async () => {
+      // Only the list draws the row a highlight link points at.
+      useViewModeStore.getState().setView('bills', 'calendar');
+      nav.searchParams = new URLSearchParams('highlight=st-1');
+      render(<BillsPage />);
+      await waitFor(() => expect(screen.getByTestId('scheduled-transaction-list')).toBeInTheDocument());
+      expect(screen.getByRole('button', { name: 'Table' })).toHaveAttribute('aria-pressed', 'true');
+      expect(useViewModeStore.getState().surfaces.bills.view).toBe('table');
+    });
+
+    it('keeps the toggle in the calendar toolbar, so the reader can switch back', async () => {
+      render(<BillsPage />);
+      await waitFor(() => expect(screen.getByTestId('scheduled-transaction-list')).toBeInTheDocument());
+      fireEvent.click(screen.getByRole('button', { name: 'Calendar' }));
+      const toolbar = screen.getByText('February 2026').parentElement!.parentElement!;
+      expect(toolbar).toContainElement(screen.getByRole('group', { name: 'View' }));
+      expect(screen.getByRole('button', { name: 'Previous month' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Next month' })).toBeInTheDocument();
     });
 
     it('switches to calendar view', async () => {
       render(<BillsPage />);
       await waitFor(() => expect(screen.getByTestId('scheduled-transaction-list')).toBeInTheDocument());
-      fireEvent.click(screen.getByText('Calendar'));
+      fireEvent.click(screen.getByRole('button', { name: 'Calendar' }));
       expect(screen.getByText('Sun')).toBeInTheDocument();
       expect(screen.getByText('Mon')).toBeInTheDocument();
       expect(screen.getByText('Sat')).toBeInTheDocument();
@@ -484,7 +559,7 @@ describe('BillsPage', () => {
     it('shows month navigation in calendar view', async () => {
       render(<BillsPage />);
       await waitFor(() => expect(screen.getByTestId('scheduled-transaction-list')).toBeInTheDocument());
-      fireEvent.click(screen.getByText('Calendar'));
+      fireEvent.click(screen.getByRole('button', { name: 'Calendar' }));
       expect(screen.getByText('February 2026')).toBeInTheDocument();
       expect(screen.getByText('Today')).toBeInTheDocument();
     });
@@ -492,9 +567,9 @@ describe('BillsPage', () => {
     it('switches back to list view from calendar', async () => {
       render(<BillsPage />);
       await waitFor(() => expect(screen.getByTestId('scheduled-transaction-list')).toBeInTheDocument());
-      fireEvent.click(screen.getByText('Calendar'));
+      fireEvent.click(screen.getByRole('button', { name: 'Calendar' }));
       expect(screen.getByText('Sun')).toBeInTheDocument();
-      fireEvent.click(screen.getByText('List'));
+      fireEvent.click(screen.getByRole('button', { name: 'Table' }));
       expect(screen.getByTestId('scheduled-transaction-list')).toBeInTheDocument();
     });
 
@@ -503,7 +578,7 @@ describe('BillsPage', () => {
       await waitFor(() => expect(screen.getByTestId('scheduled-transaction-list')).toBeInTheDocument());
       // Filter tabs visible in list view
       expect(screen.getByText('All (6)')).toBeInTheDocument();
-      fireEvent.click(screen.getByText('Calendar'));
+      fireEvent.click(screen.getByRole('button', { name: 'Calendar' }));
       // Filter tabs hidden in calendar view
       expect(screen.queryByText('All (6)')).not.toBeInTheDocument();
     });
@@ -519,18 +594,19 @@ describe('BillsPage', () => {
       useDensityStore.setState({ densities: {} });
     });
 
-    it('sits at the far right of the bar holding the view tabs and filter chips', async () => {
+    it('shares the toolbar with the type filter, beside the Table / Calendar switch', async () => {
       render(<BillsPage />);
       await waitFor(() => expect(screen.getByTestId('scheduled-transaction-list')).toBeInTheDocument());
 
-      const bar = screen.getByText('List').closest('nav')!.parentElement!;
+      const filter = screen.getByRole('group', { name: 'Schedule type' });
+      const bar = filter.parentElement!;
       const toggle = screen.getByTitle('Toggle row density');
 
       expect(bar).toContainElement(toggle);
-      expect(bar).toContainElement(screen.getByText('All (6)'));
-      // Last child of the bar, and last within that child: nothing sits right of it.
-      expect(bar.lastElementChild).toContainElement(toggle);
-      expect(toggle.parentElement?.lastElementChild).toBe(toggle);
+      // The right-hand group: density, then the view switch last of all.
+      const rightGroup = bar.lastElementChild!;
+      expect(rightGroup).toContainElement(toggle);
+      expect(rightGroup.lastElementChild).toBe(screen.getByRole('group', { name: 'View' }));
     });
 
     it('is the plain toggle every other table draws, not a filled chip', async () => {
@@ -546,24 +622,32 @@ describe('BillsPage', () => {
       expect(classes).toContain('hover:bg-gray-100');
     });
 
-    it('stays visible below sm, where the type chips do not', async () => {
+    it('stays visible below sm, and so do the type segments', async () => {
       render(<BillsPage />);
       await waitFor(() => expect(screen.getByTestId('scheduled-transaction-list')).toBeInTheDocument());
 
-      // The chips are in their own `hidden sm:flex` group; the toggle is not,
-      // because a phone is where tightening the rows matters most.
-      expect(screen.getByText('All (6)').parentElement?.className).toContain('hidden');
-      expect(screen.getByTitle('Toggle row density').parentElement?.className).not.toContain('hidden');
+      // Nothing on the toolbar is hidden at a breakpoint: a filter the reader
+      // cannot see on a phone is a filter they forget is applied. The type
+      // segments wrap instead.
+      const hiddenAncestor = (el: HTMLElement | null) => {
+        for (let node = el; node; node = node.parentElement) {
+          if (node.className.split(/\s+/).includes('hidden')) return node;
+        }
+        return null;
+      };
+      expect(hiddenAncestor(screen.getByRole('button', { name: 'All (6)' }))).toBeNull();
+      expect(hiddenAncestor(screen.getByTitle('Toggle row density'))).toBeNull();
+      expect(screen.getByRole('group', { name: 'Schedule type' }).className).toContain('flex-wrap');
     });
 
     it('is absent in calendar view, which has no rows to tighten', async () => {
       render(<BillsPage />);
       await waitFor(() => expect(screen.getByTestId('scheduled-transaction-list')).toBeInTheDocument());
 
-      fireEvent.click(screen.getByText('Calendar'));
+      fireEvent.click(screen.getByRole('button', { name: 'Calendar' }));
       expect(screen.queryByTitle('Toggle row density')).not.toBeInTheDocument();
 
-      fireEvent.click(screen.getByText('List'));
+      fireEvent.click(screen.getByRole('button', { name: 'Table' }));
       expect(screen.getByTitle('Toggle row density')).toBeInTheDocument();
     });
 
@@ -605,7 +689,7 @@ describe('BillsPage', () => {
     it('renders day numbers', async () => {
       render(<BillsPage />);
       await waitFor(() => expect(screen.getByTestId('scheduled-transaction-list')).toBeInTheDocument());
-      fireEvent.click(screen.getByText('Calendar'));
+      fireEvent.click(screen.getByRole('button', { name: 'Calendar' }));
       expect(screen.getByText('14')).toBeInTheDocument();
       expect(screen.getByText('15')).toBeInTheDocument();
     });
@@ -613,7 +697,7 @@ describe('BillsPage', () => {
     it('shows bill names on scheduled dates', async () => {
       render(<BillsPage />);
       await waitFor(() => expect(screen.getByTestId('scheduled-transaction-list')).toBeInTheDocument());
-      fireEvent.click(screen.getByText('Calendar'));
+      fireEvent.click(screen.getByRole('button', { name: 'Calendar' }));
       expect(screen.getByText('Rent')).toBeInTheDocument();
     });
 
@@ -623,14 +707,14 @@ describe('BillsPage', () => {
     it('shows zero-amount transfers on the calendar', async () => {
       render(<BillsPage />);
       await waitFor(() => expect(screen.getByTestId('scheduled-transaction-list')).toBeInTheDocument());
-      fireEvent.click(screen.getByText('Calendar'));
+      fireEvent.click(screen.getByRole('button', { name: 'Calendar' }));
       expect(screen.getByText('Card Payment Reminder')).toBeInTheDocument();
     });
 
     it('styles a transfer chip distinctly from a bill and a deposit', async () => {
       render(<BillsPage />);
       await waitFor(() => expect(screen.getByTestId('scheduled-transaction-list')).toBeInTheDocument());
-      fireEvent.click(screen.getByText('Calendar'));
+      fireEvent.click(screen.getByRole('button', { name: 'Calendar' }));
       expect(screen.getByText('Card Payment Reminder').className).toContain('bg-blue-100');
       expect(screen.getByText('Rent').className).toContain('bg-red-100');
       expect(screen.getByText('Salary').className).toContain('bg-green-100');
@@ -639,14 +723,14 @@ describe('BillsPage', () => {
     it('excludes inactive schedules from the calendar', async () => {
       render(<BillsPage />);
       await waitFor(() => expect(screen.getByTestId('scheduled-transaction-list')).toBeInTheDocument());
-      fireEvent.click(screen.getByText('Calendar'));
+      fireEvent.click(screen.getByRole('button', { name: 'Calendar' }));
       expect(screen.queryByText('Old Bill')).not.toBeInTheDocument();
     });
 
     it('navigates to previous month', async () => {
       render(<BillsPage />);
       await waitFor(() => expect(screen.getByTestId('scheduled-transaction-list')).toBeInTheDocument());
-      fireEvent.click(screen.getByText('Calendar'));
+      fireEvent.click(screen.getByRole('button', { name: 'Calendar' }));
       expect(screen.getByText('February 2026')).toBeInTheDocument();
 
       // Find and click the previous month button (left arrow SVG button)
@@ -661,7 +745,7 @@ describe('BillsPage', () => {
     it('navigates to next month', async () => {
       render(<BillsPage />);
       await waitFor(() => expect(screen.getByTestId('scheduled-transaction-list')).toBeInTheDocument());
-      fireEvent.click(screen.getByText('Calendar'));
+      fireEvent.click(screen.getByRole('button', { name: 'Calendar' }));
       expect(screen.getByText('February 2026')).toBeInTheDocument();
 
       // Find and click the next month button
@@ -676,7 +760,7 @@ describe('BillsPage', () => {
     it('navigates to today when Today button clicked', async () => {
       render(<BillsPage />);
       await waitFor(() => expect(screen.getByTestId('scheduled-transaction-list')).toBeInTheDocument());
-      fireEvent.click(screen.getByText('Calendar'));
+      fireEvent.click(screen.getByRole('button', { name: 'Calendar' }));
 
       // Navigate away first
       const monthNav = screen.getByText('February 2026').parentElement;
@@ -708,6 +792,27 @@ describe('BillsPage', () => {
       await waitFor(() => {
         expect(toast.default.error).toHaveBeenCalledWith('Failed to load scheduled transactions');
       });
+    });
+  });
+
+  describe('Dialog titles', () => {
+    it('names the schedule form dialog by its Modal title, keeping its size', async () => {
+      formModal.showForm = true;
+      render(<BillsPage />);
+      await waitFor(() =>
+        expect(screen.getByRole('dialog', { name: 'New Scheduled Transaction' })).toBeInTheDocument(),
+      );
+      expect(screen.getByTestId('scheduled-transaction-form')).toBeInTheDocument();
+    });
+
+    it('names the overrides question dialog by its Modal title', async () => {
+      mockHasOverrides.mockResolvedValue({ hasOverrides: true, count: 2 });
+      render(<BillsPage />);
+      await waitFor(() => expect(screen.getByTestId('scheduled-transaction-list')).toBeInTheDocument());
+      fireEvent.click(screen.getByText('Rent'));
+      await waitFor(() =>
+        expect(screen.getByRole('dialog', { name: 'Existing Overrides Found' })).toBeInTheDocument(),
+      );
     });
   });
 
@@ -1355,7 +1460,7 @@ describe('BillsPage', () => {
       mockHasOverrides.mockResolvedValue({ hasOverrides: false, count: 0 });
       render(<BillsPage />);
       await waitFor(() => expect(screen.getByTestId('scheduled-transaction-list')).toBeInTheDocument());
-      fireEvent.click(screen.getByText('Calendar'));
+      fireEvent.click(screen.getByRole('button', { name: 'Calendar' }));
       // Rent is due Feb 15 and should appear in the calendar
       await waitFor(() => expect(screen.getByText('Rent')).toBeInTheDocument());
       fireEvent.click(screen.getByText('Rent'));
@@ -1483,9 +1588,9 @@ describe('BillsPage', () => {
       // Switch to bills filter
       fireEvent.click(screen.getByText(/Bills \(/));
       // Switch to calendar
-      fireEvent.click(screen.getByText('Calendar'));
+      fireEvent.click(screen.getByRole('button', { name: 'Calendar' }));
       // Switch back to list
-      fireEvent.click(screen.getByText('List'));
+      fireEvent.click(screen.getByRole('button', { name: 'Table' }));
 
       // Bills filter should still be active - only bill transactions visible
       expect(screen.queryByText('Salary')).not.toBeInTheDocument();
@@ -1602,7 +1707,7 @@ describe('BillsPage', () => {
       mockGetAll.mockResolvedValue([makeCalendarSt(frequency)]);
       render(<BillsPage />);
       await waitFor(() => expect(screen.getByTestId('scheduled-transaction-list')).toBeInTheDocument());
-      fireEvent.click(screen.getByText('Calendar'));
+      fireEvent.click(screen.getByRole('button', { name: 'Calendar' }));
       await waitFor(() => {
         expect(screen.getAllByText('CalendarBill').length).toBeGreaterThan(0);
       });
@@ -1631,7 +1736,7 @@ describe('BillsPage', () => {
       }]);
       render(<BillsPage />);
       await waitFor(() => expect(screen.getByTestId('scheduled-transaction-list')).toBeInTheDocument());
-      fireEvent.click(screen.getByText('Calendar'));
+      fireEvent.click(screen.getByRole('button', { name: 'Calendar' }));
       await waitFor(() => {
         // Bill should appear on Feb 20 (override), not Feb 15
         expect(screen.getByText('Override Bill')).toBeInTheDocument();
@@ -1652,7 +1757,7 @@ describe('BillsPage', () => {
       }]);
       render(<BillsPage />);
       await waitFor(() => expect(screen.getByTestId('scheduled-transaction-list')).toBeInTheDocument());
-      fireEvent.click(screen.getByText('Calendar'));
+      fireEvent.click(screen.getByRole('button', { name: 'Calendar' }));
       await waitFor(() => {
         expect(screen.getByText('NextOverride Bill')).toBeInTheDocument();
       });
@@ -1671,7 +1776,7 @@ describe('BillsPage', () => {
       }]);
       render(<BillsPage />);
       await waitFor(() => expect(screen.getByTestId('scheduled-transaction-list')).toBeInTheDocument());
-      fireEvent.click(screen.getByText('Calendar'));
+      fireEvent.click(screen.getByRole('button', { name: 'Calendar' }));
       await waitFor(() => {
         // The chip is the control itself, so its own classes carry the colour.
         expect(screen.getByRole('button', { name: 'Salary' })).toHaveClass(

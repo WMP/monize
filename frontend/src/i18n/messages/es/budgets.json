@@ -34,7 +34,8 @@
       "WANT": "Deseo",
       "SAVING": "Ahorro"
     },
-    "saving": "Guardando..."
+    "saving": "Guardando...",
+    "remove": "Quitar del presupuesto"
   },
   "categoryList": {
     "title": "Presupuestos por categoría",
@@ -83,7 +84,6 @@
     "baseIncomePlaceholder": "Ingresos mensuales esperados",
     "active": "Activo",
     "saveChanges": "Guardar cambios",
-    "saving": "Guardando...",
     "typeOptions": {
       "MONTHLY": "Mensual",
       "ANNUAL": "Anual",
@@ -109,7 +109,8 @@
     "title": "Mapa de calor de gastos - {monthLabel}",
     "ariaLabel": "Mapa de calor de gastos",
     "less": "Menos",
-    "more": "Más"
+    "more": "Más",
+    "readout": "{date}: {amount}"
   },
   "periodDetail": {
     "summaryCards": {
@@ -134,7 +135,8 @@
     "rolloverBadge": "+{amount} traspaso",
     "underBudgetLabel": "{amount} bajo presupuesto",
     "overBudgetLabel": "{amount} sobre presupuesto",
-    "carriedForward": "{amount} trasladado"
+    "carriedForward": "{amount} trasladado",
+    "dateRange": "{start} a {end}"
   },
   "periodSelector": {
     "label": "Período:",
@@ -471,11 +473,18 @@
         "description": "Crea tu primer presupuesto analizando tu historial de gastos. El asistente sugerirá montos realistas basados en tus transacciones.",
         "cta": "Crear tu primer presupuesto"
       },
+      "loading": "Cargando presupuestos...",
+      "columns": {
+        "name": "Nombre",
+        "strategy": "Estrategia",
+        "type": "Tipo",
+        "categories": "Categorías",
+        "started": "Inicio",
+        "status": "Estado"
+      },
       "card": {
         "active": "Activo",
-        "inactive": "Inactivo",
-        "categories": "{count} categorías",
-        "started": "Iniciado el {date}"
+        "inactive": "Inactivo"
       }
     },
     "create": {
@@ -484,6 +493,9 @@
     },
     "detail": {
       "backToBudgets": "Volver a Presupuestos",
+      "switchBudget": "Cambiar a otro presupuesto",
+      "switchPlaceholder": "Filtrar presupuestos...",
+      "switchNoMatches": "Ningún presupuesto coincide",
       "notFound": "Presupuesto no encontrado",
       "delete": {
         "title": "Eliminar presupuesto",
@@ -501,7 +513,7 @@
     "edit": {
       "subtitlePrefix": "Editar: ",
       "subtitle": "Actualiza la configuración del presupuesto y las asignaciones por categoría",
-      "backToDashboard": "Volver al panel de control",
+      "backToBudget": "Volver a {name}",
       "budgetSettings": "Configuración del presupuesto",
       "categoryAllocations": "Asignaciones por categoría",
       "income": "Ingresos",
@@ -510,12 +522,19 @@
       "percentUsed": "{percent}% usado",
       "rolloverType": "Traspaso: {type}",
       "editCategoryTitle": "Editar {name}",
+      "remove": {
+        "title": "Quitar categoría",
+        "message": "¿Quitar \"{name}\" de este presupuesto? Su asignación de {amount} dejará de presupuestarse y se eliminará su historial en los periodos anteriores del presupuesto. Tus transacciones no se ven afectadas. Esta acción no se puede deshacer.",
+        "confirm": "Quitar"
+      },
       "toasts": {
         "updated": "Presupuesto actualizado",
         "updateFailed": "Error al actualizar el presupuesto",
         "categoryUpdated": "Categoría actualizada",
         "categoryFailed": "Error al actualizar la categoría",
-        "loadFailed": "Error al cargar el presupuesto"
+        "loadFailed": "Error al cargar el presupuesto",
+        "categoryRemoved": "Categoría quitada del presupuesto",
+        "categoryRemoveFailed": "No se pudo quitar la categoría"
       }
     }
   },

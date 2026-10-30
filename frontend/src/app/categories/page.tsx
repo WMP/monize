@@ -21,6 +21,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { SummaryCard, SummaryIcons } from '@/components/ui/SummaryCard';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { CARD_CLASS } from '@/components/ui/Card';
+import { SEGMENTED_TOOLBAR_GROUP_CLASS, toolbarSegmentClass } from '@/components/ui/segmented-control';
 import { useFormModal } from '@/hooks/useFormModal';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { createLogger } from '@/lib/logger';
@@ -210,33 +211,26 @@ function CategoriesContent() {
         </div>
 
         {/* Search and Filter */}
-        <div className="mb-6 flex flex-col sm:flex-row gap-4">
+        <div className="mb-6 flex flex-wrap items-center gap-4">
           <input
             type="text"
             placeholder={t('page.searchPlaceholder')}
+            aria-label={t('page.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="block w-full sm:max-w-md rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400"
+            className="block w-full sm:w-auto sm:flex-1 sm:max-w-md rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400"
           />
-          <div className="flex rounded-md shadow-sm">
-            {(['all', 'expense', 'income'] as const).map((status) => (
+          <div role="group" aria-label={t('page.typeFilterLabel')} className={SEGMENTED_TOOLBAR_GROUP_CLASS}>
+            {(['all', 'expense', 'income'] as const).map((type) => (
               <button
-                key={status}
-                onClick={() => setFilterType(status)}
-                className={`px-4 py-2 text-sm font-medium border ${
-                  filterType === status
-                    ? 'bg-blue-600 text-white border-blue-600 dark:bg-blue-500 dark:border-blue-500'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
-                } ${
-                  status === 'all' ? 'rounded-l-md' : ''
-                } ${
-                  status === 'income' ? 'rounded-r-md' : ''
-                } ${
-                  status !== 'all' ? '-ml-px' : ''
-                }`}
+                key={type}
+                type="button"
+                onClick={() => setFilterType(type)}
+                aria-pressed={filterType === type}
+                className={toolbarSegmentClass(filterType === type)}
               >
-                {status === 'all' ? t('page.filterAll', { count: categories.length }) :
-                 status === 'expense' ? t('page.filterExpenses', { count: expenseCount }) :
+                {type === 'all' ? t('page.filterAll', { count: categories.length }) :
+                 type === 'expense' ? t('page.filterExpenses', { count: expenseCount }) :
                  t('page.filterIncome', { count: incomeCount })}
               </button>
             ))}
@@ -271,50 +265,13 @@ function CategoriesContent() {
         <div className={`${CARD_CLASS} overflow-hidden`}>
           {isLoading ? (
             <LoadingSpinner text={t('page.loadingText')} />
-          ) : categories.length === 0 ? (
-            <div className="p-12 text-center">
-              <svg
-                className="mx-auto h-16 w-16 text-gray-400 dark:text-gray-500"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
-                />
-              </svg>
-              <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-gray-100">
-                {t('empty.heading')}
-              </h3>
-              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-                {t('empty.description')}
-              </p>
-              <div className="mt-6 flex flex-col sm:flex-row justify-center gap-3">
-                <Button
-                  onClick={() => setShowImportDialog(true)}
-                  isLoading={isImporting}
-                  disabled={isImporting}
-                >
-                  {t('empty.importButton')}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={openCreate}
-                  disabled={isImporting}
-                >
-                  {t('empty.createButton')}
-                </Button>
-              </div>
-              <p className="mt-4 text-xs text-gray-400 dark:text-gray-500">
-                {t('empty.hint')}
-              </p>
-            </div>
           ) : (
             <CategoryList
               categories={filteredCategories}
+              isFiltered={categories.length > 0}
+              onCreate={openCreate}
+              onImportDefaults={() => setShowImportDialog(true)}
+              isImporting={isImporting}
               onEdit={openEdit}
               onRefresh={refreshCategories}
               onDelete={(deletedId) => setCategories(prev => prev.filter(c => c.id !== deletedId && c.parentId !== deletedId))}

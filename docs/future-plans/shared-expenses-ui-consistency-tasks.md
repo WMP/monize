@@ -48,3 +48,11 @@ Verification used one bounded native workload at a time, no Docker and no local
 coverage run. The common Modal chrome remains separate upstream work. Publication
 is the remaining external step at this commit; its readback is recorded in the
 PR/issue thread. Maintainer scope approval, CI and human acceptance remain open.
+
+## 30 October follow-up
+
+- [ ] Integrate main's Modal and transaction changes and resolve conflicts.
+- [ ] Add tab/attachment spacing and full standard top/bottom paging.
+- [ ] Move review state out of the global banner; preserve explicit review safety.
+- [ ] Verify focused regressions, frontend gate and native browser/DB acceptance.
+- [ ] Publish the normal branch update and new evidence replies.

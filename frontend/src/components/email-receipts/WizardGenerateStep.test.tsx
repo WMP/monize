@@ -98,7 +98,7 @@ describe('WizardGenerateStep', () => {
     const props = await renderStep({ parserId: 'p-1', revision: 3 });
     expect(screen.getByRole('button', { name: 'Send note to AI' })).toBeDisabled();
     await act(async () => {
-      fireEvent.change(screen.getByLabelText('What should change'), { target: { value: '  Use the Amount paid line.  ' } });
+      fireEvent.change(screen.getByLabelText('Requested Changes'), { target: { value: '  Use the Amount paid line.  ' } });
     });
     await click(screen.getByRole('button', { name: 'Send note to AI' }));
     expect(api.generateWithAi).toHaveBeenCalledWith(
@@ -120,7 +120,7 @@ describe('WizardGenerateStep', () => {
     api.generateWithAi.mockResolvedValue({ status: 'queued', requestId: 'req-2' });
     const props = await renderStep({ parserId: 'p-1', revision: 3 });
     await act(async () => {
-      fireEvent.change(screen.getByLabelText('What should change'), { target: { value: 'Use the paid line' } });
+      fireEvent.change(screen.getByLabelText('Requested Changes'), { target: { value: 'Use the paid line' } });
     });
     await click(screen.getByRole('button', { name: 'Send note to AI' }));
     expect(api.generateWithAi).toHaveBeenCalledWith(expect.objectContaining({ parserId: 'p-1', feedback: 'Use the paid line' }));
@@ -173,7 +173,7 @@ describe('WizardGenerateStep', () => {
       api.generateWithAi.mockResolvedValue({ parserId: 'p-1', revision: 2, answer: 'ok' });
       await renderStep({ parserId: 'p-1', revision: 1 }, { kind: 'trade', samples: tradeSamples });
       await act(async () => {
-        fireEvent.change(screen.getByLabelText('What should change'), { target: { value: 'Read the commission' } });
+        fireEvent.change(screen.getByLabelText('Requested Changes'), { target: { value: 'Read the commission' } });
       });
       await click(screen.getByRole('button', { name: 'Send note to AI' }));
       expect(api.generateWithAi).toHaveBeenCalledWith({

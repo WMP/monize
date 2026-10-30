@@ -34,7 +34,8 @@
       "WANT": "선택",
       "SAVING": "저축"
     },
-    "saving": "저장 중..."
+    "saving": "저장 중...",
+    "remove": "예산에서 제거"
   },
   "categoryList": {
     "title": "카테고리 예산",
@@ -83,7 +84,6 @@
     "baseIncomePlaceholder": "예상 월 소득",
     "active": "활성",
     "saveChanges": "변경사항 저장",
-    "saving": "저장 중...",
     "typeOptions": {
       "MONTHLY": "월별",
       "ANNUAL": "연간",
@@ -109,7 +109,8 @@
     "title": "지출 히트맵 - {monthLabel}",
     "ariaLabel": "지출 히트맵",
     "less": "적음",
-    "more": "많음"
+    "more": "많음",
+    "readout": "{date}: {amount}"
   },
   "periodDetail": {
     "summaryCards": {
@@ -134,7 +135,8 @@
     "rolloverBadge": "+{amount} 이월",
     "underBudgetLabel": "{amount} 예산 절감",
     "overBudgetLabel": "{amount} 예산 초과",
-    "carriedForward": "{amount} 이월됨"
+    "carriedForward": "{amount} 이월됨",
+    "dateRange": "{start} ~ {end}"
   },
   "periodSelector": {
     "label": "기간:",
@@ -471,11 +473,18 @@
         "description": "지출 내역을 분석하여 첫 번째 예산을 만드세요. 마법사가 거래 내역을 바탕으로 현실적인 금액을 제안해 드립니다.",
         "cta": "첫 번째 예산 만들기"
       },
+      "loading": "예산 로드 중...",
+      "columns": {
+        "name": "이름",
+        "strategy": "전략",
+        "type": "유형",
+        "categories": "카테고리",
+        "started": "시작일",
+        "status": "상태"
+      },
       "card": {
         "active": "활성",
-        "inactive": "비활성",
-        "categories": "{count}개 카테고리",
-        "started": "{date}에 시작됨"
+        "inactive": "비활성"
       }
     },
     "create": {
@@ -484,6 +493,9 @@
     },
     "detail": {
       "backToBudgets": "예산 목록으로",
+      "switchBudget": "다른 예산으로 이동",
+      "switchPlaceholder": "예산 검색...",
+      "switchNoMatches": "일치하는 예산이 없습니다",
       "notFound": "예산을 찾을 수 없습니다",
       "delete": {
         "title": "예산 삭제",
@@ -501,7 +513,7 @@
     "edit": {
       "subtitlePrefix": "편집: ",
       "subtitle": "예산 설정 및 카테고리 배분을 업데이트하세요",
-      "backToDashboard": "대시보드로",
+      "backToBudget": "{name}(으)로 돌아가기",
       "budgetSettings": "예산 설정",
       "categoryAllocations": "카테고리 배분",
       "income": "소득",
@@ -510,12 +522,19 @@
       "percentUsed": "{percent}% 사용됨",
       "rolloverType": "이월: {type}",
       "editCategoryTitle": "{name} 편집",
+      "remove": {
+        "title": "카테고리 제거",
+        "message": "이 예산에서 \"{name}\"을(를) 제거하시겠습니까? {amount} 배정액은 더 이상 예산에 포함되지 않으며, 지난 예산 기간의 내역도 삭제됩니다. 거래에는 영향이 없습니다. 이 작업은 취소할 수 없습니다.",
+        "confirm": "제거"
+      },
       "toasts": {
         "updated": "예산이 업데이트되었습니다",
         "updateFailed": "예산 업데이트에 실패했습니다",
         "categoryUpdated": "카테고리가 업데이트되었습니다",
         "categoryFailed": "카테고리 업데이트에 실패했습니다",
-        "loadFailed": "예산 로드에 실패했습니다"
+        "loadFailed": "예산 로드에 실패했습니다",
+        "categoryRemoved": "카테고리를 예산에서 제거했습니다",
+        "categoryRemoveFailed": "카테고리를 제거하지 못했습니다"
       }
     }
   },

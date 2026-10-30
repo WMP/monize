@@ -4,7 +4,7 @@ import { Select } from "@/components/ui/Select";
 import { SimplefinSettingsCard } from "@/components/settings/bank-sync/SimplefinSettingsCard";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import { BackToSettingsLink } from "@/components/settings/BackToSettingsLink";
 import { useTranslations } from "next-intl";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { PageLayout } from "@/components/layout/PageLayout";
@@ -143,14 +143,7 @@ function BankSyncSettingsContent() {
   return (
     <PageLayout>
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-12 pt-6 pb-8">
-        <div className="mb-4">
-          <Link
-            href="/settings"
-            className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-          >
-            &larr; {t("backLink")}
-          </Link>
-        </div>
+        <BackToSettingsLink label={t("backLink")} />
 
         <PageHeader title={t("title")} subtitle={t("subtitle")} />
 

@@ -23,8 +23,8 @@
     "empty": "Hatırlatma pencereleri içinde vadesi geçmiş veya yaklaşan fatura, ödeme ya da transfer yok.",
     "postTransaction": "Bu işlemi kaydet",
     "manual": "Manuel",
-    "manualTitle": "Manuel kayıt gerektirir",
     "negativeBalanceWarning": "Bu işlem hesap bakiyesinin sıfırın altına düşmesine yol açacak",
+    "negativeBalanceLegend": "Hesabının bakiyesini sıfırın altına düşürür",
     "moreItems": "+{count} daha",
     "overdue": "Vadesi geçmiş",
     "today": "Bugün",
@@ -110,9 +110,9 @@
     "refreshPrices": "Fiyatları yenile",
     "viewPortfolio": "Portföyü görüntüle",
     "filter": {
-      "all": "Tümü",
-      "gainers": "Kazananlar",
-      "losers": "Kaybedenler",
+      "all": "Tümü ({count})",
+      "gainers": "Kazananlar ({count})",
+      "losers": "Kaybedenler ({count})",
       "label": "Yön"
     },
     "metric": {

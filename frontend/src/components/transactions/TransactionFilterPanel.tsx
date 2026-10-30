@@ -21,6 +21,8 @@ import { orderAccountsForPicker } from '@/lib/account-utils';
 import { TagKeyOp } from '@/hooks/useTransactionFilters';
 import { SearchSyntaxHelp } from './SearchSyntaxHelp';
 import { SearchInterpretationLine } from './SearchInterpretationLine';
+import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 
 
 interface TransactionFilterPanelProps {
@@ -69,6 +71,8 @@ interface TransactionFilterPanelProps {
   setFiltersExpanded: (value: boolean) => void;
   activeFilterCount: number;
   filteredAccounts: Account[];
+  /** How many accounts each status segment holds. */
+  accountStatusCounts: { all: number; active: number; closed: number };
   selectedAccounts: Account[];
   selectedCategories: Category[];
   selectedPayees: Payee[];
@@ -137,6 +141,7 @@ export function TransactionFilterPanel({
   setFiltersExpanded,
   activeFilterCount,
   filteredAccounts,
+  accountStatusCounts,
   selectedAccounts,
   selectedCategories,
   selectedPayees,
@@ -273,9 +278,7 @@ export function TransactionFilterPanel({
                     className="ml-0.5 -mr-1 p-0.5 rounded-full inline-flex items-center justify-center hover:bg-emerald-200 dark:hover:bg-emerald-800"
                     aria-label={t('filter.chips.removeAccount', { name: account.name })}
                   >
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <XMarkIcon className="w-3 h-3" aria-hidden="true" />
                   </button>
                 </span>
               ))}
@@ -291,9 +294,7 @@ export function TransactionFilterPanel({
                     className="ml-0.5 -mr-1 p-0.5 rounded-full inline-flex items-center justify-center hover:bg-purple-200 dark:hover:bg-purple-800"
                     aria-label={t('filter.chips.removePayee', { name: payee.name })}
                   >
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <XMarkIcon className="w-3 h-3" aria-hidden="true" />
                   </button>
                 </span>
               ))}
@@ -315,9 +316,7 @@ export function TransactionFilterPanel({
                     className="ml-0.5 -mr-1 p-0.5 rounded-full inline-flex items-center justify-center hover:bg-blue-200 dark:hover:bg-blue-800"
                     aria-label={t('filter.chips.removeCategory', { name: cat.name })}
                   >
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <XMarkIcon className="w-3 h-3" aria-hidden="true" />
                   </button>
                 </span>
               ))}
@@ -339,9 +338,7 @@ export function TransactionFilterPanel({
                     className="ml-0.5 -mr-1 p-0.5 rounded-full inline-flex items-center justify-center hover:bg-rose-200 dark:hover:bg-rose-800"
                     aria-label={t('filter.chips.removeTag', { name: tag.name })}
                   >
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <XMarkIcon className="w-3 h-3" aria-hidden="true" />
                   </button>
                 </span>
               ))}
@@ -361,9 +358,7 @@ export function TransactionFilterPanel({
                     className="ml-0.5 -mr-1 p-0.5 rounded-full inline-flex items-center justify-center hover:bg-amber-200 dark:hover:bg-amber-800"
                     aria-label={t('filter.chips.removeDate')}
                   >
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <XMarkIcon className="w-3 h-3" aria-hidden="true" />
                   </button>
                 </span>
               )}
@@ -383,9 +378,7 @@ export function TransactionFilterPanel({
                     className="ml-0.5 -mr-1 p-0.5 rounded-full inline-flex items-center justify-center hover:bg-teal-200 dark:hover:bg-teal-800"
                     aria-label={t('filter.chips.removeAmount')}
                   >
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <XMarkIcon className="w-3 h-3" aria-hidden="true" />
                   </button>
                 </span>
               )}
@@ -401,9 +394,7 @@ export function TransactionFilterPanel({
                     className="ml-0.5 -mr-1 p-0.5 rounded-full inline-flex items-center justify-center hover:bg-indigo-200 dark:hover:bg-indigo-800"
                     aria-label={t('filter.chips.removeAccount', { name: STATUS_LABELS[status] })}
                   >
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <XMarkIcon className="w-3 h-3" aria-hidden="true" />
                   </button>
                 </span>
               ))}
@@ -419,9 +410,7 @@ export function TransactionFilterPanel({
                     className="ml-0.5 -mr-1 p-0.5 rounded-full inline-flex items-center justify-center hover:bg-cyan-200 dark:hover:bg-cyan-800"
                     aria-label={t('filter.chips.removeCurrency', { name: code })}
                   >
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <XMarkIcon className="w-3 h-3" aria-hidden="true" />
                   </button>
                 </span>
               ))}
@@ -436,9 +425,7 @@ export function TransactionFilterPanel({
                     className="ml-0.5 -mr-1 p-0.5 rounded-full inline-flex items-center justify-center hover:bg-lime-200 dark:hover:bg-lime-800"
                     aria-label={t('filter.chips.removeAttachments')}
                   >
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <XMarkIcon className="w-3 h-3" aria-hidden="true" />
                   </button>
                 </span>
               )}
@@ -451,9 +438,7 @@ export function TransactionFilterPanel({
                     className="ml-0.5 -mr-1 p-0.5 rounded-full inline-flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-600"
                     aria-label={t('filter.chips.removeSearch')}
                   >
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <XMarkIcon className="w-3 h-3" aria-hidden="true" />
                   </button>
                 </span>
               )}
@@ -470,38 +455,46 @@ export function TransactionFilterPanel({
             <div className="px-4 pb-4 sm:px-6 border-t border-gray-200 dark:border-gray-700">
               {/* Account status segmented control + Bulk Update button */}
               <div className="flex flex-wrap items-center gap-3 pt-4 pb-2">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('filter.accounts.label')}</span>
-                <div className="inline-flex rounded-md shadow-sm">
-                  <button
-                    onClick={() => setFilterAccountStatus('')}
-                    className={`px-3 py-1.5 text-sm font-medium rounded-l-md border ${
-                      filterAccountStatus === ''
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-                    }`}
-                  >
-                    {t('filter.accounts.all')}
-                  </button>
-                  <button
-                    onClick={() => setFilterAccountStatus('active')}
-                    className={`px-3 py-1.5 text-sm font-medium border-t border-b ${
-                      filterAccountStatus === 'active'
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-                    }`}
-                  >
-                    {t('filter.accounts.active')}
-                  </button>
-                  <button
-                    onClick={() => setFilterAccountStatus('closed')}
-                    className={`px-3 py-1.5 text-sm font-medium rounded-r-md border ${
-                      filterAccountStatus === 'closed'
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-                    }`}
-                  >
-                    {t('filter.accounts.closed')}
-                  </button>
+                {/* Search first, with no label above it: the placeholder says
+                    what is searched. */}
+                <div className="w-full sm:w-auto sm:min-w-[16rem] sm:flex-1 sm:max-w-md">
+                  <div className="flex items-center gap-1">
+                    <div className="min-w-0 flex-1">
+                      <Input
+                        aria-label={t('filter.fields.search')}
+                        type="text"
+                        value={searchInput}
+                        onChange={(e) => handleSearchChange(e.target.value)}
+                        placeholder={t('filter.placeholders.search')}
+                      />
+                    </div>
+                    <SearchSyntaxHelp onExample={handleSearchChange} />
+                  </div>
+                  {filterSearch && (
+                    <SearchInterpretationLine interpretation={searchInterpretation} />
+                  )}
+                </div>
+                <span id="filter-account-status-label" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {t('filter.accounts.label')}
+                </span>
+                <div role="group" aria-labelledby="filter-account-status-label" className={SEGMENTED_GROUP_CLASS}>
+                  {(
+                    [
+                      ['', t('filter.accounts.allCount', { count: accountStatusCounts.all })],
+                      ['active', t('filter.accounts.activeCount', { count: accountStatusCounts.active })],
+                      ['closed', t('filter.accounts.closedCount', { count: accountStatusCounts.closed })],
+                    ] as const
+                  ).map(([status, label]) => (
+                    <button
+                      key={status || 'all'}
+                      type="button"
+                      onClick={() => setFilterAccountStatus(status)}
+                      aria-pressed={filterAccountStatus === status}
+                      className={segmentClass(filterAccountStatus === status)}
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </div>
                 {onToggleBulkSelectMode && (
                   <Button
@@ -720,23 +713,6 @@ export function TransactionFilterPanel({
                   }
                 />
 
-                <div>
-                  <div className="flex items-end gap-1">
-                    <div className="min-w-0 flex-1">
-                      <Input
-                        label={t('filter.fields.search')}
-                        type="text"
-                        value={searchInput}
-                        onChange={(e) => handleSearchChange(e.target.value)}
-                        placeholder={t('filter.placeholders.search')}
-                      />
-                    </div>
-                    <SearchSyntaxHelp onExample={handleSearchChange} />
-                  </div>
-                  {filterSearch && (
-                    <SearchInterpretationLine interpretation={searchInterpretation} />
-                  )}
-                </div>
               </div>
 
               {/* Bulk Update button - mobile only (full width at bottom) */}

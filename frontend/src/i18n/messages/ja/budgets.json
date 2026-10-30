@@ -34,7 +34,8 @@
       "WANT": "欲しいもの",
       "SAVING": "貯蓄"
     },
-    "saving": "保存中..."
+    "saving": "保存中...",
+    "remove": "予算から削除"
   },
   "categoryList": {
     "title": "カテゴリ予算",
@@ -83,7 +84,6 @@
     "baseIncomePlaceholder": "予想月次収入",
     "active": "有効",
     "saveChanges": "変更を保存",
-    "saving": "保存中...",
     "typeOptions": {
       "MONTHLY": "月次",
       "ANNUAL": "年次",
@@ -109,7 +109,8 @@
     "title": "支出ヒートマップ - {monthLabel}",
     "ariaLabel": "支出ヒートマップ",
     "less": "少ない",
-    "more": "多い"
+    "more": "多い",
+    "readout": "{date}: {amount}"
   },
   "periodDetail": {
     "summaryCards": {
@@ -134,7 +135,8 @@
     "rolloverBadge": "+{amount} 繰越",
     "underBudgetLabel": "{amount} 予算以下",
     "overBudgetLabel": "{amount} 予算超過",
-    "carriedForward": "{amount} 繰越"
+    "carriedForward": "{amount} 繰越",
+    "dateRange": "{start} 〜 {end}"
   },
   "periodSelector": {
     "label": "期間：",
@@ -471,11 +473,18 @@
         "description": "支出履歴を分析することで最初の予算を作成します。ウィザードが取引に基づいて現実的な金額を提案します。",
         "cta": "最初の予算を作成する"
       },
+      "loading": "予算を読み込み中...",
+      "columns": {
+        "name": "名前",
+        "strategy": "戦略",
+        "type": "タイプ",
+        "categories": "カテゴリ",
+        "started": "開始日",
+        "status": "ステータス"
+      },
       "card": {
         "active": "有効",
-        "inactive": "無効",
-        "categories": "{count} カテゴリ",
-        "started": "{date} 開始"
+        "inactive": "無効"
       }
     },
     "create": {
@@ -484,6 +493,9 @@
     },
     "detail": {
       "backToBudgets": "予算に戻る",
+      "switchBudget": "別の予算に切り替える",
+      "switchPlaceholder": "予算を絞り込む...",
+      "switchNoMatches": "一致する予算はありません",
       "notFound": "予算が見つかりません",
       "delete": {
         "title": "予算を削除",
@@ -501,7 +513,7 @@
     "edit": {
       "subtitlePrefix": "編集：",
       "subtitle": "予算設定とカテゴリ配分を更新する",
-      "backToDashboard": "ダッシュボードに戻る",
+      "backToBudget": "{name} に戻る",
       "budgetSettings": "予算設定",
       "categoryAllocations": "カテゴリ配分",
       "income": "収入",
@@ -510,12 +522,19 @@
       "percentUsed": "{percent}% 使用済み",
       "rolloverType": "繰越：{type}",
       "editCategoryTitle": "{name} を編集",
+      "remove": {
+        "title": "カテゴリを削除",
+        "message": "この予算から「{name}」を削除しますか？{amount} の割り当ては予算に含まれなくなり、過去の予算期間の履歴も削除されます。取引には影響しません。この操作は元に戻せません。",
+        "confirm": "削除"
+      },
       "toasts": {
         "updated": "予算が更新されました",
         "updateFailed": "予算の更新に失敗しました",
         "categoryUpdated": "カテゴリが更新されました",
         "categoryFailed": "カテゴリの更新に失敗しました",
-        "loadFailed": "予算の読み込みに失敗しました"
+        "loadFailed": "予算の読み込みに失敗しました",
+        "categoryRemoved": "カテゴリを予算から削除しました",
+        "categoryRemoveFailed": "カテゴリを削除できませんでした"
       }
     }
   },

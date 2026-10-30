@@ -21,7 +21,6 @@
     "passwordConfirmNote": "更改電子郵件地址時需要密碼確認。",
     "pendingEmailNotice": "確認連結已傳送至 {email}。點擊該連結後，您的電子郵件地址即會變更。",
     "saveButton": "儲存個人資料",
-    "savingButton": "儲存中...",
     "toasts": {
       "success": "個人資料更新成功",
       "confirmationSent": "請查看 {email} 中用於確認新電子郵件地址的連結",
@@ -46,7 +45,6 @@
     "confirmPasswordLabel": "確認新密碼",
     "confirmPasswordPlaceholder": "確認新密碼",
     "changePasswordButton": "更改密碼",
-    "changingPasswordButton": "更改中...",
     "toasts": {
       "passwordChanged": "密碼更改成功",
       "passwordChangeFailed": "更改密碼失敗"
@@ -106,6 +104,8 @@
       "noDevices": "無受信任的裝置。在 2FA 登入時勾選「在此瀏覽器上不再詢問」後，裝置將顯示在此。",
       "currentBadge": "目前",
       "revokeButton": "撤銷",
+      "ipAddress": "IP：{ip}",
+      "dates": "新增於 {added} · 上次使用 {lastUsed} · 到期 {expires}",
       "revokeAllModal": {
         "title": "撤銷所有受信任的裝置",
         "description": "此操作將移除所有受信任的裝置。您在任何裝置的下次登入時都需要輸入 2FA 驗證碼。"
@@ -226,7 +226,7 @@
       "hideRegisterYearLabel": "在登記簿日期中隱藏年份",
       "chartCollapsedLabel": "交易頁面的圖表預設收合",
       "widgetsCollapsedLabel": "科目、收款人和類別資訊預設收合",
-      "accountOpenTargetLabel": "開啟科目時",
+      "accountOpenTargetLabel": "科目預設檢視",
       "accountOpenTargetOptions": {
         "register": "顯示其交易",
         "dashboard": "顯示其儀表板"
@@ -302,6 +302,10 @@
       "sendTestButton": "傳送測試通知",
       "sendingTestButton": "傳送中...",
       "removeButton": "移除",
+      "removeDialog": {
+        "title": "移除裝置",
+        "message": "移除 {device}？在該裝置上重新開啟推播之前，它將不再收到推播通知。"
+      },
       "thisDevice": "此裝置",
       "held": "已在此裝置上登出。在此重新登入後，推播通知將恢復。",
       "unifiedpushBadge": "UnifiedPush",
@@ -481,7 +485,7 @@
   "supportBackup": {
     "title": "建立支援備份",
     "howItWorks": "產生備份的去識別化副本:名稱會被遮罩(保留首尾各兩個字元),備註/描述/帳號會被移除,每筆金額乘以同一個隱藏係數,而公開數值(匯率、價格、利率)保持不變。檔案一律以下方密碼加密,並像一般備份一樣還原。這只能防範偶然外洩,防不了已經認識您的人——日期、頻率與結構會被保留,讓問題仍可重現。",
-    "sectionsLabel": "包含內容",
+    "sectionsLabel": "要包含的區段",
     "sections": {
       "investments": "投資(證券、持倉、價格)",
       "scheduled": "定期交易",
@@ -647,11 +651,7 @@
       "reason": "權杖無需登入即可存取您的帳號，因此在建立權杖前請先確認您的身份。"
     },
     "relative": {
-      "never": "從未",
-      "today": "今天",
-      "yesterday": "昨天",
-      "daysAgo": "{count} 天前",
-      "monthsAgo": "{count} 個月前"
+      "never": "從未"
     }
   },
   "autoBackup": {
@@ -695,7 +695,6 @@
       "failed": "失敗"
     },
     "saveButton": "儲存原則",
-    "savingButton": "儲存中...",
     "runNowButton": "立即備份所有帳戶",
     "runningButton": "備份中...",
     "toasts": {
@@ -816,7 +815,6 @@
     },
     "restoreResult": {
       "title": "還原完成",
-      "description": "您的資料已成功還原。以下是已還原內容的摘要：",
       "totalRecords": "總記錄數",
       "skippedAttachments": "{count, plural, other {# 個附件未被還原}}：備份中沒有可用的位元組——匯出時它們缺失或未通過總和檢查，或該檔案早於自包含備份。請在附件儲存恢復正常後重新匯出備份。",
       "unusableAiProviderKeys": "{count, plural, other {# 個 AI 提供者在還原後沒有可用的 API 金鑰}}：此備份建立於提供者金鑰隨備份一同保存之前，因此儲存的金鑰屬於產生該檔案的伺服器，或者本伺服器沒有設定用來保存金鑰的加密金鑰。請開啟「設定 → AI 提供者」並重新輸入 API 金鑰。",
@@ -878,12 +876,11 @@
         "retryButton": "重試",
         "demoNote": "示範模式中無法變更異地目的地。",
         "saveButton": "儲存目的地",
-        "savingButton": "儲存中...",
         "saved": "異地目的地已儲存",
         "saveFailed": "無法儲存你的異地備份目的地",
         "s3": {
           "heading": "S3 儲存",
-          "modeLabel": "副本要傳送到何處",
+          "modeLabel": "副本目的地",
           "modeOff": "關閉",
           "modeDeployment": "此伺服器的儲存貯體",
           "modeOwn": "我自己的儲存貯體",
@@ -996,21 +993,57 @@
       "sections": "區段",
       "shared": "共用資料"
     },
+    "ops": {
+      "read": "讀取",
+      "create": "建立",
+      "edit": "編輯",
+      "delete": "刪除",
+      "joint": "聯名"
+    },
     "sections": {
       "description": "授予整個應用程式區段的唯讀存取。以科目為範圍的資料仍需要個別科目存取。",
+      "bills": {
+        "label": "帳單與存款",
+        "description": "已授權科目的排程交易"
+      },
+      "investments": {
+        "label": "投資",
+        "description": "已授權科目的持股與投資交易"
+      },
+      "budgets": {
+        "label": "預算",
+        "description": "唯讀預算數據"
+      },
+      "reports": {
+        "label": "報表",
+        "description": "唯讀報表"
+      },
+      "ai": {
+        "label": "AI 助理",
+        "description": "使用擁有者設定的 AI 供應商"
+      },
       "aiRequiresFullAccess": "AI 助理會讀取所有科目與區段，因此只有當此委派人能讀取您的所有科目及其他所有區段時，它才會為其回答。",
       "warranties": {
         "label": "保固",
         "description": "保固及其文件與保固申請。連結的購買紀錄只有在受託人可讀取的帳戶中時才會顯示。"
-      }
+      },
+      "toggleLabel": "{section} 區段"
     },
     "accounts": {
       "noAccounts": "無可授予的科目。",
       "grantAll": "授予全部",
-      "jointRequiresFullAccount": "聯名帳戶只能與擁有自己 Monize 帳戶的使用者共享"
+      "jointRequiresFullAccount": "聯名帳戶只能與擁有自己 Monize 帳戶的使用者共享",
+      "grantAllLabel": "{op}所有{type}科目",
+      "grantLabel": "對 {account} 的{op}存取權"
     },
     "shared": {
-      "description": "收款人、類別和標籤的讀取始終允許。這些控制建立/編輯/刪除。"
+      "description": "收款人、類別和標籤的讀取始終允許。這些控制建立/編輯/刪除。",
+      "toggleLabel": "{op}{resource}",
+      "resources": {
+        "payees": "收款人",
+        "categories": "類別",
+        "tags": "標籤"
+      }
     },
     "saveButton": "儲存",
     "toasts": {
@@ -1164,7 +1197,6 @@
       "editMessageButton": "編輯",
       "messagePlaceholder": "備註、指示、重要文件的位置...",
       "maxCharsNote": "最多 4000 個字元。靜態加密儲存。",
-      "cancelButton": "取消",
       "saveButton": "儲存留言",
       "toasts": {
         "saved": "留言已儲存",
@@ -1209,7 +1241,7 @@
       "grantStatus": "授予狀態：",
       "unknown": "未知",
       "never": "從未",
-      "daysAgo": "{count} 天前",
+      "withRelative": "{timestamp}（{relative}）",
       "grantedOn": "授予於 {timestamp}",
       "notYetGranted": "尚未授予",
       "timerNote": "計時器會在您每次使用應用程式時自動重置 — 登入、查看頁面、記錄交易，任何已驗證的操作。"
@@ -1226,6 +1258,17 @@
     },
     "stepUp": {
       "reason": "請重新驗證身份以查看或編輯您的緊急存取留言。"
+    },
+    "validation": {
+      "wholeDays": "只能輸入整天數",
+      "minDays": "{min, plural, other {至少 # 天}}",
+      "maxDays": "{max, plural, other {不超過 # 天}}",
+      "reminderBeforeGrant": "提醒天數必須少於授權天數",
+      "messageMax": "訊息不得超過 {max} 個字元",
+      "firstNameRequired": "名字為必填",
+      "firstNameMax": "名字不得超過 {max} 個字元",
+      "emailInvalid": "請輸入有效的電子郵件地址",
+      "emailMax": "電子郵件不得超過 {max} 個字元"
     },
     "toasts": {
       "loadFailed": "載入緊急存取失敗",
@@ -1259,6 +1302,10 @@
       "enableButton": "啟用",
       "editButton": "編輯",
       "deleteButton": "刪除"
+    },
+    "deleteDialog": {
+      "title": "刪除 AI 供應商",
+      "message": "刪除 {name}？其儲存的 API 金鑰也會一併移除。此操作無法復原。"
     },
     "configForm": {
       "addTitle": "新增 AI 提供者",

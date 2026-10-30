@@ -13,6 +13,7 @@ import {
   Legend,
 } from 'recharts';
 import { useReportData } from '@/hooks/useReportData';
+import { ReportError } from './ReportError';
 import { investmentsApi } from '@/lib/investments';
 import {
   PerformanceComparison,
@@ -26,6 +27,7 @@ import { useChartDateFormat } from '@/hooks/useChartDateFormat';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { buildTimeAxisTicks } from '@/lib/chart-time-axis';
 import { resolvePdfColor } from '@/components/reports/resolve-pdf-color';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 /** A security plotted as one line, with its assigned palette colour. */
 export interface PerformanceSeries {
@@ -181,7 +183,7 @@ export function SecurityComparisonChart({
     endDate,
   ].join('|');
 
-  const { data, isLoading, error } = useReportData(
+  const { data, isLoading, error, reload } = useReportData(
     () =>
       investmentsApi.getPerformanceComparison({
         securityIds,
@@ -269,16 +271,6 @@ export function SecurityComparisonChart({
     [series, resolvedSubtitle, exportable, t, ti],
   );
 
-  if (error) {
-    return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-8 text-center">
-        <p className="text-gray-500 dark:text-gray-400">
-          {t('securityPerformance.comparisonError')}
-        </p>
-      </div>
-    );
-  }
-
   const excluded = data?.excluded ?? [];
 
   return (
@@ -293,12 +285,12 @@ export function SecurityComparisonChart({
         {resolvedSubtitle}
       </p>
 
-      {isLoading ? (
+      {error ? (
+        <ReportError message={t('securityPerformance.comparisonError')} onRetry={reload} />
+      ) : isLoading ? (
         <Skeleton className="h-80 w-full" />
       ) : series.length === 0 ? (
-        <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-          {t('securityPerformance.comparisonNoData')}
-        </p>
+        <EmptyState title={t('securityPerformance.comparisonNoData')} />
       ) : (
         <div className="h-96">
           <ResponsiveContainer width="100%" height="100%" minWidth={0}>

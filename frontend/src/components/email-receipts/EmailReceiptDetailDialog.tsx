@@ -462,17 +462,24 @@ export function EmailReceiptDetailDialog({ receiptId, categoryLabels, onClose, o
           <EmailBodyView bodyText={detail.bodyText} bodyHtml={detail.bodyHtml ?? null} lines={detail.lines} />
         </section>
 
-        <div className="flex justify-end border-t border-gray-200 pt-4 dark:border-gray-700">
-          <Button variant="outline" onClick={onClose}>
-            {tc('close')}
-          </Button>
-        </div>
       </div>
     );
   }
 
   return (
-    <Modal isOpen onClose={onClose} maxWidth="3xl" padding="md" pushHistory title={t('title')}>
+    <Modal
+      isOpen
+      onClose={onClose}
+      maxWidth="3xl"
+      padding="md"
+      pushHistory
+      title={t('title')}
+      footer={
+        <Button variant="outline" onClick={onClose}>
+          {tc('close')}
+        </Button>
+      }
+    >
       {body}
     </Modal>
   );

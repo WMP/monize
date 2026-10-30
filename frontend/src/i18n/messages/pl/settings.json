@@ -21,7 +21,6 @@
     "passwordConfirmNote": "Potwierdzenie hasłem jest wymagane przy zmianie adresu e-mail.",
     "pendingEmailNotice": "Link potwierdzający został wysłany na adres {email}. Twój adres e-mail zmieni się po kliknięciu tego linku.",
     "saveButton": "Zapisz profil",
-    "savingButton": "Zapisywanie...",
     "toasts": {
       "success": "Zaktualizowano profil",
       "confirmationSent": "Sprawdź skrzynkę {email}, aby znaleźć link potwierdzający nowy adres e-mail",
@@ -46,7 +45,6 @@
     "confirmPasswordLabel": "Potwierdź nowe hasło",
     "confirmPasswordPlaceholder": "Potwierdź nowe hasło",
     "changePasswordButton": "Zmień hasło",
-    "changingPasswordButton": "Zmienianie...",
     "toasts": {
       "passwordChanged": "Zmieniono hasło",
       "passwordChangeFailed": "Nie udało się zmienić hasła"
@@ -106,6 +104,8 @@
       "noDevices": "Brak zaufanych urządzeń. Gdy zaznaczysz „Nie pytaj ponownie w tej przeglądarce” podczas logowania 2FA, urządzenie pojawi się tutaj.",
       "currentBadge": "Bieżące",
       "revokeButton": "Odwołaj",
+      "ipAddress": "IP: {ip}",
+      "dates": "Dodano {added} · Ostatnio użyty {lastUsed} · Wygasa {expires}",
       "revokeAllModal": {
         "title": "Odwołaj wszystkie zaufane urządzenia",
         "description": "Spowoduje to usunięcie wszystkich zaufanych urządzeń. Przy następnym logowaniu z dowolnego urządzenia trzeba będzie wpisać kod 2FA."
@@ -226,7 +226,7 @@
       "hideRegisterYearLabel": "Ukryj rok w datach rejestru",
       "chartCollapsedLabel": "Zaczynaj ze zwiniętym wykresem na stronie Transakcje",
       "widgetsCollapsedLabel": "Zaczynaj ze zwiniętymi informacjami o koncie, odbiorcy i kategorii",
-      "accountOpenTargetLabel": "Gdy otwieram konto",
+      "accountOpenTargetLabel": "Domyślny widok konta",
       "accountOpenTargetOptions": {
         "register": "Pokaż jego transakcje",
         "dashboard": "Pokaż jego pulpit"
@@ -302,6 +302,10 @@
       "sendTestButton": "Wyślij powiadomienie testowe",
       "sendingTestButton": "Wysyłanie...",
       "removeButton": "Usuń",
+      "removeDialog": {
+        "title": "Usuń urządzenie",
+        "message": "Usunąć {device}? Przestanie otrzymywać powiadomienia push, dopóki push nie zostanie tam ponownie włączony."
+      },
       "thisDevice": "To urządzenie",
       "held": "Wylogowano na tym urządzeniu. Powiadomienia push zostaną wznowione po ponownym zalogowaniu się tutaj.",
       "unifiedpushBadge": "UnifiedPush",
@@ -481,7 +485,7 @@
   "supportBackup": {
     "title": "Utwórz kopię dla wsparcia",
     "howItWorks": "Powstaje zdeidentyfikowana kopia Twojego backupu: nazwy są maskowane (zostają pierwsze i ostatnie dwa znaki), notatki/opisy/numery kont są usuwane, a każda kwota jest mnożona przez jeden ukryty współczynnik, podczas gdy wartości publiczne (kursy walut, ceny, oprocentowanie) pozostają nietknięte. Plik jest zawsze szyfrowany poniższym hasłem i przywraca się jak zwykły backup. Chroni to przed przypadkową ekspozycją, ale nie przed kimś, kto już Cię zna — daty, częstotliwości i struktura są zachowane, aby błędy dało się odtworzyć.",
-    "sectionsLabel": "Co dołączyć",
+    "sectionsLabel": "Sekcje do uwzględnienia",
     "sections": {
       "investments": "Inwestycje (papiery, pozycje, ceny)",
       "scheduled": "Transakcje planowane",
@@ -647,11 +651,7 @@
       "reason": "Token daje dostęp do Twojego konta bez logowania, dlatego potwierdź swoją tożsamość przed jego utworzeniem."
     },
     "relative": {
-      "never": "Nigdy",
-      "today": "Dzisiaj",
-      "yesterday": "Wczoraj",
-      "daysAgo": "{count} dni temu",
-      "monthsAgo": "{count} miesięcy temu"
+      "never": "Nigdy"
     }
   },
   "autoBackup": {
@@ -695,7 +695,6 @@
       "failed": "Niepowodzenie"
     },
     "saveButton": "Zapisz politykę",
-    "savingButton": "Zapisywanie...",
     "runNowButton": "Utwórz teraz kopie wszystkich kont",
     "runningButton": "Tworzenie kopii...",
     "toasts": {
@@ -816,7 +815,6 @@
     },
     "restoreResult": {
       "title": "Przywracanie zakończone",
-      "description": "Twoje dane zostały pomyślnie przywrócone. Oto podsumowanie tego, co przywrócono:",
       "totalRecords": "Łączna liczba rekordów",
       "skippedAttachments": "{count, plural, one {# załącznik nie został przywrócony} few {# załączniki nie zostały przywrócone} many {# załączników nie zostało przywróconych} other {# załącznika nie zostało przywróconych}}: kopia nie zawierała dla nich użytecznych bajtów — w chwili eksportu brakowało ich albo nie przeszły kontroli sumy, albo plik pochodzi z czasów przed samowystarczalnymi kopiami. Wyeksportuj nową kopię, gdy magazyn załączników będzie sprawny.",
       "unusableAiProviderKeys": "{count, plural, one {# dostawca AI został przywrócony bez działającego klucza API} few {# dostawców AI zostało przywróconych bez działających kluczy API} many {# dostawców AI zostało przywróconych bez działających kluczy API} other {# dostawcy AI zostało przywróconych bez działających kluczy API}}: kopia zapasowa powstała, zanim klucze dostawców zaczęły w niej podróżować, więc zapisany klucz należy do serwera, który utworzył plik, albo ten serwer nie ma skonfigurowanego klucza szyfrującego, pod którym mógłby go zapisać. Otwórz Ustawienia → Dostawcy AI i wprowadź klucz API ponownie.",
@@ -878,12 +876,11 @@
         "retryButton": "Spróbuj ponownie",
         "demoNote": "W wersji demonstracyjnej nie można zmieniać miejsc docelowych poza serwerem.",
         "saveButton": "Zapisz miejsca docelowe",
-        "savingButton": "Zapisywanie...",
         "saved": "Zapisano miejsca docelowe poza serwerem",
         "saveFailed": "Nie udało się zapisać miejsc docelowych kopii poza serwerem",
         "s3": {
           "heading": "Magazyn S3",
-          "modeLabel": "Dokąd trafiają kopie",
+          "modeLabel": "Miejsce docelowe kopii",
           "modeOff": "Wyłączone",
           "modeDeployment": "Bucket tego serwera",
           "modeOwn": "Mój własny bucket",
@@ -996,21 +993,57 @@
       "sections": "Sekcje",
       "shared": "Dane współdzielone"
     },
+    "ops": {
+      "read": "Odczyt",
+      "create": "Tworzenie",
+      "edit": "Edytuj",
+      "delete": "Usuń",
+      "joint": "Wspólne"
+    },
     "sections": {
       "description": "Przyznaj dostęp tylko do odczytu do całych sekcji aplikacji. Dane przypisane do kont nadal wymagają dostępu na poziomie poszczególnych kont.",
+      "bills": {
+        "label": "Rachunki i wpłaty",
+        "description": "Zaplanowane transakcje udostępnionych kont"
+      },
+      "investments": {
+        "label": "Inwestycje",
+        "description": "Pozycje i transakcje inwestycyjne udostępnionych kont"
+      },
+      "budgets": {
+        "label": "Budżety",
+        "description": "Dane budżetu tylko do odczytu"
+      },
+      "reports": {
+        "label": "Raporty",
+        "description": "Raporty tylko do odczytu"
+      },
+      "ai": {
+        "label": "Asystent AI",
+        "description": "Korzysta z dostawcy AI skonfigurowanego przez właściciela"
+      },
       "aiRequiresFullAccess": "Asystent AI odczytuje wszystkie konta i sekcje, dlatego odpowiada temu pełnomocnikowi dopiero wtedy, gdy może on odczytać wszystkie Twoje konta i każdą pozostałą sekcję.",
       "warranties": {
         "label": "Gwarancje",
         "description": "Gwarancje wraz z dokumentami i zgłoszeniami. Powiązany zakup jest widoczny tylko wtedy, gdy znajduje się na koncie, które pełnomocnik może odczytać."
-      }
+      },
+      "toggleLabel": "Sekcja {section}"
     },
     "accounts": {
       "noAccounts": "Brak kont do przyznania.",
       "grantAll": "Przyznaj wszystkie",
-      "jointRequiresFullAccount": "Wspólne konta można udostępniać tylko użytkownikom, którzy mają własne konto Monize"
+      "jointRequiresFullAccount": "Wspólne konta można udostępniać tylko użytkownikom, którzy mają własne konto Monize",
+      "grantAllLabel": "{op} wszystkie konta typu {type}",
+      "grantLabel": "Dostęp {op} do {account}"
     },
     "shared": {
-      "description": "ODCZYT odbiorców, kategorii i tagów jest zawsze dozwolony. To steruje tworzeniem/edycją/usuwaniem."
+      "description": "ODCZYT odbiorców, kategorii i tagów jest zawsze dozwolony. To steruje tworzeniem/edycją/usuwaniem.",
+      "toggleLabel": "{op} {resource}",
+      "resources": {
+        "payees": "Odbiorcy",
+        "categories": "Kategorie",
+        "tags": "Tagi"
+      }
     },
     "saveButton": "Zapisz",
     "toasts": {
@@ -1164,7 +1197,6 @@
       "editMessageButton": "Edytuj",
       "messagePlaceholder": "Notatki, instrukcje, lokalizacje ważnych dokumentów...",
       "maxCharsNote": "Maksymalnie 4000 znaków. Przechowywane w postaci zaszyfrowanej.",
-      "cancelButton": "Anuluj",
       "saveButton": "Zapisz wiadomość",
       "toasts": {
         "saved": "Zapisano wiadomość",
@@ -1209,7 +1241,7 @@
       "grantStatus": "Status przyznania: ",
       "unknown": "nieznany",
       "never": "nigdy",
-      "daysAgo": "{count} {count, plural, one {dzień} few {dni} many {dni} other {dnia}} temu",
+      "withRelative": "{timestamp} ({relative})",
       "grantedOn": "przyznano {timestamp}",
       "notYetGranted": "jeszcze nie przyznano",
       "timerNote": "Licznik resetuje się automatycznie za każdym razem, gdy korzystasz z aplikacji -- logowanie, przeglądanie strony, zapisanie transakcji, dowolna uwierzytelniona czynność."
@@ -1226,6 +1258,17 @@
     },
     "stepUp": {
       "reason": "Zweryfikuj ponownie swoją tożsamość, aby wyświetlić lub edytować wiadomość dostępu awaryjnego."
+    },
+    "validation": {
+      "wholeDays": "Tylko pełne dni",
+      "minDays": "{min, plural, one {Musi wynosić co najmniej # dzień} few {Musi wynosić co najmniej # dni} many {Musi wynosić co najmniej # dni} other {Musi wynosić co najmniej # dnia}}",
+      "maxDays": "{max, plural, one {Może wynosić najwyżej # dzień} few {Może wynosić najwyżej # dni} many {Może wynosić najwyżej # dni} other {Może wynosić najwyżej # dnia}}",
+      "reminderBeforeGrant": "Liczba dni przypomnienia musi być mniejsza niż liczba dni do przyznania dostępu",
+      "messageMax": "Wiadomość może mieć najwyżej {max} znaków",
+      "firstNameRequired": "Imię jest wymagane",
+      "firstNameMax": "Imię może mieć najwyżej {max} znaków",
+      "emailInvalid": "Wpisz prawidłowy adres e-mail",
+      "emailMax": "Adres e-mail może mieć najwyżej {max} znaków"
     },
     "toasts": {
       "loadFailed": "Nie udało się wczytać dostępu awaryjnego",
@@ -1259,6 +1302,10 @@
       "enableButton": "Włącz",
       "editButton": "Edytuj",
       "deleteButton": "Usuń"
+    },
+    "deleteDialog": {
+      "title": "Usuń dostawcę AI",
+      "message": "Usunąć {name}? Zapisany klucz API zostanie usunięty razem z nim. Tej operacji nie można cofnąć."
     },
     "configForm": {
       "addTitle": "Dodaj dostawcę AI",

@@ -26,6 +26,9 @@ import { useFormModal } from '@/hooks/useFormModal';
 import { useOnUndoRedo } from '@/hooks/useOnUndoRedo';
 import { useOnAiAction } from '@/hooks/useOnAiAction';
 import { PAGE_SIZE } from '@/lib/constants';
+import { ArrowPathIcon } from '@heroicons/react/24/outline';
+import { SEGMENTED_TOOLBAR_GROUP_CLASS, toolbarSegmentClass } from '@/components/ui/segmented-control';
+import { useRelativeTime } from '@/hooks/useRelativeTime';
 
 const logger = createLogger('Currencies');
 
@@ -39,6 +42,7 @@ export default function CurrenciesPage() {
 
 function CurrenciesContent() {
   const t = useTranslations('currencies');
+  const tc = useTranslations('common');
   const [allCurrencies, setAllCurrencies] = useState<CurrencyInfo[]>([]);
   const [usage, setUsage] = useState<CurrencyUsage>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -56,6 +60,10 @@ function CurrenciesContent() {
   // The configured FX providers in the order the server asks them; empty until
   // the status answers, and left empty if it does not (the line is omitted).
   const [fxProviders, setFxProviders] = useState<FxProviderDescription[]>([]);
+  // When the stored rates were last fetched, shown on Refresh Rates; null when
+  // the server has none, undefined until the status answers.
+  const [ratesLastUpdated, setRatesLastUpdated] = useState<string | null | undefined>(undefined);
+  const formatRelativeTime = useRelativeTime();
 
   const { defaultCurrency, getRate, refresh: refreshRates } = useExchangeRates();
 
@@ -64,7 +72,9 @@ function CurrenciesContent() {
     exchangeRatesApi
       .getRateStatus()
       .then((status) => {
-        if (!cancelled) setFxProviders(status?.providers ?? []);
+        if (cancelled) return;
+        setFxProviders(status?.providers ?? []);
+        setRatesLastUpdated(status?.lastUpdated ?? null);
       })
       .catch((error) => logger.error(error));
     return () => {
@@ -166,6 +176,15 @@ function CurrenciesContent() {
     }
   };
 
+  const reloadRatesAge = async () => {
+    try {
+      const status = await exchangeRatesApi.getRateStatus();
+      setRatesLastUpdated(status?.lastUpdated ?? null);
+    } catch (error) {
+      logger.error(error);
+    }
+  };
+
   const handleRefreshRates = async () => {
     setIsRefreshingRates(true);
     try {
@@ -181,7 +200,7 @@ function CurrenciesContent() {
         toast.success(t('page.toasts.ratesRefreshed', { updated }));
       }
       // Reload rates and currency data so the list reflects updated values
-      await Promise.all([refreshRates(), loadData()]);
+      await Promise.all([refreshRates(), loadData(), reloadRatesAge()]);
     } catch (error) {
       toast.error(getErrorMessage(error, t('page.toasts.ratesFailed')));
     } finally {
@@ -281,9 +300,22 @@ function CurrenciesContent() {
               <Button
                 variant="outline"
                 onClick={handleRefreshRates}
-                disabled={isRefreshingRates}
+                isLoading={isRefreshingRates}
+                className="gap-1.5 whitespace-nowrap"
               >
-                {isRefreshingRates ? t('page.refreshing') : t('page.refreshRates')}
+                {isRefreshingRates ? (
+                  t('page.refreshing')
+                ) : (
+                  <>
+                    <ArrowPathIcon className="h-4 w-4" aria-hidden="true" />
+                    {t('page.refreshRates')}
+                    {ratesLastUpdated && (
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {t('page.ratesAge', { time: formatRelativeTime(ratesLastUpdated) })}
+                      </span>
+                    )}
+                  </>
+                )}
               </Button>
               <Button onClick={handleCreateNew}>{t('page.newCurrency')}</Button>
             </div>
@@ -304,30 +336,23 @@ function CurrenciesContent() {
         </div>
 
         {/* Search and Status Filter */}
-        <div className="mb-6 flex flex-col sm:flex-row gap-4">
+        <div className="mb-6 flex flex-wrap items-center gap-4">
           <input
             type="text"
             placeholder={t('page.searchPlaceholder')}
+            aria-label={t('page.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="block w-full sm:max-w-md rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400"
+            className="block w-full sm:w-auto sm:flex-1 sm:max-w-md rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400"
           />
-          <div className="flex rounded-md shadow-sm">
+          <div role="group" aria-label={t('page.statusFilterLabel')} className={SEGMENTED_TOOLBAR_GROUP_CLASS}>
             {(['all', 'active', 'inactive'] as const).map((status) => (
               <button
                 key={status}
+                type="button"
                 onClick={() => handleStatusFilterChange(status)}
-                className={`px-4 py-2 text-sm font-medium border ${
-                  statusFilter === status
-                    ? 'bg-blue-600 text-white border-blue-600 dark:bg-blue-500 dark:border-blue-500'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
-                } ${
-                  status === 'all' ? 'rounded-l-md' : ''
-                } ${
-                  status === 'inactive' ? 'rounded-r-md' : ''
-                } ${
-                  status !== 'all' ? '-ml-px' : ''
-                }`}
+                aria-pressed={statusFilter === status}
+                className={toolbarSegmentClass(statusFilter === status)}
               >
                 {status === 'active' ? t('page.statusActive', { count: activeCount }) :
                  status === 'inactive' ? t('page.statusInactive', { count: inactiveCount }) :
@@ -338,10 +363,14 @@ function CurrenciesContent() {
         </div>
 
         {/* Form Modal */}
-        <Modal isOpen={showForm} onClose={close} {...modalProps} maxWidth="lg" className="p-6">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-            {isEditing ? t('page.modalTitleEdit') : t('page.modalTitleNew')}
-          </h2>
+        <Modal
+          isOpen={showForm}
+          onClose={close}
+          {...modalProps}
+          maxWidth="lg"
+          className="p-6"
+          title={isEditing ? t('page.modalTitleEdit') : t('page.modalTitleNew')}
+        >
           <CurrencyForm
             currency={editingCurrency}
             onSubmit={handleFormSubmit}
@@ -353,10 +382,18 @@ function CurrenciesContent() {
         <UnsavedChangesDialog {...unsavedChangesDialog} />
 
         {/* Rate history dialog */}
-        <Modal isOpen={!!rateHistoryCurrency} onClose={() => setRateHistoryCurrency(null)} maxWidth="lg" className="p-6">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-            {rateHistoryCurrency?.code}
-          </h2>
+        <Modal
+          isOpen={!!rateHistoryCurrency}
+          onClose={() => setRateHistoryCurrency(null)}
+          maxWidth="lg"
+          className="p-6"
+          title={rateHistoryCurrency?.code}
+          footer={
+            <Button variant="outline" onClick={() => setRateHistoryCurrency(null)}>
+              {tc('close')}
+            </Button>
+          }
+        >
           {/* The dialog a reader opened to see the rates is where they are
               listed; the currency form keeps the summary alone. */}
           {rateHistoryCurrency && (

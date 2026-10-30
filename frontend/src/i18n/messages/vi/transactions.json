@@ -175,7 +175,6 @@
       "viewPayeeTitle": "Xem chi tiết {name}",
       "investmentLabel": "Đầu tư",
       "linkedInvestmentTitle": "Xem trong Đầu tư",
-      "linkedInvestmentBadgeTitle": "Giao dịch này được liên kết với một giao dịch đầu tư",
       "filterByDate": "Lọc theo ngày \"{date}\"",
       "filterByAccount": "Lọc theo \"{name}\"",
       "filterByPayee": "Lọc theo \"{name}\"",
@@ -223,10 +222,10 @@
       "show": "Hiển thị bộ lọc"
     },
     "accounts": {
-      "label": "Hiển thị tài khoản:",
-      "all": "Tất cả",
-      "active": "Hoạt động",
-      "closed": "Đã đóng"
+      "label": "Hiển thị tài khoản",
+      "allCount": "Tất cả ({count})",
+      "activeCount": "Hoạt động ({count})",
+      "closedCount": "Đã đóng ({count})"
     },
     "fields": {
       "accounts": "Tài khoản",
@@ -320,7 +319,7 @@
     },
     "modal": {
       "title": "Cập nhật giao tác hàng loạt",
-      "subtitle": "Cập nhật {count, plural, one {# giao tác đã chọn} other {# giao tác đã chọn}}. Bật/tắt các trường bạn muốn thay đổi.",
+      "help": "Bật/tắt các trường bạn muốn thay đổi.",
       "submitLabel": "Cập nhật {count, plural, one {# giao tác} other {# giao tác}}",
       "payee": "Người nhận",
       "category": "Danh mục",
@@ -368,8 +367,9 @@
       "fromAccount": "Từ tài khoản",
       "toAccount": "Đến tài khoản",
       "transferAmount": "Số tiền chuyển",
-      "transferAmountWithCurrency": "Số tiền chuyển ({currency})",
-      "amountReceived": "Số tiền nhận ({currency})",
+      "amountReceivedLabel": "Số tiền nhận",
+      "transferAmountInCurrency": "Số tiền chuyển ({currency})",
+      "amountReceivedInCurrency": "Số tiền nhận ({currency})",
       "payeeOptional": "Người nhận (tùy chọn)",
       "categoryOptional": "Danh mục (Tùy chọn)"
     },
@@ -399,10 +399,16 @@
     "submitCreateAndNewDescription": "Lưu và bắt đầu mục mới, giữ nguyên tài khoản và ngày.",
     "submitOptions": "Chọn điều xảy ra sau khi tạo",
     "submitUpdate": "Cập nhật {mode}",
+    "submitConvert": "Chuyển đổi thành {mode}",
     "reconciledConfirm": {
       "title": "Chỉnh sửa giao dịch đã điều hoà?",
       "message": "Giao dịch này đã được điều hoà. Việc thay đổi sẽ ảnh hưởng đến một lần điều hoà đã hoàn tất. Bạn vẫn muốn lưu các thay đổi chứ?",
       "confirm": "Lưu thay đổi"
+    },
+    "counterpartConfirm": {
+      "title": "Chuyển đổi giao dịch chuyển khoản này?",
+      "message": "Phía bên kia của giao dịch chuyển khoản này đã được xác nhận hoặc đối soát. Chuyển đổi thành giao dịch sẽ xóa mục đó khỏi tài khoản kia và thay đổi số dư đã được đối chiếu với sao kê. Bạn có muốn tiếp tục?",
+      "confirm": "Vẫn chuyển đổi"
     },
     "modeLabel": {
       "transfer": "Chuyển khoản",
@@ -432,7 +438,8 @@
       "destinationRequired": "Vui lòng chọn tài khoản đích",
       "sameAccount": "Tài khoản nguồn và đích phải khác nhau",
       "negativeTransfer": "Số tiền chuyển không được là âm",
-      "convertToTransferUnsupported": "Không thể chuyển một giao dịch hiện có thành chuyển khoản tại đây. Hãy xóa giao dịch đó và tạo chuyển khoản thay thế.",
+      "convertedToTransfer": "Đã chuyển đổi thành chuyển khoản",
+      "convertedToTransaction": "Đã chuyển đổi thành giao dịch",
       "payeeCreated": "Người nhận \"{name}\" đã được tạo",
       "payeeCreateFailed": "Không thể tạo người nhận",
       "payeeReactivated": "Người nhận \"{name}\" đã được kích hoạt lại",
@@ -475,7 +482,8 @@
       "loading": "Đang tải bảo hành",
       "loadError": "Không thể tải các bảo hành của giao tác này.",
       "empty": "Chưa có bảo hành nào"
-    }
+    },
+    "conversionLockedNote": "Giao dịch chuyển khoản này thuộc một giao dịch tách hoặc tài khoản của chủ sở hữu khác, nên ở đây chỉ có thể giữ là chuyển khoản. Hãy thay đổi từ phần tách hoặc xóa và tạo mục bạn muốn."
   },
   "splitEditor": {
     "header": "Chi tiết phần chia",
@@ -538,7 +546,7 @@
     "quantityPlaceholder": "Số lượng",
     "pricePlaceholder": "Giá",
     "commissionPlaceholder": "Hoa hồng",
-    "amountPlaceholder": "Số tiền ({currency})",
+    "amountOnlyPlaceholder": "Số tiền",
     "ratePlaceholder": "{to} cho 1 {from}",
     "ariaRate": "Tỷ giá ({to} cho 1 {from})",
     "rateHint": "Số lượng, giá và hoa hồng tính bằng {from}; tỷ giá này quy đổi tác động tiền mặt sang {to}.",

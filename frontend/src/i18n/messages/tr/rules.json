@@ -114,8 +114,8 @@
       "matchAll": "Bunların hepsi",
       "matchAny": "Bunlardan herhangi biri",
       "matchLabel": "Eşleşme",
-      "not": "Değil",
-      "notLabel": "Bu grubu tersine çevir: koşulları sağlanmadığında eşleşir",
+      "not": "Grubu olumsuzla",
+      "notHelp": "Olumsuzlanmış bir grup, koşulları sağlanmadığında eşleşir.",
       "title": "Grup",
       "addCondition": "+ Koşul ekle",
       "addGroup": "+ Grup ekle",
@@ -201,7 +201,7 @@
       "tags": "Etiketler",
       "category": "Kategori",
       "payee": "Alıcı",
-      "instruction": "Nelerin kontrol edilmesi gerekiyor",
+      "instruction": "İnceleme talimatları",
       "instructionPlaceholder": "Örneğin: bu alışverişi fişe göre böl",
       "instructionHelp": "Kural yalnızca bir inceleme ister. Yapılacak her değişikliği yapılmadan önce bir kişi onaylar.",
       "onlyIfEmpty": "Yalnızca boşsa",
@@ -220,7 +220,7 @@
       "createIfMissing": "Alıcı yoksa oluştur",
       "createIfMissingHelp": "Açıkken ve hiçbir alıcı ada uymuyorsa (ad, takma ad veya yakın eşleşme), yeni bir alıcı oluşturulur. Bir kuralın oluşturduğu alıcı, çalıştırmayı geri alsanız da kalır.",
       "onlyIfEmptyDescriptionHelp": "Açıkken kural, açıklamayı yalnızca işlemin açıklaması yoksa yazar. Her seferinde yazması için kapatın.",
-      "mode": "Nasıl yazılacağı",
+      "mode": "Açıklama modu",
       "modes": {
         "replace": "Açıklamayı değiştir",
         "append": "Açıklamanın sonuna ekle",
@@ -262,12 +262,12 @@
         "windowHelp": "Bankanın ödemeyi vadeden ne kadar önce veya sonra alabileceği. Bir taksidin vadesinden bu kadar gün önceye veya sonrasına kadar yapılan bir çekim o taksidi öder; pencerenin dışında kalan bir çekim olduğu gibi bırakılır.",
         "daysBefore": "Vadeden önceki gün sayısı",
         "daysAfter": "Vadeden sonraki gün sayısı",
-        "excess": "Çekim taksitten fazla olduğunda",
+        "excess": "Taksitten fazla çekim",
         "excessPolicies": {
           "extra_principal": "Farkı ek anapara olarak öde",
           "refuse": "İşlemi olduğu gibi bırak"
         },
-        "shortfall": "Çekim taksitten az olduğunda",
+        "shortfall": "Taksitten az çekim",
         "shortfallPolicies": {
           "refuse": "İşlemi olduğu gibi bırak",
           "interest_first": "Önce faizi öde, kalanını anapara olarak öde"

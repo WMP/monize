@@ -12,7 +12,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { chartSeriesColor } from '@/lib/chart-colors';
-import { CAPTION_CLASS, CellLabel } from '@/components/ui/Table';
+import { CAPTION_CLASS, CellLabel, Th } from '@/components/ui/Table';
 import type { CategoryTrendSeries } from '@/types/budget';
 import { useChartMonthFormat } from '@/hooks/useChartMonthFormat';
 
@@ -52,6 +52,8 @@ const MONEY_CELL = 'p-0 text-right text-xs whitespace-nowrap sm:table-cell sm:te
 // today, and its header cell says the same thing one line further down.
 const CELL_PADDING = 'sm:py-2 sm:pr-4';
 const LAST_CELL_PADDING = 'sm:py-2';
+const HEADER_PADDING = 'px-0 py-2 pr-4';
+const LAST_HEADER_PADDING = 'px-0 py-2';
 
 function CategoryTrendTooltip({
   active,
@@ -287,10 +289,13 @@ export function BudgetCategoryTrend({
         <table role="table" className="block min-w-full text-sm sm:table">
           <thead role="rowgroup" className="block sm:table-header-group">
             <tr role="row" className="hidden text-left text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700 sm:table-row">
-              <th role="columnheader" className="py-2 pr-4 font-medium">{columnLabels.category}</th>
-              <th role="columnheader" className="py-2 pr-4 font-medium text-right">{columnLabels.avgBudget}</th>
-              <th role="columnheader" className="py-2 pr-4 font-medium text-right">{columnLabels.avgActual}</th>
-              <th role="columnheader" className="py-2 font-medium text-right">{columnLabels.avgVariance}</th>
+              {/* `Th` gives the header its face; the padding is this table's
+                  own (`py-2 pr-4`, the last cell bare), so a heading stays over
+                  its figures rather than indented past them. */}
+              <Th role="columnheader" className={HEADER_PADDING}>{columnLabels.category}</Th>
+              <Th role="columnheader" align="right" className={HEADER_PADDING}>{columnLabels.avgBudget}</Th>
+              <Th role="columnheader" align="right" className={HEADER_PADDING}>{columnLabels.avgActual}</Th>
+              <Th role="columnheader" align="right" className={LAST_HEADER_PADDING}>{columnLabels.avgVariance}</Th>
             </tr>
           </thead>
           <tbody role="rowgroup" className="block sm:table-row-group">

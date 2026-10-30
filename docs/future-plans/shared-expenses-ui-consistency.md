@@ -26,3 +26,11 @@ No Docker. Use the native verification mirror, one heavy process at a time,
 CPU. Run the broad gate once; follow failures with focused checks. No coverage
 run, guard weakening, dependency change or unrelated cleanup.
 
+
+## Final review follow-up
+
+Merge current main without rewriting published history. Apply the 30 October
+specification to shared pages/tables, the explicit review page and SwipeShell.
+Migrate review component tests with the component, retaining identity/error cases.
+Update consumer/invariant documentation, run the bounded checks and new browser
+layout/paging regressions, then normal-push and post new replies with evidence.

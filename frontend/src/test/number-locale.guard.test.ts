@@ -344,8 +344,8 @@ describe('a figure is not formatted with toFixed in UI code', () => {
       reason: 'effectiveRate toFixed(3); loans stream migrates it to formatPercent',
     },
     '/src/components/currencies/CurrencyList.tsx': {
-      count: 2,
-      reason: 'exchange rate readout and its title toFixed(FX_RATE_DISPLAY_DECIMALS); currencies stream migrates it',
+      count: 1,
+      reason: 'exchange rate readout toFixed(FX_RATE_DISPLAY_DECIMALS); currencies stream migrates it',
     },
     '/src/components/investments/InvestmentTransactionListParts.tsx': {
       count: 1,

@@ -20,6 +20,7 @@ export const KNOWN_DESCRIPTION_KEYS = new Set<string>([
   'createdTag', 'updatedTag', 'deletedTag',
   'createdTransaction', 'updatedTransaction', 'deletedTransaction',
   'createdTransfer',
+  'convertedToTransfer', 'convertedToTransaction',
   'createdInvestmentTransaction', 'updatedInvestmentTransaction', 'deletedInvestmentTransaction',
   'transferredSecurity', 'updatedSecurityTransfer',
   'ranTransactionRule',

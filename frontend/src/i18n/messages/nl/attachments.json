@@ -77,6 +77,8 @@
     "unsupported": "Van dit bestandstype kan geen voorbeeld worden getoond. U kunt het nog steeds downloaden.",
     "fit": "Passend op scherm",
     "actualSize": "Ware grootte",
+    "versionLabel": "Versie",
+    "zoomLabel": "Zoom",
     "pageCount": "{count, plural, one {# pagina} other {# pagina's}}",
     "page": "Pagina {page} van {total}",
     "open": "Voorbeeld van {name}"

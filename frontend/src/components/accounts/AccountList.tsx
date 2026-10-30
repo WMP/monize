@@ -31,6 +31,8 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 import { useViewDefault } from '@/hooks/useViewDefault';
 import { opensAccountDashboard } from '@/lib/account-detail-views';
 import { BUILT_IN_VIEW_DEFAULTS } from '@/lib/view-defaults';
+import { ChevronDownIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
 
 type SortField = 'name' | 'type' | 'balance' | 'status';
 type SortDirection = 'asc' | 'desc';
@@ -170,21 +172,9 @@ function GroupHeaderLabel({
 }) {
   return (
     <>
-      <svg
-        className={`w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform ${isCollapsed ? '-rotate-90' : ''}`}
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        aria-hidden="true"
-      >
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-      </svg>
-      <span className={`font-semibold text-gray-700 dark:text-gray-200 ${labelClassName}`}>
-        {label}
-      </span>
-      <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-        {count}
-      </span>
+      <ChevronDownIcon className={`w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform ${isCollapsed ? '-rotate-90' : ''}`} aria-hidden="true" />
+      <span className={`font-semibold text-gray-700 dark:text-gray-200 ${labelClassName}`}>{label}</span>
+      <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{count}</span>
     </>
   );
 }
@@ -411,6 +401,13 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
       incompleteAccountIds: incompleteHoldingAccountIds,
     });
   }, [accounts, favOverrides, stripAccountName, brokerageMarketValues, unpricedHoldingCounts, incompleteHoldingAccountIds]);
+
+  // The segments' counts are over every account, as on Currencies, so a
+  // segment says how many it holds before any other filter narrows it.
+  const statusCounts = useMemo(() => {
+    const closed = logicalAccounts.filter((l) => l.primary.isClosed).length;
+    return { all: logicalAccounts.length, active: logicalAccounts.length - closed, closed };
+  }, [logicalAccounts]);
 
   // Keyed on the primary id, which is the id every row action carries.
   const logicalById = useMemo(
@@ -800,53 +797,9 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
       <div className="px-3 sm:px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            {/* Status segmented control */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
-              {/* Status segmented control */}
-              <div className="inline-flex rounded-md shadow-sm">
-              <button
-                onClick={() => setFilterStatus('')}
-                className={`px-3 py-1.5 text-sm font-medium rounded-l-md border ${
-                  filterStatus === ''
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-                }`}
-              >
-                {t('list.filter.all')}
-              </button>
-              <button
-                onClick={() => setFilterStatus('active')}
-                className={`px-3 py-1.5 text-sm font-medium border-t border-b ${
-                  filterStatus === 'active'
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-                }`}
-              >
-                {t('list.filter.active')}
-              </button>
-              <button
-                onClick={() => setFilterStatus('closed')}
-                className={`px-3 py-1.5 text-sm font-medium rounded-r-md border ${
-                  filterStatus === 'closed'
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-                }`}
-              >
-                {t('list.filter.closed')}
-              </button>
-              </div>
-
-              {/* Free-text name filter */}
-              <div className="w-full sm:w-52">
-                <MultiSelect
-                  ariaLabel={t('list.filter.typeAriaLabel')}
-                  options={typeOptions}
-                  value={filterTypes}
-                  onChange={(vals) => setFilterTypes(vals as AccountGroupType[])}
-                  placeholder={t('list.filter.typePlaceholder')}
-                />
-              </div>
-
+            {/* Search first, then the status segments with their counts, then
+                the narrower filters: the list page's toolbar order. */}
+            <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-2 sm:gap-3">
               {/* Free-text name filter */}
               <div className="relative w-full sm:w-52">
                 <input
@@ -864,16 +817,44 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
                     aria-label={t('list.filter.searchClear')}
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                   >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <XMarkIcon className="w-4 h-4" aria-hidden="true" />
                   </button>
                 )}
               </div>
 
-              {/* Joint filter -- only shown when something is shared to the
-                  caller. The switch and its text are siblings, not nested:
-                  ToggleSwitch is a <button>, which a <label> cannot label. */}
+              {/* Status segmented control */}
+              <div role="group" aria-label={t('list.filter.statusLabel')} className={SEGMENTED_GROUP_CLASS}>
+                {(
+                  [
+                    ['', t('list.filter.allCount', { count: statusCounts.all })],
+                    ['active', t('list.filter.activeCount', { count: statusCounts.active })],
+                    ['closed', t('list.filter.closedCount', { count: statusCounts.closed })],
+                  ] as const
+                ).map(([status, label]) => (
+                  <button
+                    key={status || 'all'}
+                    type="button"
+                    onClick={() => setFilterStatus(status)}
+                    aria-pressed={filterStatus === status}
+                    className={segmentClass(filterStatus === status)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Account-type filter (multi-select) */}
+              <div className="w-full sm:w-52">
+                <MultiSelect
+                  ariaLabel={t('list.filter.typeAriaLabel')}
+                  options={typeOptions}
+                  value={filterTypes}
+                  onChange={(vals) => setFilterTypes(vals as AccountGroupType[])}
+                  placeholder={t('list.filter.typePlaceholder')}
+                />
+              </div>
+
+              {/* Net Worth filter -- only shown when at least one account is excluded */}
               {hasExcludedAccounts && (
                 <select
                   value={filterNetWorth}

@@ -165,6 +165,7 @@ function withBalancesLayer() {
     surfaces: {
       transactions: { view: 'calendar', layers: ['transactions', 'balances'] },
       investments: { view: 'table', layers: ['transactions'] },
+      bills: { view: 'table', layers: ['transactions'] },
     },
   });
 }
@@ -248,6 +249,7 @@ beforeEach(() => {
     surfaces: {
       transactions: { view: 'calendar', layers: ['transactions'] },
       investments: { view: 'table', layers: ['transactions'] },
+      bills: { view: 'table', layers: ['transactions'] },
     },
   });
 });
@@ -649,7 +651,7 @@ describe('TransactionsCalendarView', () => {
       expect(screen.queryByRole('grid')).not.toBeInTheDocument();
 
       mockGetAllPages.mockResolvedValue([transaction()]);
-      fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Try Again' }));
 
       expect(await screen.findByRole('button', { name: /Grocer/ })).toBeInTheDocument();
     });
@@ -882,7 +884,7 @@ describe('TransactionsCalendarView', () => {
       mockGetDailyBalanceTotals.mockResolvedValue(
         balanceTotals({ days: [balanceDay('2026-06-15', { total: 2600 })] }),
       );
-      fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Try Again' }));
       expect(
         await within(cell('06/15/2026')).findByTestId('calendar-balance-actual'),
       ).toBeInTheDocument();

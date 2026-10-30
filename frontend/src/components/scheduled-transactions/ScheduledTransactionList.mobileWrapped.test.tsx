@@ -154,11 +154,11 @@ describe('the bills list on a phone', () => {
     expect(text).toContain('Chequing');
     expect(text).toContain('Utilities');
     // The auto-post BADGE ("On"), not the caption that names the column
-    // ("Auto") -- a `toContain('Auto')` is satisfied by the caption alone, so it
+    // ("Auto-Post") -- a `toContain('Auto-Post')` is satisfied by the caption alone, so it
     // would stay green with the marker regressed to the not-auto-posting em dash
     // and the column reporting the opposite of the truth.
-    const autoSlot = within(rows[0]).getByText('Auto').parentElement!;
-    expect(autoSlot.textContent).toBe('AutoOn');
+    const autoSlot = within(rows[0]).getByText('Auto-Post').parentElement!;
+    expect(autoSlot.textContent).toBe('Auto-PostOn');
 
     // The row actions stay in the long-press action sheet on phones.
     expect(text).not.toContain('Edit');
@@ -211,7 +211,7 @@ describe('the bills list on a phone', () => {
     // The captions are their own nodes, above the values', so each value still
     // matches on its own -- which is what keeps `getByText('Chequing')`
     // addressing the account rather than a caption-plus-value blob.
-    for (const caption of ['Amount', 'Schedule', 'Account', 'Category', 'Auto']) {
+    for (const caption of ['Amount', 'Schedule', 'Account', 'Category', 'Auto-Post']) {
       expect(within(row).getByText(caption)).toBeInTheDocument();
     }
     expect(within(row).getByText('Chequing').textContent).toBe('Chequing');
@@ -219,7 +219,7 @@ describe('the bills list on a phone', () => {
     // The other side of the auto-post marker: a schedule the user posts by hand
     // draws the muted em dash, which is exactly why this slot is captioned at
     // all -- a bare dash has nothing to say what column it belongs to.
-    expect(within(row).getByText('Auto').parentElement!.textContent).toBe('Auto—');
+    expect(within(row).getByText('Auto-Post').parentElement!.textContent).toBe('Auto-Post—');
 
     // The name carries no caption: it is the row's identity, and the tier
     // header's own label for that column ("Name / Payee") would misdescribe a

@@ -21,7 +21,6 @@
     "passwordConfirmNote": "[XX-Password confirmation is required when changing your email address.-XX]",
     "pendingEmailNotice": "[XX-A confirmation link was sent to {email}. Your email address changes once you follow it.-XX]",
     "saveButton": "[XX-Save Profile-XX]",
-    "savingButton": "[XX-Saving...-XX]",
     "toasts": {
       "success": "[XX-Profile updated successfully-XX]",
       "confirmationSent": "[XX-Check {email} for a link to confirm your new email address-XX]",
@@ -46,7 +45,6 @@
     "confirmPasswordLabel": "[XX-Confirm New Password-XX]",
     "confirmPasswordPlaceholder": "[XX-Confirm new password-XX]",
     "changePasswordButton": "[XX-Change Password-XX]",
-    "changingPasswordButton": "[XX-Changing...-XX]",
     "toasts": {
       "passwordChanged": "[XX-Password changed successfully-XX]",
       "passwordChangeFailed": "[XX-Failed to change password-XX]"
@@ -106,6 +104,8 @@
       "noDevices": "[XX-No trusted devices. When you check \"Don't ask again on this browser\" during 2FA login, the device will appear here.-XX]",
       "currentBadge": "[XX-Current-XX]",
       "revokeButton": "[XX-Revoke-XX]",
+      "ipAddress": "[XX-IP: {ip}-XX]",
+      "dates": "[XX-Added {added} · Last used {lastUsed} · Expires {expires}-XX]",
       "revokeAllModal": {
         "title": "[XX-Revoke All Trusted Devices-XX]",
         "description": "[XX-This will remove all trusted devices. You will need to enter your 2FA code on your next login from any device.-XX]"
@@ -226,7 +226,7 @@
       "hideRegisterYearLabel": "[XX-Hide the year in register dates-XX]",
       "chartCollapsedLabel": "[XX-Start with the chart on the Transactions page collapsed-XX]",
       "widgetsCollapsedLabel": "[XX-Start with the account, payee and category info collapsed-XX]",
-      "accountOpenTargetLabel": "[XX-When I open an account-XX]",
+      "accountOpenTargetLabel": "[XX-Default Account View-XX]",
       "accountOpenTargetOptions": {
         "register": "[XX-Show its transactions-XX]",
         "dashboard": "[XX-Show its dashboard-XX]"
@@ -302,6 +302,10 @@
       "sendTestButton": "[XX-Send test notification-XX]",
       "sendingTestButton": "[XX-Sending...-XX]",
       "removeButton": "[XX-Remove-XX]",
+      "removeDialog": {
+        "title": "[XX-Remove Device-XX]",
+        "message": "[XX-Remove {device}? It stops receiving push notifications until push is turned on there again.-XX]"
+      },
       "thisDevice": "[XX-This device-XX]",
       "held": "[XX-Signed out on this device. Push resumes when you sign in here again.-XX]",
       "unifiedpushBadge": "[XX-UnifiedPush-XX]",
@@ -481,7 +485,7 @@
   "supportBackup": {
     "title": "[XX-Create support backup-XX]",
     "howItWorks": "[XX-This produces a de-identified copy of your backup: names are masked (first and last two characters kept), notes/descriptions/account numbers are removed, and every amount is multiplied by a single hidden factor while public values (exchange rates, prices, interest rates) are left intact. The file is always encrypted with the password below and restores like a normal backup. This protects against casual exposure, not against someone who already knows you -- dates, frequencies and structure are preserved so bugs still reproduce.-XX]",
-    "sectionsLabel": "[XX-What to include-XX]",
+    "sectionsLabel": "[XX-Sections to Include-XX]",
     "sections": {
       "investments": "[XX-Investments (securities, holdings, prices)-XX]",
       "scheduled": "[XX-Scheduled transactions-XX]",
@@ -647,11 +651,7 @@
       "reason": "[XX-A token can reach your account without signing in, so confirm it is you before creating one.-XX]"
     },
     "relative": {
-      "never": "[XX-Never-XX]",
-      "today": "[XX-Today-XX]",
-      "yesterday": "[XX-Yesterday-XX]",
-      "daysAgo": "[XX-{count} days ago-XX]",
-      "monthsAgo": "[XX-{count} months ago-XX]"
+      "never": "[XX-Never-XX]"
     }
   },
   "autoBackup": {
@@ -695,7 +695,6 @@
       "failed": "[XX-Failed-XX]"
     },
     "saveButton": "[XX-Save Policy-XX]",
-    "savingButton": "[XX-Saving...-XX]",
     "runNowButton": "[XX-Back Up Every Account Now-XX]",
     "runningButton": "[XX-Backing Up...-XX]",
     "toasts": {
@@ -816,7 +815,6 @@
     },
     "restoreResult": {
       "title": "[XX-Restore Complete-XX]",
-      "description": "[XX-Your data has been restored successfully. Here is a summary of what was restored:-XX]",
       "totalRecords": "[XX-Total records-XX]",
       "skippedAttachments": "[XX-{count, plural, one {# attachment was not restored} other {# attachments were not restored}}: the backup did not carry usable bytes for them — they were missing or failed their checksum when it was exported, or the file predates self-contained backups. Export a fresh backup once attachment storage is healthy to capture them.-XX]",
       "unusableAiProviderKeys": "[XX-{count, plural, one {# AI provider was restored without a usable API key} other {# AI providers were restored without usable API keys}}: the backup was written before provider keys were included in it, so the stored key belongs to the server that made the file, or this server has no encryption key configured to store one. Open Settings → AI Providers and enter the API key again.-XX]",
@@ -878,12 +876,11 @@
         "retryButton": "[XX-Try Again-XX]",
         "demoNote": "[XX-Off-site destinations cannot be changed in the demo.-XX]",
         "saveButton": "[XX-Save Destinations-XX]",
-        "savingButton": "[XX-Saving...-XX]",
         "saved": "[XX-Off-site destinations saved-XX]",
         "saveFailed": "[XX-Failed to save your off-site backup destinations-XX]",
         "s3": {
           "heading": "[XX-S3 storage-XX]",
-          "modeLabel": "[XX-Where copies are sent-XX]",
+          "modeLabel": "[XX-Copy Destination-XX]",
           "modeOff": "[XX-Off-XX]",
           "modeDeployment": "[XX-This server's bucket-XX]",
           "modeOwn": "[XX-My own bucket-XX]",
@@ -996,21 +993,57 @@
       "sections": "[XX-Sections-XX]",
       "shared": "[XX-Shared data-XX]"
     },
+    "ops": {
+      "read": "[XX-Read-XX]",
+      "create": "[XX-Create-XX]",
+      "edit": "[XX-Edit-XX]",
+      "delete": "[XX-Delete-XX]",
+      "joint": "[XX-Joint-XX]"
+    },
     "sections": {
       "description": "[XX-Grant read-only access to whole app sections. Account-scoped data still also needs per-account access.-XX]",
+      "bills": {
+        "label": "[XX-Bills & Deposits-XX]",
+        "description": "[XX-Scheduled transactions for granted accounts-XX]"
+      },
+      "investments": {
+        "label": "[XX-Investments-XX]",
+        "description": "[XX-Holdings and investment transactions for granted accounts-XX]"
+      },
+      "budgets": {
+        "label": "[XX-Budgets-XX]",
+        "description": "[XX-Read-only budget figures-XX]"
+      },
+      "reports": {
+        "label": "[XX-Reports-XX]",
+        "description": "[XX-Read-only reports-XX]"
+      },
+      "ai": {
+        "label": "[XX-AI Assistant-XX]",
+        "description": "[XX-Uses the owner's configured AI provider-XX]"
+      },
       "aiRequiresFullAccess": "[XX-The AI Assistant reads across every account and section, so it only answers for this delegate once they can read all of your accounts and every other section.-XX]",
       "warranties": {
         "label": "[XX-Warranties-XX]",
         "description": "[XX-Warranties, their documents and claims. A linked purchase shows only for an account they can read.-XX]"
-      }
+      },
+      "toggleLabel": "[XX-{section} section-XX]"
     },
     "accounts": {
       "noAccounts": "[XX-No accounts to grant.-XX]",
       "grantAll": "[XX-Grant all-XX]",
-      "jointRequiresFullAccount": "[XX-Joint accounts can only be shared with users who have their own Monize account-XX]"
+      "jointRequiresFullAccount": "[XX-Joint accounts can only be shared with users who have their own Monize account-XX]",
+      "grantAllLabel": "[XX-{op} all {type} accounts-XX]",
+      "grantLabel": "[XX-{op} access to {account}-XX]"
     },
     "shared": {
-      "description": "[XX-READ of payees, categories and tags is always allowed. These control create/edit/delete.-XX]"
+      "description": "[XX-READ of payees, categories and tags is always allowed. These control create/edit/delete.-XX]",
+      "toggleLabel": "[XX-{op} {resource}-XX]",
+      "resources": {
+        "payees": "[XX-Payees-XX]",
+        "categories": "[XX-Categories-XX]",
+        "tags": "[XX-Tags-XX]"
+      }
     },
     "saveButton": "[XX-Save-XX]",
     "toasts": {
@@ -1164,7 +1197,6 @@
       "editMessageButton": "[XX-Edit-XX]",
       "messagePlaceholder": "[XX-Notes, instructions, locations of important documents...-XX]",
       "maxCharsNote": "[XX-Maximum 4000 characters. Stored encrypted at rest.-XX]",
-      "cancelButton": "[XX-Cancel-XX]",
       "saveButton": "[XX-Save message-XX]",
       "toasts": {
         "saved": "[XX-Message saved-XX]",
@@ -1209,7 +1241,7 @@
       "grantStatus": "[XX-Grant status: -XX]",
       "unknown": "[XX-unknown-XX]",
       "never": "[XX-never-XX]",
-      "daysAgo": "[XX-{count} day{plural} ago-XX]",
+      "withRelative": "[XX-{timestamp} ({relative})-XX]",
       "grantedOn": "[XX-granted on {timestamp}-XX]",
       "notYetGranted": "[XX-not yet granted-XX]",
       "timerNote": "[XX-The timer resets automatically any time you use the app -- signing in, viewing a page, recording a transaction, anything authenticated.-XX]"
@@ -1226,6 +1258,17 @@
     },
     "stepUp": {
       "reason": "[XX-Re-verify your identity to view or edit your emergency-access message.-XX]"
+    },
+    "validation": {
+      "wholeDays": "[XX-Whole days only-XX]",
+      "minDays": "[XX-{min, plural, one {Must be at least # day} other {Must be at least # days}}-XX]",
+      "maxDays": "[XX-{max, plural, one {Must be # day or fewer} other {Must be # days or fewer}}-XX]",
+      "reminderBeforeGrant": "[XX-Reminder days must be less than grant days-XX]",
+      "messageMax": "[XX-Message must be {max} characters or less-XX]",
+      "firstNameRequired": "[XX-First name is required-XX]",
+      "firstNameMax": "[XX-First name must be {max} characters or less-XX]",
+      "emailInvalid": "[XX-Enter a valid email address-XX]",
+      "emailMax": "[XX-Email must be {max} characters or less-XX]"
     },
     "toasts": {
       "loadFailed": "[XX-Failed to load emergency access-XX]",
@@ -1259,6 +1302,10 @@
       "enableButton": "[XX-Enable-XX]",
       "editButton": "[XX-Edit-XX]",
       "deleteButton": "[XX-Delete-XX]"
+    },
+    "deleteDialog": {
+      "title": "[XX-Delete AI Provider-XX]",
+      "message": "[XX-Delete {name}? Its saved API key is removed with it. This cannot be undone.-XX]"
     },
     "configForm": {
       "addTitle": "[XX-Add AI Provider-XX]",

@@ -22,7 +22,14 @@
       "expiring": "即将到期",
       "active": "有效",
       "expired": "已到期",
-      "lifetime": "终身"
+      "lifetime": "终身",
+      "counted": {
+        "all": "全部（{count}）",
+        "expiring": "即将到期（{count}）",
+        "active": "有效（{count}）",
+        "expired": "已到期（{count}）",
+        "lifetime": "终身（{count}）"
+      }
     },
     "search": {
       "label": "搜索保修",
@@ -163,14 +170,21 @@
     "notFound": "未找到此保修。",
     "retry": "重试",
     "archivedBadge": "已归档",
+    "switcher": {
+      "trigger": "切换保修",
+      "placeholder": "筛选保修...",
+      "noMatches": "没有匹配的保修"
+    },
+    "summary": {
+      "expires": "到期日",
+      "purchased": "购买日期",
+      "price": "购买价格",
+      "openClaims": "未结申请"
+    },
     "card": {
       "title": "详细信息",
-      "expires": "到期日",
-      "daysLeft": "剩余时间",
       "kind": "保修类型",
       "vendor": "商家",
-      "purchaseDate": "购买日期",
-      "price": "购买价格",
       "serialNumbers": "序列号",
       "model": "型号",
       "productUrl": "产品页面",
@@ -228,7 +242,7 @@
     "form": {
       "claimDateLabel": "申请日期",
       "statusLabel": "状态",
-      "descriptionLabel": "出了什么问题",
+      "descriptionLabel": "说明",
       "resolutionLabel": "处理结果",
       "resolvedOnLabel": "结案日期",
       "resolvedOnHint": "仅适用于已解决或已拒绝的申请",

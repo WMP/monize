@@ -16,10 +16,7 @@ import {
 } from '@/components/institutions/InstitutionList';
 import { InstitutionAccountsManager } from '@/components/institutions/InstitutionAccountsManager';
 import { institutionsApi } from '@/lib/institutions';
-import { accountsApi } from '@/lib/accounts';
-import { countLogicalAccounts } from '@/lib/account-utils';
 import { Institution } from '@/types/institution';
-import { Account } from '@/types/account';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { SummaryCard, SummaryIcons } from '@/components/ui/SummaryCard';
@@ -44,10 +41,8 @@ export default function InstitutionsPage() {
 function InstitutionsContent() {
   const t = useTranslations('institutions');
   const [institutions, setInstitutions] = useState<Institution[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'active' | 'closed' | ''>('');
   const [sortField, setSortField] = useState<InstitutionSortField>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
@@ -70,14 +65,8 @@ function InstitutionsContent() {
     // Writes live in `run` so they land after the request, not during the effect.
     const run = async () => {
       try {
-        // Accounts are loaded to derive each institution's active/closed status
-        // (an institution has no status of its own).
-        const [data, accountsData] = await Promise.all([
-          institutionsApi.getAll(),
-          accountsApi.getAll(true).catch(() => [] as Account[]),
-        ]);
+        const data = await institutionsApi.getAll();
         setInstitutions(data);
-        setAccounts(accountsData);
       } catch (error) {
         toast.error(getErrorMessage(error, t('page.toasts.loadFailed')));
         logger.error(error);
@@ -133,42 +122,8 @@ function InstitutionsContent() {
     }
   };
 
-  // Logical (pair-aware) account counts per institution, split by status, so
-  // the Accounts column can reflect the All/Active/Closed filter without
-  // hiding any institution rows.
-  const accountCountByStatus = useMemo(() => {
-    const groups = new Map<string, Account[]>();
-    for (const account of accounts) {
-      if (!account.institutionId) continue;
-      const arr = groups.get(account.institutionId) ?? [];
-      groups.set(account.institutionId, [...arr, account]);
-    }
-    const map = new Map<string, { active: number; closed: number }>();
-    for (const [id, arr] of groups) {
-      map.set(id, {
-        active: countLogicalAccounts(arr.filter((a) => !a.isClosed)),
-        closed: countLogicalAccounts(arr.filter((a) => a.isClosed)),
-      });
-    }
-    return map;
-  }, [accounts]);
-
-  // Apply the status filter to the displayed account count (rows are kept).
-  const decoratedInstitutions = useMemo(() => {
-    if (!filterStatus) return institutions;
-    return institutions.map((i) => {
-      const counts = accountCountByStatus.get(i.id);
-      const accountCount = counts
-        ? filterStatus === 'active'
-          ? counts.active
-          : counts.closed
-        : 0;
-      return { ...i, accountCount };
-    });
-  }, [institutions, filterStatus, accountCountByStatus]);
-
   const filteredInstitutions = useMemo(() => {
-    let result = decoratedInstitutions;
+    let result = institutions;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
@@ -202,7 +157,7 @@ function InstitutionsContent() {
       return sortDirection === 'asc' ? cmp : -cmp;
     });
     return sorted;
-  }, [decoratedInstitutions, searchQuery, sortField, sortDirection]);
+  }, [institutions, searchQuery, sortField, sortDirection]);
 
   const handleSort = (field: InstitutionSortField) => {
     if (sortField === field) {
@@ -219,15 +174,10 @@ function InstitutionsContent() {
     return filteredInstitutions.slice(start, start + PAGE_SIZE);
   }, [filteredInstitutions, currentPage]);
 
-  // A new search or status filter starts again from the first page.
+  // A new search starts again from the first page.
   const handleSearchChange = (query: string) => {
     if (query !== searchQuery) setCurrentPage(1);
     setSearchQuery(query);
-  };
-
-  const handleFilterStatusChange = (status: 'active' | 'closed' | '') => {
-    if (status !== filterStatus) setCurrentPage(1);
-    setFilterStatus(status);
   };
 
   const goToPage = (page: number) => {
@@ -248,6 +198,7 @@ function InstitutionsContent() {
         <PageHeader
           title={t('page.title')}
           subtitle={t('page.subtitle')}
+          helpUrl="https://github.com/kenlasko/monize/wiki/Accounts#financial-institutions"
           actions={<Button onClick={openCreate}>{t('page.newInstitution')}</Button>}
         />
 
@@ -270,49 +221,15 @@ function InstitutionsContent() {
           />
         </div>
 
-        <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="mb-6 flex flex-wrap items-center gap-4">
           <input
             type="text"
             placeholder={t('page.searchPlaceholder')}
+            aria-label={t('page.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="block w-full sm:max-w-md rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400"
+            className="block w-full sm:w-auto sm:flex-1 sm:max-w-md rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400"
           />
-          <div className="inline-flex rounded-md shadow-sm">
-            <button
-              type="button"
-              onClick={() => handleFilterStatusChange('')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-l-md border ${
-                filterStatus === ''
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-              }`}
-            >
-              {t('list.statusFilter.all')}
-            </button>
-            <button
-              type="button"
-              onClick={() => handleFilterStatusChange('active')}
-              className={`px-3 py-1.5 text-sm font-medium border-t border-b ${
-                filterStatus === 'active'
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-              }`}
-            >
-              {t('list.statusFilter.active')}
-            </button>
-            <button
-              type="button"
-              onClick={() => handleFilterStatusChange('closed')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-r-md border ${
-                filterStatus === 'closed'
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-              }`}
-            >
-              {t('list.statusFilter.closed')}
-            </button>
-          </div>
         </div>
 
         <Modal isOpen={showForm} onClose={close} {...modalProps} maxWidth="lg" className="p-6">

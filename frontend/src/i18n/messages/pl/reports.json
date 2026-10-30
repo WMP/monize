@@ -4,6 +4,7 @@
     "subtitle": "Twórz analizy swojej kondycji finansowej",
     "searchPlaceholder": "Szukaj raportów po nazwie lub opisie...",
     "allReports": "Wszystkie raporty",
+    "categoryWithCount": "{label} ({count})",
     "removeFavourite": "Usuń z ulubionych",
     "addFavourite": "Dodaj do ulubionych",
     "tableReport": "Raport",
@@ -137,7 +138,8 @@
   },
   "reportPage": {
     "notFound": "Nie znaleziono raportu",
-    "notFoundDesc": "Żądany raport nie istnieje."
+    "notFoundDesc": "Żądany raport nie istnieje.",
+    "viewLabel": "Widok"
   },
   "error": {
     "defaultMessage": "Nie udało się załadować danych raportu. Spróbuj ponownie.",
@@ -514,8 +516,6 @@
     "viewMonthly": "Miesięczny",
     "viewDaily": "Codziennie",
     "viewBySecurity": "Wg papieru",
-    "displayChart": "Wykres",
-    "displayTable": "Tabela",
     "showLabel": "Pokaż:",
     "seriesDividends": "Dywidendy",
     "seriesInterest": "Odsetki",
@@ -1251,7 +1251,6 @@
     "incompleteTooltip": "W niektórych dniach tego okresu brakuje ceny, kursu wymiany lub salda gotówkowego, dlatego wartości zależne od każdego dnia nie są wyświetlane.",
     "measuredFromClose": "Od zamknięcia notowań {date}",
     "notAvailable": "Brak",
-    "intradayUnavailable": "Szczegółowe ceny śróddzienne niedostępne",
     "intradayUnavailableTitle": "Widok śróddzienny niedostępny dla tego zestawu kont",
     "intradayUnavailableDesc": "Jedna lub więcej pozycji korzysta z dostawcy notowań (MSN Money), który nie udostępnia danych śróddziennych{skipped}. Przełącz na dłuższy zakres, aby zobaczyć migawki dzienne.",
     "intradayUnavailableSkipped": ": {symbols}",
@@ -1302,8 +1301,6 @@
     "costBasis": "Koszt nabycia",
     "realizedGainLoss": "Zrealizowany zysk/strata",
     "securitiesSold": "Sprzedane papiery",
-    "viewChart": "Wykres",
-    "viewTable": "Tabela",
     "noTransactions": "Nie znaleziono transakcji sprzedaży w tym okresie.",
     "noGainsLosses": "Brak zysków ani strat do wyświetlenia.",
     "bySecurityTitle": "Zrealizowane zyski wg papieru",
@@ -1339,7 +1336,7 @@
     "sixMonthTotal": "Suma z 6 miesięcy",
     "monthlyEstimate": "Szacunek miesięczny",
     "identifiedPayees": "zidentyfikowanych odbiorców",
-    "minOccurrencesLabel": "Minimalna liczba wystąpień:",
+    "minOccurrencesLabel": "Minimalna liczba wystąpień",
     "inLast6Months": "(w ostatnich 6 miesiącach)",
     "noRecurring": "Nie znaleziono wydatków cyklicznych z co najmniej {count} wystąpieniami w ostatnich 6 miesiącach.",
     "failedToLoad": "Nie udało się załadować danych o wydatkach cyklicznych.",
@@ -1699,8 +1696,6 @@
     "activeBills": "Aktywne rachunki",
     "overdue": "Zaległe",
     "thisMonth": "Bieżący miesiąc",
-    "autoPostsTitle": "Księguje automatycznie w terminie",
-    "manualPostTitle": "Wymaga ręcznego zaksięgowania",
     "autoLabel": "Auto",
     "manualLabel": "Ręczne",
     "overdueLabel": "Zaległe",
@@ -1834,6 +1829,7 @@
     "removeAriaLabel": "Usuń {title} z porównania",
     "removeTitle": "Usuń z porównania",
     "runFailed": "Uruchomienie nie powiodło się",
+    "never": "Nigdy",
     "errors": {
       "loadScenarioFailed": "Nie udało się załadować scenariusza.",
       "simulationFailed": "Symulacja nie powiodła się."
@@ -1847,7 +1843,6 @@
     "backToReports": "Powrót do raportów",
     "deleteButton": "Usuń raport",
     "deleteConfirmMessage": "Czy na pewno chcesz usunąć tag \"{name}\"? Tej operacji nie można cofnąć.",
-    "deleting": "Usuwanie...",
     "toasts": {
       "loadFailed": "Nie udało się załadować raportu",
       "updated": "Zaktualizowano raport",

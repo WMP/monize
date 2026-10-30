@@ -4,6 +4,8 @@
     "subtitle": "管理您的科目和有價證券所使用的貨幣",
     "refreshRates": "更新匯率",
     "refreshing": "更新中...",
+    "ratesAge": "({time})",
+    "statusFilterLabel": "狀態",
     "newCurrency": "+ 新增貨幣",
     "searchPlaceholder": "依代碼或名稱搜尋...",
     "statusAll": "全部 ({count})",
@@ -70,9 +72,9 @@
       "activate": "啟用",
       "deleteCurrency": "刪除貨幣"
     },
-    "usageTooltip": "{accounts} 個科目，{securities} 種有價證券",
-    "usageAccounts": "{count, plural, one {# 個科目} other {# 個科目}}",
-    "usageSecurities": "{count, plural, one {# 種證券} other {# 種證券}}",
+    "usageAccounts": "{count, plural, other {# 個帳戶}}",
+    "usageSecurities": "{count, plural, other {# 檔證券}}",
+    "rateHelp": "每種貨幣一個單位折合多少 {currency}。",
     "empty": {
       "title": "無貨幣",
       "subtitle": "立即新增貨幣開始使用。"

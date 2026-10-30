@@ -1,10 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import toast from 'react-hot-toast';
 import { AxiosError } from 'axios';
 import { render, screen, fireEvent, within, act } from '@/test/render';
 import { AiReviewInbox } from './AiReviewInbox';
 import { makeReviewItem, makeTradeItem, PROPOSED_ACTION, TRADE_ACTION } from './ai-review-fixtures';
 import type { AiReviewItem } from '@/types/ai-review';
+import { useDensityStore } from '@/store/densityStore';
 
 const api = vi.hoisted(() => ({ list: vi.fn(), dismiss: vi.fn(), approveBatch: vi.fn() }));
 const nav = vi.hoisted(() => ({ search: '', replace: vi.fn() }));
@@ -311,24 +312,38 @@ describe('AiReviewInbox', () => {
       api.list.mockResolvedValue([receipt('r1'), makeReviewItem({ id: 'rule-1' })]);
       await renderInbox();
       expect(screen.getByText('Rule: Allegro orders')).toBeInTheDocument();
-      await click(screen.getByRole('button', { name: 'Email receipts' }));
+      await click(screen.getByRole('button', { name: /^Email receipts/ }));
       expect(screen.queryByText('Rule: Allegro orders')).not.toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Email receipts' })).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByRole('button', { name: /^Email receipts/ })).toHaveAttribute('aria-pressed', 'true');
       expect(nav.replace).toHaveBeenLastCalledWith('/ai-reviews?kind=email_receipt', { scroll: false });
-      await click(screen.getByRole('button', { name: 'All' }));
+      await click(screen.getByRole('button', { name: /^All( \(\d+\))?$/ }));
       expect(nav.replace).toHaveBeenLastCalledWith('/ai-reviews', { scroll: false });
       expect(api.list).toHaveBeenCalledTimes(1);
+    });
+
+    it('counts the loaded rows each kind segment shows, a trade confirmation under Email receipts', async () => {
+      api.list.mockResolvedValue([receipt('r1'), makeTradeItem({ id: 'trade-1' }), makeReviewItem({ id: 'rule-1' })]);
+      await renderInbox();
+      const kinds = within(screen.getByRole('group', { name: 'Filter by kind' }));
+      expect(kinds.getAllByRole('button').map((b) => b.textContent)).toEqual(['All (3)', 'Email receipts (2)', 'Rules (1)']);
+    });
+
+    it('prints no kind count while the list is loading', async () => {
+      api.list.mockReturnValue(new Promise(() => {}));
+      await renderInbox();
+      const kinds = within(screen.getByRole('group', { name: 'Filter by kind' }));
+      expect(kinds.getAllByRole('button').map((b) => b.textContent)).toEqual(['All', 'Email receipts', 'Rules']);
     });
 
     it('lists a trade confirmation under Email receipts, not under transaction reviews', async () => {
       api.list.mockResolvedValue([makeTradeItem({ proposal: { action: TRADE_ACTION } }), makeReviewItem({ id: 'rule-1' })]);
       await renderInbox();
-      await click(screen.getByRole('button', { name: 'Email receipts' }));
+      await click(screen.getByRole('button', { name: /^Email receipts/ }));
       expect(screen.getByText('Buy 75.9878 shares of XCNS')).toBeInTheDocument();
       // Its card is the investment one the backend builds, not a bank transaction's.
       expect(screen.getByText('Create this investment transaction?')).toBeInTheDocument();
       expect(screen.queryByText('Rule: Allegro orders')).not.toBeInTheDocument();
-      await click(screen.getByRole('button', { name: 'All' }));
+      await click(screen.getByRole('button', { name: /^All( \(\d+\))?$/ }));
       expect(screen.getByText('Buy 75.9878 shares of XCNS')).toBeInTheDocument();
     });
 
@@ -337,7 +352,7 @@ describe('AiReviewInbox', () => {
       api.list.mockResolvedValue([receipt('r1'), makeReviewItem({ id: 'rule-1' })]);
       await renderInbox();
       expect(screen.queryByText('Rule: Allegro orders')).not.toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Email receipts' })).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByRole('button', { name: /^Email receipts/ })).toHaveAttribute('aria-pressed', 'true');
     });
 
     it('offers no selection when nothing can be approved or sent', async () => {
@@ -434,6 +449,63 @@ describe('AiReviewInbox', () => {
       expect(clearAllCache).not.toHaveBeenCalled();
       expect(screen.queryByRole('status')).not.toBeInTheDocument();
       expect(api.list).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('density and the phone layout', () => {
+    const PHONE_QUERY = '(max-width: 639px)';
+    const originalMatchMedia = window.matchMedia;
+    const setPhoneViewport = (isPhone: boolean) => {
+      window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+        matches: isPhone && query === PHONE_QUERY,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })) as unknown as typeof window.matchMedia;
+    };
+    const firstRowCells = (container: HTMLElement) => container.querySelector('tbody tr')?.querySelectorAll('td') ?? [];
+
+    beforeEach(() => {
+      localStorage.clear();
+      useDensityStore.setState({ densities: {} });
+      api.list.mockResolvedValue([makeReviewItem({ status: 'applied' })]);
+    });
+    afterEach(() => {
+      window.matchMedia = originalMatchMedia;
+    });
+
+    it('offers the density toggle above the list and remembers the level for the inbox', async () => {
+      await renderInbox();
+      await click(screen.getByTitle('Toggle row density'));
+      expect(useDensityStore.getState().densities.aiReviews).toBe('compact');
+    });
+
+    it('draws a request as one card cell on a phone at Normal density, with its date, amount and status', async () => {
+      setPhoneViewport(true);
+      const { container } = await renderInbox();
+      const cells = firstRowCells(container);
+      expect(cells).toHaveLength(1);
+      expect(cells[0]).toHaveTextContent('Allegro');
+      expect(cells[0]).toHaveTextContent(/25\.00/);
+      expect(cells[0]).toHaveTextContent('Applied');
+      expect(screen.queryByRole('columnheader', { name: 'Amount' })).not.toBeInTheDocument();
+    });
+
+    it('keeps the four columns on a phone at Compact density, and on a wide screen', async () => {
+      setPhoneViewport(true);
+      useDensityStore.setState({ densities: { aiReviews: 'compact' } });
+      const { container, unmount } = await renderInbox();
+      expect(firstRowCells(container)).toHaveLength(4);
+      unmount();
+      setPhoneViewport(false);
+      useDensityStore.setState({ densities: {} });
+      const wide = await renderInbox();
+      expect(firstRowCells(wide.container)).toHaveLength(4);
+      expect(screen.getByRole('columnheader', { name: 'Amount' })).toBeInTheDocument();
     });
   });
 });

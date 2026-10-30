@@ -21,7 +21,6 @@
     "passwordConfirmNote": "Die Passwortbestätigung ist beim Ändern Ihrer E-Mail-Adresse erforderlich.",
     "pendingEmailNotice": "Ein Bestätigungslink wurde an {email} gesendet. Ihre E-Mail-Adresse ändert sich, sobald Sie ihm folgen.",
     "saveButton": "Profil speichern",
-    "savingButton": "Wird gespeichert...",
     "toasts": {
       "success": "Profil erfolgreich aktualisiert",
       "confirmationSent": "Prüfen Sie {email} auf einen Link zur Bestätigung Ihrer neuen E-Mail-Adresse",
@@ -46,7 +45,6 @@
     "confirmPasswordLabel": "Neues Passwort bestätigen",
     "confirmPasswordPlaceholder": "Neues Passwort bestätigen",
     "changePasswordButton": "Passwort ändern",
-    "changingPasswordButton": "Wird geändert...",
     "toasts": {
       "passwordChanged": "Passwort erfolgreich geändert",
       "passwordChangeFailed": "Passwort konnte nicht geändert werden"
@@ -106,6 +104,8 @@
       "noDevices": "Keine vertrauenswürdigen Geräte. Wenn Sie bei der 2FA-Anmeldung \"Auf diesem Browser nicht mehr fragen\" aktivieren, wird das Gerät hier angezeigt.",
       "currentBadge": "Aktuell",
       "revokeButton": "Widerrufen",
+      "ipAddress": "IP: {ip}",
+      "dates": "Hinzugefügt {added} · Zuletzt verwendet {lastUsed} · Läuft ab {expires}",
       "revokeAllModal": {
         "title": "Alle vertrauenswürdigen Geräte widerrufen",
         "description": "Dadurch werden alle vertrauenswürdigen Geräte entfernt. Bei der nächsten Anmeldung von einem beliebigen Gerät müssen Sie Ihren 2FA-Code eingeben."
@@ -226,7 +226,7 @@
       "hideRegisterYearLabel": "Jahr bei Buchungsdaten ausblenden",
       "chartCollapsedLabel": "Diagramm auf der Seite „Buchungen“ zunächst eingeklappt anzeigen",
       "widgetsCollapsedLabel": "Konto-, Zahlungsempfänger- und Kategorieinformationen zunächst eingeklappt anzeigen",
-      "accountOpenTargetLabel": "Wenn ich ein Konto öffne",
+      "accountOpenTargetLabel": "Standardansicht für Konten",
       "accountOpenTargetOptions": {
         "register": "Buchungen des Kontos anzeigen",
         "dashboard": "Kontoübersicht anzeigen"
@@ -302,6 +302,10 @@
       "sendTestButton": "Testbenachrichtigung senden",
       "sendingTestButton": "Wird gesendet ...",
       "removeButton": "Entfernen",
+      "removeDialog": {
+        "title": "Gerät entfernen",
+        "message": "{device} entfernen? Es erhält keine Push-Benachrichtigungen mehr, bis Push dort wieder aktiviert wird."
+      },
       "thisDevice": "Dieses Gerät",
       "held": "Auf diesem Gerät abgemeldet. Push-Benachrichtigungen werden fortgesetzt, sobald Sie sich hier wieder anmelden.",
       "unifiedpushBadge": "UnifiedPush",
@@ -481,7 +485,7 @@
   "supportBackup": {
     "title": "Support-Backup erstellen",
     "howItWorks": "Es entsteht eine de-identifizierte Kopie Ihres Backups: Namen werden maskiert (erste und letzte zwei Zeichen bleiben), Notizen/Beschreibungen/Kontonummern werden entfernt, und jeder Betrag wird mit einem einzigen verborgenen Faktor multipliziert, während öffentliche Werte (Wechselkurse, Kurse, Zinssätze) unangetastet bleiben. Die Datei wird immer mit dem untenstehenden Passwort verschlüsselt und lässt sich wie ein normales Backup wiederherstellen. Das schützt vor beiläufiger Einsichtnahme, nicht vor jemandem, der Sie bereits kennt — Daten, Häufigkeiten und Struktur bleiben erhalten, damit Fehler reproduzierbar sind.",
-    "sectionsLabel": "Was einschließen",
+    "sectionsLabel": "Einzuschließende Bereiche",
     "sections": {
       "investments": "Investitionen (Wertpapiere, Bestände, Kurse)",
       "scheduled": "Geplante Transaktionen",
@@ -647,11 +651,7 @@
       "reason": "Ein Token kann ohne Anmeldung auf Ihr Konto zugreifen. Bestätigen Sie daher Ihre Identität, bevor Sie eines erstellen."
     },
     "relative": {
-      "never": "Nie",
-      "today": "Heute",
-      "yesterday": "Gestern",
-      "daysAgo": "Vor {count} Tagen",
-      "monthsAgo": "Vor {count} Monaten"
+      "never": "Nie"
     }
   },
   "autoBackup": {
@@ -695,7 +695,6 @@
       "failed": "Fehlgeschlagen"
     },
     "saveButton": "Richtlinie speichern",
-    "savingButton": "Wird gespeichert...",
     "runNowButton": "Jetzt alle Konten sichern",
     "runningButton": "Sicherung läuft...",
     "toasts": {
@@ -816,7 +815,6 @@
     },
     "restoreResult": {
       "title": "Wiederherstellung abgeschlossen",
-      "description": "Ihre Daten wurden erfolgreich wiederhergestellt. Hier eine Zusammenfassung der wiederhergestellten Daten:",
       "totalRecords": "Datensätze gesamt",
       "skippedAttachments": "{count, plural, one {# Anhang wurde nicht wiederhergestellt} other {# Anhänge wurden nicht wiederhergestellt}}: Das Backup enthielt keine verwendbaren Bytes dafür — sie fehlten beim Export oder scheiterten an ihrer Prüfsumme, oder die Datei stammt aus der Zeit vor eigenständigen Backups. Erstelle ein neues Backup, sobald der Anhangsspeicher in Ordnung ist.",
       "unusableAiProviderKeys": "{count, plural, one {# KI-Anbieter wurde ohne nutzbaren API-Schlüssel wiederhergestellt} other {# KI-Anbieter wurden ohne nutzbare API-Schlüssel wiederhergestellt}}: Die Sicherung entstand, bevor Anbieterschlüssel mitgeführt wurden — der gespeicherte Schlüssel gehört also zu dem Server, der die Datei erstellt hat, oder auf diesem Server ist kein Verschlüsselungsschlüssel eingerichtet, unter dem einer abgelegt werden könnte. Öffnen Sie Einstellungen → KI-Anbieter und geben Sie den API-Schlüssel erneut ein.",
@@ -878,12 +876,11 @@
         "retryButton": "Erneut versuchen",
         "demoNote": "Externe Ziele können in der Demo nicht geändert werden.",
         "saveButton": "Ziele speichern",
-        "savingButton": "Wird gespeichert...",
         "saved": "Externe Ziele gespeichert",
         "saveFailed": "Ihre externen Backup-Ziele konnten nicht gespeichert werden",
         "s3": {
           "heading": "S3-Speicher",
-          "modeLabel": "Wohin Kopien gesendet werden",
+          "modeLabel": "Kopieziel",
           "modeOff": "Aus",
           "modeDeployment": "Bucket dieses Servers",
           "modeOwn": "Mein eigener Bucket",
@@ -996,21 +993,57 @@
       "sections": "Bereiche",
       "shared": "Gemeinsame Daten"
     },
+    "ops": {
+      "read": "Lesen",
+      "create": "Erstellen",
+      "edit": "Bearbeiten",
+      "delete": "Löschen",
+      "joint": "Gemeinsam"
+    },
     "sections": {
       "description": "Schreibgeschützten Zugriff auf ganze App-Bereiche gewähren. Kontobezogene Daten benötigen zusätzlich Zugriff pro Konto.",
+      "bills": {
+        "label": "Rechnungen & Einzahlungen",
+        "description": "Geplante Buchungen für freigegebene Konten"
+      },
+      "investments": {
+        "label": "Investitionen",
+        "description": "Bestände und Investitionsbuchungen für freigegebene Konten"
+      },
+      "budgets": {
+        "label": "Budgets",
+        "description": "Budgetzahlen, nur lesend"
+      },
+      "reports": {
+        "label": "Berichte",
+        "description": "Berichte, nur lesend"
+      },
+      "ai": {
+        "label": "KI-Assistent",
+        "description": "Verwendet den vom Inhaber eingerichteten KI-Anbieter"
+      },
       "aiRequiresFullAccess": "Der KI-Assistent liest alle Konten und Bereiche und antwortet für diesen Delegierten daher erst, wenn er alle Ihre Konten und jeden anderen Bereich lesen darf.",
       "warranties": {
         "label": "Garantien",
         "description": "Garantien mit ihren Dokumenten und Ansprüchen. Ein verknüpfter Kauf wird nur bei einem Konto angezeigt, das der Delegierte lesen darf."
-      }
+      },
+      "toggleLabel": "Bereich {section}"
     },
     "accounts": {
       "noAccounts": "Keine Konten zum Gewähren.",
       "grantAll": "Alle gewähren",
-      "jointRequiresFullAccount": "Gemeinschaftskonten können nur mit Benutzern geteilt werden, die ein eigenes Monize-Konto haben"
+      "jointRequiresFullAccount": "Gemeinschaftskonten können nur mit Benutzern geteilt werden, die ein eigenes Monize-Konto haben",
+      "grantAllLabel": "{op} für alle {type}-Konten",
+      "grantLabel": "{op}-Zugriff auf {account}"
     },
     "shared": {
-      "description": "LESEN von Zahlungsempfängern, Kategorien und Tags ist immer erlaubt. Diese steuern Erstellen/Bearbeiten/Löschen."
+      "description": "LESEN von Zahlungsempfängern, Kategorien und Tags ist immer erlaubt. Diese steuern Erstellen/Bearbeiten/Löschen.",
+      "toggleLabel": "{op} {resource}",
+      "resources": {
+        "payees": "Zahlungsempfänger",
+        "categories": "Kategorien",
+        "tags": "Etiketten"
+      }
     },
     "saveButton": "Speichern",
     "toasts": {
@@ -1164,7 +1197,6 @@
       "editMessageButton": "Bearbeiten",
       "messagePlaceholder": "Notizen, Anweisungen, Standorte wichtiger Dokumente...",
       "maxCharsNote": "Maximal 4000 Zeichen. Verschlüsselt gespeichert.",
-      "cancelButton": "Abbrechen",
       "saveButton": "Nachricht speichern",
       "toasts": {
         "saved": "Nachricht gespeichert",
@@ -1209,7 +1241,7 @@
       "grantStatus": "Gewährungsstatus: ",
       "unknown": "unbekannt",
       "never": "nie",
-      "daysAgo": "Vor {count} Tag{plural}",
+      "withRelative": "{timestamp} ({relative})",
       "grantedOn": "gewährt am {timestamp}",
       "notYetGranted": "noch nicht gewährt",
       "timerNote": "Der Timer wird automatisch zurückgesetzt, sobald Sie die App verwenden -- Anmelden, eine Seite aufrufen, eine Buchung erfassen oder eine andere authentifizierte Aktion."
@@ -1226,6 +1258,17 @@
     },
     "stepUp": {
       "reason": "Verifizieren Sie Ihre Identität erneut, um Ihre Notfallzugang-Nachricht anzuzeigen oder zu bearbeiten."
+    },
+    "validation": {
+      "wholeDays": "Nur ganze Tage",
+      "minDays": "{min, plural, one {Muss mindestens # Tag sein} other {Muss mindestens # Tage sein}}",
+      "maxDays": "{max, plural, one {Darf höchstens # Tag sein} other {Darf höchstens # Tage sein}}",
+      "reminderBeforeGrant": "Die Erinnerungstage müssen kleiner als die Gewährungstage sein",
+      "messageMax": "Die Nachricht darf höchstens {max} Zeichen lang sein",
+      "firstNameRequired": "Vorname ist erforderlich",
+      "firstNameMax": "Der Vorname darf höchstens {max} Zeichen lang sein",
+      "emailInvalid": "Geben Sie eine gültige E-Mail-Adresse ein",
+      "emailMax": "Die E-Mail-Adresse darf höchstens {max} Zeichen lang sein"
     },
     "toasts": {
       "loadFailed": "Notfallzugang konnte nicht geladen werden",
@@ -1259,6 +1302,10 @@
       "enableButton": "Aktivieren",
       "editButton": "Bearbeiten",
       "deleteButton": "Löschen"
+    },
+    "deleteDialog": {
+      "title": "KI-Anbieter löschen",
+      "message": "{name} löschen? Der gespeicherte API-Schlüssel wird mit entfernt. Dies kann nicht rückgängig gemacht werden."
     },
     "configForm": {
       "addTitle": "KI-Anbieter hinzufügen",

@@ -1,8 +1,9 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { format, parseISO } from 'date-fns';
 import { gainLossColor } from '@/lib/format';
+import { useDateFormat } from '@/hooks/useDateFormat';
+import { useChartDateFormat } from '@/hooks/useChartDateFormat';
 import { BudgetProgressBar } from './BudgetProgressBar';
 import type { BudgetPeriod, BudgetPeriodCategory } from '@/types/budget';
 
@@ -30,6 +31,8 @@ export function BudgetPeriodDetail({
 }: BudgetPeriodDetailProps) {
   const t = useTranslations('budgets');
   const { formatPercentTrimmed } = useNumberFormat();
+  const { formatDate } = useDateFormat();
+  const formatChartDate = useChartDateFormat();
   const categories = period.periodCategories ?? [];
   const expenseCategories = categories.filter((pc) => !isIncomeCategory(pc));
   const incomeCategories = categories.filter((pc) => isIncomeCategory(pc));
@@ -59,7 +62,9 @@ export function BudgetPeriodDetail({
     0,
   );
 
-  const periodLabel = `${format(parseISO(period.periodStart), 'MMMM yyyy')}`;
+  // The month heading in the reader's language and the range in their own
+  // date format, never a fixed English pattern.
+  const periodLabel = formatChartDate(period.periodStart, 'MMMM yyyy');
 
   return (
     <div className="space-y-6">
@@ -74,8 +79,10 @@ export function BudgetPeriodDetail({
           </span>
         </div>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          {format(parseISO(period.periodStart), 'MMM d')} &ndash;{' '}
-          {format(parseISO(period.periodEnd), 'MMM d, yyyy')}
+          {t('periodDetail.dateRange', {
+            start: formatDate(period.periodStart),
+            end: formatDate(period.periodEnd),
+          })}
         </p>
       </div>
 

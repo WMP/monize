@@ -17,7 +17,8 @@
     "label": "Nach Art filtern",
     "all": "Alle",
     "email_receipt": "E-Mail-Belege",
-    "transaction_review": "Regeln"
+    "transaction_review": "Regeln",
+    "option": "{label} ({count})"
   },
   "status": {
     "pending": "Ausstehend",

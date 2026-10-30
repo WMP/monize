@@ -16,12 +16,13 @@
     "chartUnavailable": "Biểu đồ tạm thời không khả dụng"
   },
   "viewTabs": {
-    "list": "Danh sách",
-    "calendar": "Lịch",
+    "filterLabel": "Loại lịch",
     "filterAll": "Tất cả ({count})",
     "filterBills": "Hóa đơn ({count})",
     "filterDeposits": "Tiền gửi ({count})",
-    "todayButton": "Hôm nay"
+    "todayButton": "Hôm nay",
+    "previousMonth": "Tháng trước",
+    "nextMonth": "Tháng sau"
   },
   "form": {
     "titleNew": "Giao dịch theo lịch mới",

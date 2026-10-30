@@ -21,19 +21,25 @@ interface ReceiptSearchBarProps {
 
 /**
  * The receipts list's search: free text over the subject, the sender or the
- * content, and a date range on the date the list shows. A controlled view; the
- * text's delay and the URL are `useReceiptSearch`'s.
+ * content, and a date range on the date the list shows. First in the toolbar,
+ * the text field unlabelled (its placeholder names what is searched) and
+ * applied as the person types. A controlled view; the text's delay and the URL
+ * are `useReceiptSearch`'s.
  */
 export function ReceiptSearchBar({ input, onChange, onClear, canClear, rangeBackwards }: ReceiptSearchBarProps) {
   const t = useTranslations('emailReceipts.receipts.search');
 
   return (
     <div role="search" aria-label={t('label')} className="flex flex-wrap items-start gap-x-3 gap-y-3">
-      <div className="w-full sm:w-72">
+      {/* No label above the search: the placeholder says what is searched. The spacer only lines it up with the labelled fields beside it. */}
+      <div className="flex w-full flex-col sm:w-72">
+        <div className="hidden sm:block">
+          <LabelSpacer />
+        </div>
         <Input
           id="receipt-search-text"
           type="search"
-          label={t('text')}
+          aria-label={t('placeholder')}
           placeholder={t('placeholder')}
           value={input.text}
           maxLength={EMAIL_RECEIPT_SEARCH_MAX_LENGTH}

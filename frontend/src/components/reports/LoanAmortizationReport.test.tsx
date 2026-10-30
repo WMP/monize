@@ -739,7 +739,7 @@ describe('LoanAmortizationReport', () => {
     mockGetAllAccounts.mockRejectedValue(new Error('boom'));
     await renderReport();
     await waitFor(() => {
-      expect(screen.getByText('Try again')).toBeInTheDocument();
+      expect(screen.getByText('Try Again')).toBeInTheDocument();
     });
   });
 
@@ -755,7 +755,7 @@ describe('LoanAmortizationReport', () => {
     mockGetAllTransactions.mockRejectedValue(new Error('boom'));
     await renderReport();
     await waitFor(() => {
-      expect(screen.getByText('Try again')).toBeInTheDocument();
+      expect(screen.getByText('Try Again')).toBeInTheDocument();
     });
     // The schedule must not be drawn from a history that failed to load: an
     // empty one projects a plausible payoff from no payments at all.
@@ -790,7 +790,7 @@ describe('LoanAmortizationReport', () => {
     await renderReport();
 
     await waitFor(() => {
-      expect(screen.getByText('Try again')).toBeInTheDocument();
+      expect(screen.getByText('Try Again')).toBeInTheDocument();
     });
     expect(screen.queryByText(/payments made/)).not.toBeInTheDocument();
   });
@@ -818,11 +818,11 @@ describe('LoanAmortizationReport', () => {
 
     await renderReport();
     await waitFor(() => {
-      expect(screen.getByText('Try again')).toBeInTheDocument();
+      expect(screen.getByText('Try Again')).toBeInTheDocument();
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Try again'));
+      fireEvent.click(screen.getByText('Try Again'));
     });
 
     await waitFor(() => {
@@ -911,7 +911,7 @@ describe('LoanAmortizationReport', () => {
       expect(screen.getByText('Select Loan')).toBeInTheDocument();
     });
     expect(mockGetRateChanges).not.toHaveBeenCalled();
-    expect(screen.queryByText('Try again')).not.toBeInTheDocument();
+    expect(screen.queryByText('Try Again')).not.toBeInTheDocument();
   });
 
   it("shows the history's own starting balance as Original Amount when no opening balance is set (A26-L25)", async () => {
@@ -952,7 +952,7 @@ describe('LoanAmortizationReport', () => {
     mockGetAllTransactions.mockRejectedValue(new Error('boom'));
     await renderReport();
     await waitFor(() => {
-      expect(screen.getByText('Try again')).toBeInTheDocument();
+      expect(screen.getByText('Try Again')).toBeInTheDocument();
     });
     // One trigger opens both the CSV and the PDF entries; disabled, neither is
     // reachable, so an export cannot write an empty schedule.

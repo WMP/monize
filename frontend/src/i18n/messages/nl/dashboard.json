@@ -23,8 +23,8 @@
     "empty": "Geen achterstallige of aankomende facturen, stortingen of overboekingen binnen de herinneringsvensters.",
     "postTransaction": "Deze transactie boeken",
     "manual": "Handmatig",
-    "manualTitle": "Vereist handmatige boeking",
     "negativeBalanceWarning": "Deze transactie zorgt ervoor dat het rekeningsaldo onder nul komt",
+    "negativeBalanceLegend": "Brengt de rekening onder nul",
     "moreItems": "+{count} meer",
     "overdue": "Achterstallig",
     "today": "Vandaag",
@@ -110,9 +110,9 @@
     "refreshPrices": "Koersen vernieuwen",
     "viewPortfolio": "Portefeuille bekijken",
     "filter": {
-      "all": "Alle",
-      "gainers": "Stijgers",
-      "losers": "Dalers",
+      "all": "Alle ({count})",
+      "gainers": "Stijgers ({count})",
+      "losers": "Dalers ({count})",
       "label": "Richting"
     },
     "metric": {

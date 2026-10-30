@@ -16,12 +16,13 @@
     "chartUnavailable": "Grafik geçici olarak kullanılamıyor"
   },
   "viewTabs": {
-    "list": "Liste",
-    "calendar": "Takvim",
+    "filterLabel": "Program türü",
     "filterAll": "Tümü ({count})",
     "filterBills": "Faturalar ({count})",
     "filterDeposits": "Mevduatlar ({count})",
-    "todayButton": "Bugün"
+    "todayButton": "Bugün",
+    "previousMonth": "Önceki ay",
+    "nextMonth": "Sonraki ay"
   },
   "form": {
     "titleNew": "Yeni Zamanlanmış İşlem",

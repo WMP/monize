@@ -21,7 +21,6 @@
     "passwordConfirmNote": "Password confirmation is required when changing your email address.",
     "pendingEmailNotice": "A confirmation link was sent to {email}. Your email address changes once you follow it.",
     "saveButton": "Save Profile",
-    "savingButton": "Saving...",
     "toasts": {
       "success": "Profile updated successfully",
       "confirmationSent": "Check {email} for a link to confirm your new email address",
@@ -46,7 +45,6 @@
     "confirmPasswordLabel": "Confirm New Password",
     "confirmPasswordPlaceholder": "Confirm new password",
     "changePasswordButton": "Change Password",
-    "changingPasswordButton": "Changing...",
     "toasts": {
       "passwordChanged": "Password changed successfully",
       "passwordChangeFailed": "Failed to change password"
@@ -106,6 +104,8 @@
       "noDevices": "No trusted devices. When you check \"Don't ask again on this browser\" during 2FA login, the device will appear here.",
       "currentBadge": "Current",
       "revokeButton": "Revoke",
+      "ipAddress": "IP: {ip}",
+      "dates": "Added {added} · Last used {lastUsed} · Expires {expires}",
       "revokeAllModal": {
         "title": "Revoke All Trusted Devices",
         "description": "This will remove all trusted devices. You will need to enter your 2FA code on your next login from any device."
@@ -226,7 +226,7 @@
       "hideRegisterYearLabel": "Hide the year in register dates",
       "chartCollapsedLabel": "Start with the chart on the Transactions page collapsed",
       "widgetsCollapsedLabel": "Start with the account, payee and category info collapsed",
-      "accountOpenTargetLabel": "When I open an account",
+      "accountOpenTargetLabel": "Default Account View",
       "accountOpenTargetOptions": {
         "register": "Show its transactions",
         "dashboard": "Show its dashboard"
@@ -302,6 +302,10 @@
       "sendTestButton": "Send test notification",
       "sendingTestButton": "Sending...",
       "removeButton": "Remove",
+      "removeDialog": {
+        "title": "Remove Device",
+        "message": "Remove {device}? It stops receiving push notifications until push is turned on there again."
+      },
       "thisDevice": "This device",
       "held": "Signed out on this device. Push resumes when you sign in here again.",
       "unifiedpushBadge": "UnifiedPush",
@@ -481,7 +485,7 @@
   "supportBackup": {
     "title": "Create support backup",
     "howItWorks": "This produces a de-identified copy of your backup: names are masked (first and last two characters kept), notes/descriptions/account numbers are removed, and every amount is multiplied by a single hidden factor while public values (exchange rates, prices, interest rates) are left intact. The file is always encrypted with the password below and restores like a normal backup. This protects against casual exposure, not against someone who already knows you -- dates, frequencies and structure are preserved so bugs still reproduce.",
-    "sectionsLabel": "What to include",
+    "sectionsLabel": "Sections to Include",
     "sections": {
       "investments": "Investments (securities, holdings, prices)",
       "scheduled": "Scheduled transactions",
@@ -647,11 +651,7 @@
       "reason": "A token can reach your account without signing in, so confirm it is you before creating one."
     },
     "relative": {
-      "never": "Never",
-      "today": "Today",
-      "yesterday": "Yesterday",
-      "daysAgo": "{count} days ago",
-      "monthsAgo": "{count} months ago"
+      "never": "Never"
     }
   },
   "autoBackup": {
@@ -695,7 +695,6 @@
       "failed": "Failed"
     },
     "saveButton": "Save Policy",
-    "savingButton": "Saving...",
     "runNowButton": "Back Up Every Account Now",
     "runningButton": "Backing Up...",
     "toasts": {
@@ -816,7 +815,6 @@
     },
     "restoreResult": {
       "title": "Restore Complete",
-      "description": "Your data has been restored successfully. Here is a summary of what was restored:",
       "totalRecords": "Total records",
       "skippedAttachments": "{count, plural, one {# attachment was not restored} other {# attachments were not restored}}: the backup did not carry usable bytes for them — they were missing or failed their checksum when it was exported, or the file predates self-contained backups. Export a fresh backup once attachment storage is healthy to capture them.",
       "unusableAiProviderKeys": "{count, plural, one {# AI provider was restored without a usable API key} other {# AI providers were restored without usable API keys}}: the backup was written before provider keys were included in it, so the stored key belongs to the server that made the file, or this server has no encryption key configured to store one. Open Settings → AI Providers and enter the API key again.",
@@ -878,12 +876,11 @@
         "retryButton": "Try Again",
         "demoNote": "Off-site destinations cannot be changed in the demo.",
         "saveButton": "Save Destinations",
-        "savingButton": "Saving...",
         "saved": "Off-site destinations saved",
         "saveFailed": "Failed to save your off-site backup destinations",
         "s3": {
           "heading": "S3 storage",
-          "modeLabel": "Where copies are sent",
+          "modeLabel": "Copy Destination",
           "modeOff": "Off",
           "modeDeployment": "This server's bucket",
           "modeOwn": "My own bucket",
@@ -996,21 +993,57 @@
       "sections": "Sections",
       "shared": "Shared data"
     },
+    "ops": {
+      "read": "Read",
+      "create": "Create",
+      "edit": "Edit",
+      "delete": "Delete",
+      "joint": "Joint"
+    },
     "sections": {
       "description": "Grant read-only access to whole app sections. Account-scoped data still also needs per-account access.",
+      "bills": {
+        "label": "Bills & Deposits",
+        "description": "Scheduled transactions for granted accounts"
+      },
+      "investments": {
+        "label": "Investments",
+        "description": "Holdings and investment transactions for granted accounts"
+      },
+      "budgets": {
+        "label": "Budgets",
+        "description": "Read-only budget figures"
+      },
+      "reports": {
+        "label": "Reports",
+        "description": "Read-only reports"
+      },
+      "ai": {
+        "label": "AI Assistant",
+        "description": "Uses the owner's configured AI provider"
+      },
       "aiRequiresFullAccess": "The AI Assistant reads across every account and section, so it only answers for this delegate once they can read all of your accounts and every other section.",
       "warranties": {
         "label": "Warranties",
         "description": "Warranties, their documents and claims. A linked purchase shows only for an account they can read."
-      }
+      },
+      "toggleLabel": "{section} section"
     },
     "accounts": {
       "noAccounts": "No accounts to grant.",
       "grantAll": "Grant all",
-      "jointRequiresFullAccount": "Joint accounts can only be shared with users who have their own Monize account"
+      "jointRequiresFullAccount": "Joint accounts can only be shared with users who have their own Monize account",
+      "grantAllLabel": "{op} all {type} accounts",
+      "grantLabel": "{op} access to {account}"
     },
     "shared": {
-      "description": "READ of payees, categories and tags is always allowed. These control create/edit/delete."
+      "description": "READ of payees, categories and tags is always allowed. These control create/edit/delete.",
+      "toggleLabel": "{op} {resource}",
+      "resources": {
+        "payees": "Payees",
+        "categories": "Categories",
+        "tags": "Tags"
+      }
     },
     "saveButton": "Save",
     "toasts": {
@@ -1164,7 +1197,6 @@
       "editMessageButton": "Edit",
       "messagePlaceholder": "Notes, instructions, locations of important documents...",
       "maxCharsNote": "Maximum 4000 characters. Stored encrypted at rest.",
-      "cancelButton": "Cancel",
       "saveButton": "Save message",
       "toasts": {
         "saved": "Message saved",
@@ -1209,7 +1241,7 @@
       "grantStatus": "Grant status: ",
       "unknown": "unknown",
       "never": "never",
-      "daysAgo": "{count} day{plural} ago",
+      "withRelative": "{timestamp} ({relative})",
       "grantedOn": "granted on {timestamp}",
       "notYetGranted": "not yet granted",
       "timerNote": "The timer resets automatically any time you use the app -- signing in, viewing a page, recording a transaction, anything authenticated."
@@ -1226,6 +1258,17 @@
     },
     "stepUp": {
       "reason": "Re-verify your identity to view or edit your emergency-access message."
+    },
+    "validation": {
+      "wholeDays": "Whole days only",
+      "minDays": "{min, plural, one {Must be at least # day} other {Must be at least # days}}",
+      "maxDays": "{max, plural, one {Must be # day or fewer} other {Must be # days or fewer}}",
+      "reminderBeforeGrant": "Reminder days must be less than grant days",
+      "messageMax": "Message must be {max} characters or less",
+      "firstNameRequired": "First name is required",
+      "firstNameMax": "First name must be {max} characters or less",
+      "emailInvalid": "Enter a valid email address",
+      "emailMax": "Email must be {max} characters or less"
     },
     "toasts": {
       "loadFailed": "Failed to load emergency access",
@@ -1259,6 +1302,10 @@
       "enableButton": "Enable",
       "editButton": "Edit",
       "deleteButton": "Delete"
+    },
+    "deleteDialog": {
+      "title": "Delete AI Provider",
+      "message": "Delete {name}? Its saved API key is removed with it. This cannot be undone."
     },
     "configForm": {
       "addTitle": "Add AI Provider",

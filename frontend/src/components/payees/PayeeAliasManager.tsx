@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { PayeeAlias } from '@/types/payee';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { payeesApi } from '@/lib/payees';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '@/lib/errors';
@@ -134,7 +135,9 @@ export function PayeeAliasManager({ payeeId, onPendingAliasesChange }: PayeeAlia
 
       {/* Existing aliases */}
       {!isLocalMode && isLoading ? (
-        <p className="text-sm text-gray-400">{t('aliases.loading')}</p>
+        <div className="text-sm">
+          <LoadingSpinner size="sm" fullContainer={false} text={t('aliases.loading')} />
+        </div>
       ) : displayAliases.length > 0 ? (
         <ul className="space-y-1">
           {displayAliases.map((aliasText, index) => (

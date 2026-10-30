@@ -7,6 +7,7 @@
     "filterAll": "Todas ({count})",
     "filterExpenses": "Gastos ({count})",
     "filterIncome": "Ingresos ({count})",
+    "typeFilterLabel": "Tipo",
     "modalTitleNew": "Nueva categoría",
     "modalTitleEdit": "Editar categoría",
     "countSingle": "1 categoría",
@@ -71,8 +72,8 @@
     "submitUpdate": "Actualizar categoría"
   },
   "list": {
-    "emptyHeading": "Sin categorías",
-    "emptyDescription": "Comienza creando una nueva categoría.",
+    "emptyHeading": "No se encontraron categorías",
+    "emptyDescription": "Ninguna categoría coincide con tu búsqueda o filtro actual.",
     "colName": "Nombre",
     "colType": "Tipo",
     "colCount": "Cantidad",
@@ -85,7 +86,7 @@
     "viewTransactionsTitle": "Ver transacciones en esta categoría"
   },
   "deleteDialog": {
-    "title": "¿Eliminar \"{name}\"?",
+    "title": "Eliminar \"{name}\"",
     "checkingUsage": "Verificando uso...",
     "usedBy": "Esta categoría es utilizada por {count, plural, one {# elemento} other {# elementos}} (transacciones y/o facturas y depósitos planificados).",
     "reassignLabel": "Reasignar a:",

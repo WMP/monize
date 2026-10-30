@@ -19,7 +19,7 @@ function setup(overrides: Partial<React.ComponentProps<typeof ReceiptSearchBar>>
 describe('ReceiptSearchBar', () => {
   it('reports the typed text and the chosen field', () => {
     const props = setup();
-    fireEvent.change(screen.getByRole('searchbox', { name: 'Search' }), { target: { value: 'invoice' } });
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search by subject, sender or content...' }), { target: { value: 'invoice' } });
     expect(props.onChange).toHaveBeenLastCalledWith({ text: 'invoice' });
     const select = screen.getByRole('combobox', { name: 'Search in' });
     expect(Array.from((select as HTMLSelectElement).options).map((option) => option.textContent)).toEqual([
@@ -30,6 +30,14 @@ describe('ReceiptSearchBar', () => {
     ]);
     fireEvent.change(select, { target: { value: 'sender' } });
     expect(props.onChange).toHaveBeenLastCalledWith({ searchIn: 'sender' });
+  });
+
+  it('draws no label above the search text: the placeholder names what is searched', () => {
+    setup();
+    const box = screen.getByRole('searchbox', { name: 'Search by subject, sender or content...' });
+    expect(box).toHaveAttribute('placeholder', 'Search by subject, sender or content...');
+    expect(document.querySelector('label[for="receipt-search-text"]')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Search' })).not.toBeInTheDocument();
   });
 
   it('has two date fields and reports a typed date', () => {

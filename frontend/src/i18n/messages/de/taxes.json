@@ -12,7 +12,7 @@
   "payroll": {
     "title": "Lohnabzüge",
     "subtitle": "Jahreshöchstbeträge für die Abzugszeilen Ihrer Gehaltsbuchung",
-    "backToTaxes": "Steuern",
+    "backToTaxes": "Zurück zu Steuern",
     "newButton": "+ Neue Regel",
     "loading": "Lohnabzüge werden geladen...",
     "emptyState": {

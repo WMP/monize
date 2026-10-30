@@ -17,7 +17,8 @@
     "label": "종류별 필터",
     "all": "전체",
     "email_receipt": "이메일 영수증",
-    "transaction_review": "규칙"
+    "transaction_review": "규칙",
+    "option": "{label} ({count})"
   },
   "status": {
     "pending": "대기 중",

@@ -11,6 +11,8 @@ import { RowActions } from '@/components/ui/row-actions/RowActions';
 import type { LongPressRowHandlers } from '@/hooks/useLongPress';
 import type { RowAction } from '@/components/ui/row-actions/rowAction';
 import type { LogicalAccount } from '@/lib/logical-accounts';
+import { LinkIcon } from '@heroicons/react/24/outline';
+import { Badge } from '@/components/ui/Badge';
 
 export interface AccountActionLabels {
   viewTransactions: string;
@@ -158,15 +160,9 @@ function JointBadge({ account }: { account: Account }) {
 function AccountStatusPill({ account }: { account: Account }) {
   const t = useTranslations('accounts');
   return (
-    <span
-      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-        !account.isClosed
-          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-          : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-      }`}
-    >
+    <Badge variant={account.isClosed ? 'gray' : 'green'}>
       {!account.isClosed ? t('row.statusActive') : t('row.statusClosed')}
-    </span>
+    </Badge>
   );
 }
 
@@ -590,14 +586,14 @@ export const AccountRow = memo(function AccountRow({
             >
               <div className="flex items-center min-w-0 text-sm font-medium text-blue-600 dark:text-blue-400">
                 <FavouriteMark account={account} onToggleFavourite={onToggleFavourite} />
-                <span className="truncate">{displayName}</span>
+                {/* The card only renders on a phone, where a cut name cannot be
+                    read from its title: it wraps instead. */}
+                <span className="min-w-0 break-words">{displayName}</span>
                 <JointBadge account={account} />
               </div>
               {showPairingChrome && account.linkedAccountId && (
                 <div className="text-xs text-gray-400 dark:text-gray-500 truncate flex items-center gap-1">
-                  <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                  </svg>
+                  <LinkIcon className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
                   {t('row.pairedWith', { name: accountNameMap.get(account.linkedAccountId) || 'linked account' })}
                 </div>
               )}
@@ -612,7 +608,7 @@ export const AccountRow = memo(function AccountRow({
                 </div>
               )}
               {account.description && !showPairingChrome && (
-                <div className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                <div className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 break-words" title={account.description}>
                   {account.description}
                 </div>
               )}
@@ -667,19 +663,19 @@ export const AccountRow = memo(function AccountRow({
               />
             )}
             <FavouriteMark account={account} onToggleFavourite={onToggleFavourite} />
-            <span className="truncate">{displayName}</span>
+            {/* The paired-account mark sits left of the name, spaced by the
+                container's gap. */}
+            <span className="inline-flex min-w-0 items-center gap-1">
+              {density !== 'normal' && showPairingChrome && (
+                <LinkIcon className="w-3.5 h-3.5 flex-shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />
+              )}
+              <span className="truncate">{displayName}</span>
+            </span>
             <JointBadge account={account} />
-            {density !== 'normal' && showPairingChrome && (
-              <svg className="w-3.5 h-3.5 ml-1 flex-shrink-0 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-              </svg>
-            )}
           </div>
           {density === 'normal' && showPairingChrome && account.linkedAccountId && (
             <div className="text-xs text-gray-400 dark:text-gray-500 truncate flex items-center gap-1">
-              <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-              </svg>
+              <LinkIcon className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
               {t('row.pairedWith', { name: accountNameMap.get(account.linkedAccountId) || 'linked account' })}
             </div>
           )}
@@ -694,9 +690,9 @@ export const AccountRow = memo(function AccountRow({
             </div>
           )}
           {density === 'normal' && account.description && !showPairingChrome && (
-            <div className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                {account.description}
-              </div>
+            <div className="text-sm text-gray-500 dark:text-gray-400 truncate" title={account.description}>
+              {account.description}
+            </div>
           )}
         </div>
       </td>

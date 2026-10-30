@@ -17,7 +17,8 @@
     "label": "Lọc theo loại",
     "all": "Tất cả",
     "email_receipt": "Hóa đơn qua email",
-    "transaction_review": "Quy tắc"
+    "transaction_review": "Quy tắc",
+    "option": "{label} ({count})"
   },
   "status": {
     "pending": "Đang chờ",

@@ -34,7 +34,8 @@
       "WANT": "Envie",
       "SAVING": "Épargne"
     },
-    "saving": "Enregistrement..."
+    "saving": "Enregistrement...",
+    "remove": "Retirer du budget"
   },
   "categoryList": {
     "title": "Budgets par catégorie",
@@ -83,7 +84,6 @@
     "baseIncomePlaceholder": "Revenus mensuels prévus",
     "active": "Actif",
     "saveChanges": "Enregistrer les modifications",
-    "saving": "Enregistrement...",
     "typeOptions": {
       "MONTHLY": "Mensuel",
       "ANNUAL": "Annuel",
@@ -109,7 +109,8 @@
     "title": "Carte thermique des dépenses - {monthLabel}",
     "ariaLabel": "Carte thermique des dépenses",
     "less": "Moins",
-    "more": "Plus"
+    "more": "Plus",
+    "readout": "{date} : {amount}"
   },
   "periodDetail": {
     "summaryCards": {
@@ -134,7 +135,8 @@
     "rolloverBadge": "+{amount} de report",
     "underBudgetLabel": "{amount} sous le budget",
     "overBudgetLabel": "{amount} de dépassement",
-    "carriedForward": "{amount} reporté"
+    "carriedForward": "{amount} reporté",
+    "dateRange": "Du {start} au {end}"
   },
   "periodSelector": {
     "label": "Période :",
@@ -471,11 +473,18 @@
         "description": "Créez votre premier budget en analysant votre historique de dépenses. L'assistant suggérera des montants réalistes basés sur vos transactions.",
         "cta": "Créer votre premier budget"
       },
+      "loading": "Chargement des budgets...",
+      "columns": {
+        "name": "Nom",
+        "strategy": "Stratégie",
+        "type": "Type",
+        "categories": "Catégories",
+        "started": "Début",
+        "status": "Statut"
+      },
       "card": {
         "active": "Actif",
-        "inactive": "Inactif",
-        "categories": "{count} catégories",
-        "started": "Démarré le {date}"
+        "inactive": "Inactif"
       }
     },
     "create": {
@@ -484,6 +493,9 @@
     },
     "detail": {
       "backToBudgets": "Retour aux budgets",
+      "switchBudget": "Passer à un autre budget",
+      "switchPlaceholder": "Filtrer les budgets...",
+      "switchNoMatches": "Aucun budget ne correspond",
       "notFound": "Budget introuvable",
       "delete": {
         "title": "Supprimer le budget",
@@ -501,7 +513,7 @@
     "edit": {
       "subtitlePrefix": "Modifier : ",
       "subtitle": "Mettre à jour les paramètres du budget et les allocations par catégorie",
-      "backToDashboard": "Retour au tableau de bord",
+      "backToBudget": "Retour à {name}",
       "budgetSettings": "Paramètres du budget",
       "categoryAllocations": "Allocations par catégorie",
       "income": "Revenus",
@@ -510,12 +522,19 @@
       "percentUsed": "{percent}% utilisé",
       "rolloverType": "Report : {type}",
       "editCategoryTitle": "Modifier {name}",
+      "remove": {
+        "title": "Retirer la catégorie",
+        "message": "Retirer « {name} » de ce budget ? Son allocation de {amount} ne sera plus budgétée et son historique dans les périodes budgétaires passées sera supprimé. Vos transactions ne sont pas affectées. Cette action est irréversible.",
+        "confirm": "Retirer"
+      },
       "toasts": {
         "updated": "Budget mis à jour",
         "updateFailed": "Échec de la mise à jour du budget",
         "categoryUpdated": "Catégorie mise à jour",
         "categoryFailed": "Échec de la mise à jour de la catégorie",
-        "loadFailed": "Échec du chargement du budget"
+        "loadFailed": "Échec du chargement du budget",
+        "categoryRemoved": "Catégorie retirée du budget",
+        "categoryRemoveFailed": "Impossible de retirer la catégorie"
       }
     }
   },

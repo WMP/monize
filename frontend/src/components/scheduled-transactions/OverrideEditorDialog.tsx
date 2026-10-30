@@ -11,6 +11,7 @@ import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { NumericInput } from '@/components/ui/NumericInput';
 import { Combobox } from '@/components/ui/Combobox';
 import { Modal } from '@/components/ui/Modal';
+import { ArrowsRightLeftIcon } from '@heroicons/react/24/outline';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { SplitEditor, SplitRow, createEmptySplits, toSplitRows } from '@/components/transactions/SplitEditor';
 import { toOverrideSplits } from './splitSerialization';
@@ -643,20 +644,15 @@ export function OverrideEditorDialog({
   const currentCategory = categoryId ? categories.find(c => c.id === categoryId) : null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} maxWidth="5xl" className="p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-          {t('overrideEditor.title')}
-        </h3>
-        <button
-          onClick={onClose}
-          className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
-        >
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
+    // Titled through Modal, so the dialog is named by its heading. There is no
+    // corner X: Cancel in the button row, Escape and the backdrop close it.
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      maxWidth="5xl"
+      className="p-6"
+      title={t('overrideEditor.title')}
+    >
 
       <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">
         {isInvestmentKind ? (
@@ -812,10 +808,8 @@ export function OverrideEditorDialog({
         {!isInvestmentKind && (
         scheduledTransaction.isTransfer ? (
           <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
-            <div className="flex items-center">
-              <svg className="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-              </svg>
+            <div className="flex items-center gap-2">
+              <ArrowsRightLeftIcon className="h-5 w-5 shrink-0 text-blue-500" aria-hidden="true" />
               <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
                 {t('overrideEditor.transferSummary', {
                   from: scheduledTransaction.account?.name ?? '',
@@ -918,7 +912,7 @@ export function OverrideEditorDialog({
             </Button>
           )}
         </div>
-        <div className="flex space-x-3">
+        <div className="flex gap-3">
           <Button variant="outline" onClick={onClose} disabled={isLoading}>
             {tc('cancel')}
           </Button>

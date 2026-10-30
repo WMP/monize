@@ -34,7 +34,8 @@
       "WANT": "[XX-Want-XX]",
       "SAVING": "[XX-Saving-XX]"
     },
-    "saving": "[XX-Saving...-XX]"
+    "saving": "[XX-Saving...-XX]",
+    "remove": "[XX-Remove from budget-XX]"
   },
   "categoryList": {
     "title": "[XX-Category Budgets-XX]",
@@ -83,7 +84,6 @@
     "baseIncomePlaceholder": "[XX-Expected monthly income-XX]",
     "active": "[XX-Active-XX]",
     "saveChanges": "[XX-Save Changes-XX]",
-    "saving": "[XX-Saving...-XX]",
     "typeOptions": {
       "MONTHLY": "[XX-Monthly-XX]",
       "ANNUAL": "[XX-Annual-XX]",
@@ -109,7 +109,8 @@
     "title": "[XX-Spending Heatmap - {monthLabel}-XX]",
     "ariaLabel": "[XX-Spending heatmap-XX]",
     "less": "[XX-Less-XX]",
-    "more": "[XX-More-XX]"
+    "more": "[XX-More-XX]",
+    "readout": "[XX-{date}: {amount}-XX]"
   },
   "periodDetail": {
     "summaryCards": {
@@ -134,7 +135,8 @@
     "rolloverBadge": "[XX-+{amount} rollover-XX]",
     "underBudgetLabel": "[XX-{amount} under budget-XX]",
     "overBudgetLabel": "[XX-{amount} over budget-XX]",
-    "carriedForward": "[XX-{amount} carried forward-XX]"
+    "carriedForward": "[XX-{amount} carried forward-XX]",
+    "dateRange": "[XX-{start} to {end}-XX]"
   },
   "periodSelector": {
     "label": "[XX-Period:-XX]",
@@ -471,11 +473,18 @@
         "description": "[XX-Create your first budget by analyzing your spending history. The wizard will suggest realistic amounts based on your transactions.-XX]",
         "cta": "[XX-Create Your First Budget-XX]"
       },
+      "loading": "[XX-Loading budgets...-XX]",
+      "columns": {
+        "name": "[XX-Name-XX]",
+        "strategy": "[XX-Strategy-XX]",
+        "type": "[XX-Type-XX]",
+        "categories": "[XX-Categories-XX]",
+        "started": "[XX-Started-XX]",
+        "status": "[XX-Status-XX]"
+      },
       "card": {
         "active": "[XX-Active-XX]",
-        "inactive": "[XX-Inactive-XX]",
-        "categories": "[XX-{count} categories-XX]",
-        "started": "[XX-Started {date}-XX]"
+        "inactive": "[XX-Inactive-XX]"
       }
     },
     "create": {
@@ -484,6 +493,9 @@
     },
     "detail": {
       "backToBudgets": "[XX-Back to Budgets-XX]",
+      "switchBudget": "[XX-Switch to another budget-XX]",
+      "switchPlaceholder": "[XX-Filter budgets...-XX]",
+      "switchNoMatches": "[XX-No budgets match-XX]",
       "notFound": "[XX-Budget not found-XX]",
       "delete": {
         "title": "[XX-Delete Budget-XX]",
@@ -501,7 +513,7 @@
     "edit": {
       "subtitlePrefix": "[XX-Edit: -XX]",
       "subtitle": "[XX-Update budget settings and category allocations-XX]",
-      "backToDashboard": "[XX-Back to Dashboard-XX]",
+      "backToBudget": "[XX-Back to {name}-XX]",
       "budgetSettings": "[XX-Budget Settings-XX]",
       "categoryAllocations": "[XX-Category Allocations-XX]",
       "income": "[XX-Income-XX]",
@@ -510,12 +522,19 @@
       "percentUsed": "[XX-{percent}% used-XX]",
       "rolloverType": "[XX-Rollover: {type}-XX]",
       "editCategoryTitle": "[XX-Edit {name}-XX]",
+      "remove": {
+        "title": "[XX-Remove Category-XX]",
+        "message": "[XX-Remove \"{name}\" from this budget? Its {amount} allocation will no longer be budgeted, and its history in past budget periods will be deleted. Your transactions are not affected. This action cannot be undone.-XX]",
+        "confirm": "[XX-Remove-XX]"
+      },
       "toasts": {
         "updated": "[XX-Budget updated-XX]",
         "updateFailed": "[XX-Failed to update budget-XX]",
         "categoryUpdated": "[XX-Category updated-XX]",
         "categoryFailed": "[XX-Failed to update category-XX]",
-        "loadFailed": "[XX-Failed to load budget-XX]"
+        "loadFailed": "[XX-Failed to load budget-XX]",
+        "categoryRemoved": "[XX-Category removed from budget-XX]",
+        "categoryRemoveFailed": "[XX-Failed to remove category-XX]"
       }
     }
   },

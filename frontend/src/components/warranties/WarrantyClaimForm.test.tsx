@@ -76,7 +76,7 @@ describe('WarrantyClaimForm', () => {
     expect((screen.getByLabelText('Status') as HTMLSelectElement).value).toBe('open');
     expect(resolvedOnInput()).toBeDisabled();
 
-    fireEvent.change(screen.getByLabelText('What went wrong'), { target: { value: 'Battery swells' } });
+    fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Battery swells' } });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Add claim' }));
     });

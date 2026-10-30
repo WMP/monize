@@ -8,9 +8,11 @@
     "autoMergePayees": "Begunstigden automatisch samenvoegen",
     "newPayee": "+ Nieuwe begunstigde",
     "searchPlaceholder": "Begunstigden zoeken...",
+    "statusFilterLabel": "Status",
     "statusAll": "Alle ({count})",
     "statusActive": "Actief ({count})",
     "statusInactive": "Inactief ({count})",
+    "categoryFilterLabel": "Standaardcategorie",
     "categoryFilterAll": "Alle begunstigden ({count})",
     "categoryFilterNoCategory": "Zonder standaardcategorie ({count})",
     "categoryFilterUncategorized": "Ongecat. transacties ({count})",
@@ -127,7 +129,6 @@
   },
   "categoryAutoAssign": {
     "title": "Standaardcategorieën automatisch toewijzen",
-    "howItWorksTitle": "Hoe het werkt",
     "howItWorksBody": "Deze functie analyseert je transactiegeschiedenis om standaardcategorieën voor begunstigden voor te stellen. Er wordt gekeken welke categorie het vaakst wordt gebruikt voor elke begunstigde en voorgesteld deze als standaardcategorie in te stellen voor toekomstige transacties. Je kunt de standaardcategorie altijd aanpassen.",
     "minTransactionsLabel": "Minimaal transacties: {count}",
     "minTransactionsHelp": "Alleen begunstigden met minimaal dit aantal transacties meenemen",
@@ -148,6 +149,7 @@
       "line2": "Pas de instellingen hierboven aan."
     },
     "columns": {
+      "assign": "Toewijzen",
       "payee": "Begunstigde",
       "suggestedCategory": "Voorgestelde categorie",
       "match": "Overeenkomst"
@@ -165,7 +167,6 @@
   },
   "autoMerge": {
     "title": "Begunstigden automatisch samenvoegen",
-    "howItWorksTitle": "Hoe het werkt",
     "howItWorksBody": "Deze functie scant uw begunstigden en groepeert varianten waarbij de ene naam een uitbreiding van de andere is - zo bouwen \"Lidl\", \"LIDL sp. z o.o.\" en \"LIDL WARSZAWA 0421\" allemaal voort op \"Lidl\". Elke groep wordt samengevoegd tot één canonieke begunstigde en er wordt een jokertekenalias (zoals \"*LIDL*\") aangemaakt zodat toekomstige imports automatisch worden gekoppeld. Begunstigden die alleen een gemeenschappelijk woord delen (zoals \"Royal Electric\" en \"Royal City Nursery\") blijven gescheiden. Controleer en pas elke groep aan voordat u toepast.",
     "backupRecommendation": "Aanbevolen: maak een <link>back-up</link> voordat u wijzigingen aanbrengt.",
     "minGroupSizeLabel": "Minimale groepsgrootte: {count}",
@@ -225,7 +226,6 @@
   },
   "deactivateUnused": {
     "title": "Ongebruikte begunstigden deactiveren",
-    "howItWorksTitle": "Hoe het werkt",
     "howItWorksBody": "Deze functie zoekt zelden gebruikte begunstigden en deactiveert deze. Gedeactiveerde begunstigden verschijnen niet in de keuzelijsten bij het aanmaken van transacties, maar hun historische transacties blijven bewaard. Je kunt een begunstigde op elk moment heractiveren vanuit de begunstigdenlijst.",
     "maxTransactionsLabel": "{count, plural, one {# of minder transactie} other {# of minder transacties}}",
     "maxTransactionsHelp": "Alleen begunstigden met dit aantal transacties of minder meenemen",
@@ -243,6 +243,7 @@
       "line2": "Pas de instellingen hierboven aan."
     },
     "columns": {
+      "deactivate": "Deactiveren",
       "payee": "Begunstigde",
       "transactions": "Transacties",
       "lastUsed": "Laatste gebruik"
@@ -258,7 +259,7 @@
     }
   },
   "reactivate": {
-    "title": "Begunstigde heractiveren?",
+    "title": "Begunstigde heractiveren",
     "message": "De begunstigde \"{name}\" was eerder gedeactiveerd. Wil je deze heractiveren zodat deze weer in de keuzelijsten verschijnt?",
     "keepInactiveButton": "Nee, inactief houden",
     "reactivateButton": "Heractiveren",
@@ -267,7 +268,7 @@
   "aliases": {
     "heading": "Aliassen",
     "description": "Aliassen koppelen geïmporteerde namen van begunstigden aan deze begunstigde. Gebruik * als jokerteken (bijv. \"STARBUCKS*\"). Niet hoofdlettergevoelig.",
-    "loading": "Laden...",
+    "loading": "Aliassen laden...",
     "noAliases": "Geen aliassen geconfigureerd",
     "removeTitle": "Alias verwijderen",
     "removeButton": "Verwijderen",

@@ -33,7 +33,7 @@ const PERSISTED_STORE_KEYS: Record<string, string> = {
   'monize-settings-sections':
     'authenticated only: imported by the Settings page, which no unauthenticated route renders. One boolean per named Settings section, saying whether the reader has folded it away -- a fact about the screen, not the account, so it survives logout deliberately. It names sections, never their contents.',
   'monize-view-mode':
-    'authenticated only: the store is imported by the Transactions and Investments pages, neither of which an unauthenticated route renders. Which of the two views a screen is on and which calendar layers are switched on -- a fact about the screen, not the account, so it survives logout deliberately. It names layers, never an account, a figure or a filter.',
+    'authenticated only: the store is imported by the Transactions, Investments and Bills & Deposits pages, none of which an unauthenticated route renders. Which of the two views a screen is on and which calendar layers are switched on -- a fact about the screen, not the account, so it survives logout deliberately. It names layers, never an account, a figure or a filter.',
   'monize-scan-settings':
     'authenticated only: imported by the document scan dialog, which only the transaction attachment flow renders. The last-used scan finish and the two slider offsets (brightness, contrast) -- a capture habit, not account data -- so it survives logout deliberately. It holds no document and no pixels.',
 };

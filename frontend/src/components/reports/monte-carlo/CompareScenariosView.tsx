@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { AxiosError } from 'axios';
 import { Button } from '@/components/ui/Button';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { useDateFormat } from '@/hooks/useDateFormat';
 import {
   monteCarloApi,
   MonteCarloScenario,
@@ -57,11 +58,13 @@ export function CompareScenariosView({ ids }: CompareScenariosViewProps) {
   const t = useTranslations('reports');
   const router = useRouter();
   const { formatCurrency, formatNumber, formatPercent } = useNumberFormat();
-  // One bundle for the pure comparison module, which formats currency, counts
-  // and percentages and must do all three in the reader's number locale.
+  const { formatDateTime } = useDateFormat();
+  const neverLabel = t('monteCarloComparePage.never');
+  // One bundle for the pure comparison module, which formats currency, counts,
+  // percentages and run times, each in the reader's own locale and format.
   const cellFormatters = useMemo(
-    () => ({ formatCurrency, formatNumber, formatPercent }),
-    [formatCurrency, formatNumber, formatPercent],
+    () => ({ formatCurrency, formatNumber, formatPercent, formatInstant: formatDateTime, neverLabel }),
+    [formatCurrency, formatNumber, formatPercent, formatDateTime, neverLabel],
   );
 
   const dedupedIds = useMemo(() => Array.from(new Set(ids)), [ids]);

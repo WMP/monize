@@ -52,6 +52,8 @@ const MACHINE_FORMAT_CALLERS: Record<string, string> = {
     "the English `description` fallback on an action-history row; the reader's client formats `amountValue`/`amountCurrency` instead",
   "transactions/transaction-transfer.service.ts":
     "same action-history English fallback, for the transfer pair",
+  "transactions/transaction-conversion.service.ts":
+    "same action-history English fallback, for a conversion's entry",
 };
 
 /** Where the helpers themselves live. */

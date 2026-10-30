@@ -25,7 +25,7 @@ Rules that describe the majority of today's code bind new and changed code. Wher
 | Explanation in an `InfoTooltip` beside the label or title | A paragraph under the title or above the buttons that every user must read again on each open |
 | One primary button: the action that saves or confirms | A second primary button (a link to another page styled as primary) |
 
-**The title goes through `Modal`'s `title` prop**, which wires `aria-labelledby`, so the dialog has an accessible name. `Modal` is to draw that title as the New Transaction heading above: no `border-b` strip, no `XMarkIcon` close button, and no `border-t` strip around `footer`. Until it does, a new dialog passes `title` anyway and adds no border or close button of its own; a dialog that draws its own `h2` instead of passing `title` has no name and is a defect, whatever it looks like.
+**The title goes through `Modal`'s `title` prop**, which wires `aria-labelledby`, so the dialog has an accessible name. `Modal` draws that title as the New Transaction heading above: no `border-b` strip, no close button beside it, and no `border-t` strip around `footer`. Its `description` is an `InfoTooltip` beside the title, never a paragraph under it. With `padding="none"` the heading sits inside the padding the caller gives the panel through `className`; with `padding="md"` or `fixedHeight`, `Modal` pads it. Because there is no X, every titled dialog draws its own Cancel or Close in every state, a loading or error state included. A dialog that draws its own `h2` instead of passing `title` has no name and is a defect, whatever it looks like.
 
 **Layout of a form dialog** (the New Transaction dialog in `app/transactions/page.tsx` and `TransactionForm.tsx`):
 
@@ -109,7 +109,8 @@ The page is `<main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">` at full width (
 
 ### Filters
 
-- **A filter of one list is the segmented control** (`SEGMENTED_GROUP_CLASS` + `segmentClass`), next to the search, **with counts**: "All (9)", "Active (3)", "Inactive (6)".
+- **A filter of one list is the segmented control** (`SEGMENTED_TOOLBAR_GROUP_CLASS` + `toolbarSegmentClass` in a list toolbar), next to the search, **with counts**: "All (9)", "Active (3)", "Inactive (6)".
+- **A control alone on its line on a phone fills the line.** The search, a filter's segmented control, a `Select` and a disclosure button below a list all take `w-full sm:w-auto`; see `ui-conventions.md`, "A control alone on a phone line fills it".
 - **Filters are always visible.** Do not fold People / From date / To date behind a `<details>` "Filter by ..." disclosure. A filter the user cannot see is a filter the user forgets is applied. The one exception is a register's many-field filter panel (below).
 
 ### Refresh and export
@@ -157,7 +158,8 @@ The two look different on purpose: `Tabs` says "you are now somewhere else", the
 
 - One card per section with an `h2 text-lg font-semibold mb-4`; a sub-group inside it is headed `h3 text-sm font-semibold mb-1` (`ProfileSection.tsx`, `BackupRestoreSection.tsx`).
 - The danger zone is the red-bordered card, last on the page (`DangerZoneSection.tsx`).
-- The page is `max-w-4xl mx-auto`, and saves on change (`ui-conventions.md`, "A settings screen has one save contract").
+- The page is `max-w-4xl mx-auto`, and saves on change (`ui-conventions.md`, "A settings screen has one save contract"). The Settings page itself carries the section sidebar, so it is `max-w-6xl` and its content column keeps the `4xl` width; its loading state and `app/settings/loading.tsx` take the same frame.
+- A settings sub-page (AI, bank sync, shared access, emergency access, tours) returns to Settings with `BackToSettingsLink` above its `PageHeader`, never a `&larr; Back` text link.
 
 ## Loading, errors and feedback
 
@@ -188,23 +190,15 @@ Each line is a reference screen or shared component that does not yet follow a r
 
 | Rule | Where the code still differs |
 |---|---|
-| Dialog title through `Modal` `title` | New Transaction draws its own `h2` and passes no `title`, so it has no accessible name. `Modal` still draws `title` in a `border-b` strip with an `XMarkIcon`, and `footer` in a `border-t` strip. |
-| A confirmation's buttons are `Button` | `ConfirmDialog` and `UnsavedChangesDialog` render raw `<button>`s with hand-written colour classes. |
-| Segmented control with counts | Currencies and Securities hand-roll `bg-blue-600` buttons; `AccountList` and `TransactionFilterPanel` hand-roll them without counts. |
-| `Th` / `TH_CLASS`, sortable header holds a `<button>` | `CurrencyList`, `SecurityList`, `AccountList`, `TransactionList`, `HoldingsList` and `InvestmentTransactionList` hand-copy the header class; `CurrencyList` and `SecurityList` sort from `<th onClick>`. |
-| Toolbar row wraps | Currencies and Securities use `flex-col sm:flex-row` without `flex-wrap`. |
-| Refresh in `PageHeader`, with an icon and age | Currencies' "Refresh Rates" has no icon and no age; Securities puts Refresh in the toolbar row. |
-| Search first, no label | Transactions labels its search field and places it last; Accounts places it last inside the list card, with no toolbar above the list. |
-| One primary "New" on a register | Investments has two hand-rolled `bg-blue-600` "New" buttons besides `NewTransactionButton`. |
-| Navigation is `Tabs` | Investments switches Brokerage / Cash registers with a segmented control (`InvestmentViewToggle`). |
+| `Th` / `TH_CLASS`, sortable header holds a `<button>` | `AccountList`, `TransactionList`, `HoldingsList` and `InvestmentTransactionList` hand-copy the header class. `CurrencyList` and `SecurityList` use `SortableTh` (`components/ui/Table.tsx`). |
+| Toolbar above the list | Accounts keeps its search and filters inside the list card, with no toolbar above the list. |
+| Navigation is `Tabs` | Investments switches Brokerage / Cash registers with a segmented control (`InvestmentViewToggle`); the switch sits in each register's header, so moving to `Tabs` means a `tabpanel` around each register in both hosts. |
 | Count line is `ListBottomPager` `totalLabel` | Currencies and Securities draw a centred "N items" line. |
 | One summary grid | List-page summary rows write their own gaps instead of `SummaryCardGrid`. |
-| Help is not hidden below a breakpoint | `PageHeader`'s help text shows only on hover from `md` up (`md:group-hover`). |
 | A report keeps its toolbar mounted | Most reports return early with a skeleton card. |
 | Title Case labels and buttons | Whole feature areas use sentence case (auth, import, email receipts, rules, GEM, warranties, Monte Carlo, loan detail), and button labels are split about evenly. |
 | `<Button isLoading>` | Several save buttons swap their label with `isSaving ? ... : ...`. |
-| One size for the `TransactionForm` dialog | The Investments page and `InvestmentRegisterPanel` cash forms pass `maxWidth="6xl" className="p-6"` without the width; the warranty detail page passes the width with `padding="md"` instead of `p-6`; `PayeeTransactionsTab` and `CategoryTransactionsTab` open it at `maxWidth="2xl"`. |
-| Folded filter panel toggle is a button | `TransactionFilterPanel`'s fold toggle is a `<div onClick>` that the keyboard cannot reach. |
+| One size for the `TransactionForm` dialog | `PayeeTransactionsTab` and `CategoryTransactionsTab` open it at `maxWidth="2xl"`. |
 | Wording | Save buttons read "Save", "Save changes", "Save Changes" and "Update"; retry reads "Try again", "Retry" and "Try Again"; placeholders mix "e.g." and "e.g.,"; about half the confirmation titles are questions. |
 
 ## Before you open the PR

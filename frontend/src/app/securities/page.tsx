@@ -23,6 +23,7 @@ import { SecurityList, type SecurityHoldings, type SecurityTransactions, type Se
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { usePriceRefresh } from '@/hooks/usePriceRefresh';
 import { BondRefreshProgress } from '@/components/securities/BondRefreshProgress';
+import { SEGMENTED_TOOLBAR_GROUP_CLASS, toolbarSegmentClass } from '@/components/ui/segmented-control';
 import { RefreshPricesButton } from '@/components/investments/RefreshPricesButton';
 import { securityPositionValue, compareSecurityValues } from '@/lib/security-value';
 import { createLogger } from '@/lib/logger';
@@ -394,7 +395,16 @@ function SecuritiesContent() {
           title={t('page.title')}
           subtitle={t('page.subtitle')}
           helpUrl="https://github.com/kenlasko/monize/wiki/Investments"
-          actions={<Button onClick={handleCreateNew}>{t('page.newSecurity')}</Button>}
+          actions={
+            <>
+              <RefreshPricesButton
+                onClick={handleRefreshPrices}
+                isRefreshing={isRefreshingPrices}
+                lastPriceUpdate={lastPriceUpdate}
+              />
+              <Button onClick={handleCreateNew}>{t('page.newSecurity')}</Button>
+            </>
+          }
         />
         <BondRefreshProgress
           programId={bondRefreshProgramId}
@@ -409,30 +419,23 @@ function SecuritiesContent() {
         </div>
 
         {/* Search and Status Filter */}
-        <div className="mb-6 flex flex-col sm:flex-row gap-4">
+        <div className="mb-6 flex flex-wrap items-center gap-4">
           <input
             type="text"
             placeholder={t('page.searchPlaceholder')}
+            aria-label={t('page.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="block w-full sm:max-w-md rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400"
+            className="block w-full sm:w-auto sm:flex-1 sm:max-w-md rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400"
           />
-          <div className="flex rounded-md shadow-sm">
+          <div role="group" aria-label={t('page.statusFilterLabel')} className={SEGMENTED_TOOLBAR_GROUP_CLASS}>
             {(['all', 'active', 'inactive'] as const).map((status) => (
               <button
                 key={status}
+                type="button"
                 onClick={() => handleStatusFilterChange(status)}
-                className={`px-4 py-2 text-sm font-medium border ${
-                  statusFilter === status
-                    ? 'bg-blue-600 text-white border-blue-600 dark:bg-blue-500 dark:border-blue-500'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
-                } ${
-                  status === 'all' ? 'rounded-l-md' : ''
-                } ${
-                  status === 'inactive' ? 'rounded-r-md' : ''
-                } ${
-                  status !== 'all' ? '-ml-px' : ''
-                }`}
+                aria-pressed={statusFilter === status}
+                className={toolbarSegmentClass(statusFilter === status)}
               >
                 {status === 'active' ? t('page.statusActive', { count: activeCount }) :
                  status === 'inactive' ? t('page.statusInactive', { count: inactiveCount }) :
@@ -440,23 +443,17 @@ function SecuritiesContent() {
               </button>
             ))}
           </div>
-          {/* Right-justified on the filter line: the prices it fetches are what
-              the Value column is computed from, so the control sits with the
-              other things that change what the table shows. */}
-          <div className="flex sm:ml-auto">
-            <RefreshPricesButton
-              onClick={handleRefreshPrices}
-              isRefreshing={isRefreshingPrices}
-              lastPriceUpdate={lastPriceUpdate}
-            />
-          </div>
         </div>
 
         {/* Form Modal */}
-        <Modal isOpen={showForm} onClose={close} {...modalProps} maxWidth="3xl" className="p-6">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-            {isEditing ? t('page.modalTitleEdit') : t('page.modalTitleNew')}
-          </h2>
+        <Modal
+          isOpen={showForm}
+          onClose={close}
+          {...modalProps}
+          maxWidth="3xl"
+          className="p-6"
+          title={isEditing ? t('page.modalTitleEdit') : t('page.modalTitleNew')}
+        >
           <SecurityForm
             security={editingSecurity}
             onSubmit={handleFormSubmit}

@@ -16,12 +16,13 @@
     "chartUnavailable": "Graphique temporairement indisponible"
   },
   "viewTabs": {
-    "list": "Liste",
-    "calendar": "Calendrier",
+    "filterLabel": "Type de planification",
     "filterAll": "Tous ({count})",
     "filterBills": "Factures ({count})",
     "filterDeposits": "Dépôts ({count})",
-    "todayButton": "Aujourd'hui"
+    "todayButton": "Aujourd'hui",
+    "previousMonth": "Mois précédent",
+    "nextMonth": "Mois suivant"
   },
   "form": {
     "titleNew": "Nouvelle transaction récurrente",

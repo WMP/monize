@@ -17,7 +17,8 @@
     "label": "按类型筛选",
     "all": "全部",
     "email_receipt": "邮件收据",
-    "transaction_review": "规则"
+    "transaction_review": "规则",
+    "option": "{label}（{count}）"
   },
   "status": {
     "pending": "待处理",

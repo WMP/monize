@@ -175,7 +175,6 @@
       "viewPayeeTitle": "Ver detalhes de {name}",
       "investmentLabel": "Investimento",
       "linkedInvestmentTitle": "Ver em Investimentos",
-      "linkedInvestmentBadgeTitle": "Esta transação está vinculada a uma transação de investimento",
       "filterByDate": "Filtrar por data \"{date}\"",
       "filterByAccount": "Filtrar por \"{name}\"",
       "filterByPayee": "Filtrar por \"{name}\"",
@@ -223,10 +222,10 @@
       "show": "Mostrar filtros"
     },
     "accounts": {
-      "label": "Mostrar contas:",
-      "all": "Todas",
-      "active": "Ativas",
-      "closed": "Fechadas"
+      "label": "Mostrar contas",
+      "allCount": "Todas ({count})",
+      "activeCount": "Ativas ({count})",
+      "closedCount": "Fechadas ({count})"
     },
     "fields": {
       "accounts": "Contas",
@@ -320,7 +319,7 @@
     },
     "modal": {
       "title": "Atualização em Massa de Transações",
-      "subtitle": "Atualizar {count, plural, one {# transação selecionada} other {# transações selecionadas}}. Ative os campos que deseja alterar.",
+      "help": "Ative os campos que deseja alterar.",
       "submitLabel": "Atualizar {count, plural, one {# Transação} other {# Transações}}",
       "payee": "Beneficiário",
       "category": "Categoria",
@@ -368,9 +367,10 @@
       "fromAccount": "Conta de Origem",
       "toAccount": "Conta de Destino",
       "transferAmount": "Valor da Transferência",
-      "transferAmountWithCurrency": "Valor da Transferência ({currency})",
-      "amountReceived": "Valor Recebido ({currency})",
-      "payeeOptional": "Beneficiário (Opcional)",
+      "amountReceivedLabel": "Valor Recebido",
+      "transferAmountInCurrency": "Valor da Transferência ({currency})",
+      "amountReceivedInCurrency": "Valor Recebido ({currency})",
+      "payeeOptional": "Beneficiário (opcional)",
       "categoryOptional": "Categoria (opcional)"
     },
     "placeholders": {
@@ -399,10 +399,16 @@
     "submitCreateAndNewDescription": "Salvar e começar outra, mantendo a conta e a data.",
     "submitOptions": "Escolher o que acontece depois de criar",
     "submitUpdate": "Atualizar {mode}",
+    "submitConvert": "Converter em {mode}",
     "reconciledConfirm": {
       "title": "Editar transação reconciliada?",
       "message": "Esta transação está reconciliada. Alterá-la afetará uma reconciliação concluída. Deseja salvar as alterações mesmo assim?",
       "confirm": "Salvar alterações"
+    },
+    "counterpartConfirm": {
+      "title": "Converter esta transferência?",
+      "message": "O outro lado desta transferência já foi compensado ou reconciliado. Convertê-la em uma transação remove esse lançamento da outra conta e altera um saldo conferido com um extrato. Deseja continuar?",
+      "confirm": "Converter mesmo assim"
     },
     "modeLabel": {
       "transfer": "Transferência",
@@ -432,7 +438,8 @@
       "destinationRequired": "Selecione uma conta de destino",
       "sameAccount": "A conta de origem e a conta de destino devem ser diferentes",
       "negativeTransfer": "O valor da transferência não pode ser negativo",
-      "convertToTransferUnsupported": "Uma transação existente não pode ser convertida aqui em uma transferência. Exclua-a e crie a transferência no lugar dela.",
+      "convertedToTransfer": "Convertida em transferência",
+      "convertedToTransaction": "Convertida em transação",
       "payeeCreated": "Beneficiário \"{name}\" criado",
       "payeeCreateFailed": "Falha ao criar beneficiário",
       "payeeReactivated": "Beneficiário \"{name}\" reativado",
@@ -475,7 +482,8 @@
       "loading": "Carregando garantias",
       "loadError": "Não foi possível carregar as garantias desta transação.",
       "empty": "Ainda não há garantias"
-    }
+    },
+    "conversionLockedNote": "Esta transferência pertence a uma transação dividida ou à conta de outro proprietário, por isso aqui só pode continuar sendo uma transferência. Altere-a a partir da divisão ou exclua-a e crie o lançamento desejado."
   },
   "splitEditor": {
     "header": "Detalhes das Divisões",
@@ -538,7 +546,7 @@
     "quantityPlaceholder": "Quantidade",
     "pricePlaceholder": "Preço",
     "commissionPlaceholder": "Comissão",
-    "amountPlaceholder": "Valor ({currency})",
+    "amountOnlyPlaceholder": "Valor",
     "ratePlaceholder": "{to} por 1 {from}",
     "ariaRate": "Taxa de câmbio ({to} por 1 {from})",
     "rateHint": "Quantidade, preço e corretagem estão em {from}; esta taxa converte o impacto de caixa para {to}.",

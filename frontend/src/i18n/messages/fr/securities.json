@@ -11,6 +11,7 @@
     "subtitle": "Gérez vos actions, ETF, fonds communs de placement et autres titres",
     "newSecurity": "+ Nouveau titre",
     "searchPlaceholder": "Rechercher par symbole ou nom...",
+    "statusFilterLabel": "Statut",
     "statusAll": "Tous ({count})",
     "statusActive": "Actifs ({count})",
     "statusInactive": "Inactifs ({count})",
@@ -65,10 +66,7 @@
       "inactive": "Inactif",
       "inactiveShort": "Ina"
     },
-    "providerTitle": {
-      "override": "Fournisseur personnalisé par titre",
-      "inherited": "Hérité de votre préférence de fournisseur de cours par défaut"
-    },
+    "providerInherited": "{provider} (par défaut)",
     "columnTitles": {
       "shares": "Actions détenues au total sur tous les comptes",
       "value": "Actions détenues sur tous les comptes au cours le plus récent, dans la devise du titre",
@@ -218,11 +216,10 @@
   "priceForm": {
     "dateLabel": "Date",
     "closePriceLabel": "Cours de clôture",
-    "openPriceLabel": "Cours d'ouverture",
-    "highPriceLabel": "Cours le plus haut",
-    "lowPriceLabel": "Cours le plus bas",
-    "volumeLabel": "Volume",
-    "optionalPlaceholder": "Facultatif",
+    "openPriceLabel": "Cours d'ouverture (facultatif)",
+    "highPriceLabel": "Cours le plus haut (facultatif)",
+    "lowPriceLabel": "Cours le plus bas (facultatif)",
+    "volumeLabel": "Volume (facultatif)",
     "submitCreate": "Ajouter le cours",
     "submitUpdate": "Mettre à jour le cours"
   },

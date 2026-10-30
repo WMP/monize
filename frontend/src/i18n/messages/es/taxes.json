@@ -12,7 +12,7 @@
   "payroll": {
     "title": "Deducciones de nómina",
     "subtitle": "Máximos anuales en las líneas de deducción de su factura de nómina",
-    "backToTaxes": "Impuestos",
+    "backToTaxes": "Volver a Impuestos",
     "newButton": "+ Nueva regla",
     "loading": "Cargando deducciones de nómina...",
     "emptyState": {

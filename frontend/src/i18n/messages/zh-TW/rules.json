@@ -114,8 +114,8 @@
       "matchAll": "符合以下全部",
       "matchAny": "符合以下任一項",
       "matchLabel": "比對方式",
-      "not": "非",
-      "notLabel": "對此群組取反：當其條件不成立時相符",
+      "not": "對群組取反",
+      "notHelp": "取反的群組在其條件不成立時相符。",
       "title": "群組",
       "addCondition": "+ 新增條件",
       "addGroup": "+ 新增群組",
@@ -201,7 +201,7 @@
       "tags": "標籤",
       "category": "分類",
       "payee": "收款對象",
-      "instruction": "需要檢查什麼",
+      "instruction": "審查說明",
       "instructionPlaceholder": "例如：依收據拆分這筆消費",
       "instructionHelp": "規則只會請求審核。任何變更在執行前都需要由人員核准。",
       "onlyIfEmpty": "僅在為空時",
@@ -220,7 +220,7 @@
       "createIfMissing": "收款對象不存在時建立",
       "createIfMissingHelp": "開啟後，若沒有收款對象符合該名稱（依名稱、別名或相近符合），則建立新的收款對象。規則建立的收款對象在復原執行後仍會保留。",
       "onlyIfEmptyDescriptionHelp": "開啟後，僅當交易沒有說明時，規則才會寫入說明。關閉後每次都會寫入。",
-      "mode": "寫入方式",
+      "mode": "說明寫入方式",
       "modes": {
         "replace": "取代說明",
         "append": "加在說明之後",
@@ -262,12 +262,12 @@
         "windowHelp": "銀行可能在到期日前後多久扣款。在某一期到期日前後這麼多天內的扣款會償還該期；區間之外的扣款維持不變。",
         "daysBefore": "到期日前的天數",
         "daysAfter": "到期日後的天數",
-        "excess": "當扣款金額超過該期還款額時",
+        "excess": "扣款高於該期還款額",
         "excessPolicies": {
           "extra_principal": "將差額作為額外本金償還",
           "refuse": "保持該交易不變"
         },
-        "shortfall": "當扣款金額低於該期還款額時",
+        "shortfall": "扣款低於該期還款額",
         "shortfallPolicies": {
           "refuse": "保持該交易不變",
           "interest_first": "先償還利息，其餘作為本金"

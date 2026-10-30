@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
@@ -22,8 +21,9 @@ import { useCardActions } from '@/components/rules/use-rule-card-actions';
 import { useRuleErrorMessage } from '@/components/rules/use-rule-error-message';
 import { useRuleExpression } from '@/components/rules/use-rule-expression';
 import { useRuleOptions } from '@/components/rules/use-rule-options';
-import { Button, buttonClassName } from '@/components/ui/Button';
+import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { FormActions } from '@/components/ui/FormActions';
 import { Input } from '@/components/ui/Input';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import type { RuleLookups } from '@/hooks/useRuleLookups';
@@ -84,7 +84,6 @@ interface RuleEditorBodyProps {
  */
 export function RuleEditorBody({ rule, lookups, onSaved, onReload }: RuleEditorBodyProps) {
   const t = useTranslations('rules.editor');
-  const tc = useTranslations('common');
   const tr = useTranslations('rules.run');
   const router = useRouter();
   const options = useRuleOptions(lookups);
@@ -320,9 +319,9 @@ export function RuleEditorBody({ rule, lookups, onSaved, onReload }: RuleEditorB
             </p>
           )}
 
-        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end">
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-start">
           {rule && (
-            <div className="flex flex-col gap-1 sm:mr-auto">
+            <div className="flex flex-col gap-1 sm:pt-4">
               <Button
                 type="button"
                 variant="outline"
@@ -335,18 +334,21 @@ export function RuleEditorBody({ rule, lookups, onSaved, onReload }: RuleEditorB
               {dirty && <p className="text-xs text-gray-500 dark:text-gray-400">{t('run.saveFirst')}</p>}
             </div>
           )}
-          <Link href="/rules" className={buttonClassName('outline', 'md', 'w-full sm:w-auto')}>
-            {tc('cancel')}
-          </Link>
-          <Button
-            type="button"
-            className="w-full sm:w-auto"
-            isLoading={saving}
-            disabled={saving || expression.error !== null || (rule !== null && !dirty)}
-            onClick={() => void save()}
+          {/* The form holds only the button row, so Enter in a picker or a test field never saves. */}
+          <form
+            className="sm:ml-auto"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void save();
+            }}
           >
-            {t('save.button')}
-          </Button>
+            <FormActions
+              onCancel={() => router.push('/rules')}
+              submitLabel={t('save.button')}
+              isSubmitting={saving}
+              submitDisabled={expression.error !== null || (rule !== null && !dirty)}
+            />
+          </form>
         </div>
       </fieldset>
       <RunRuleDialog

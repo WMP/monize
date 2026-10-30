@@ -250,7 +250,8 @@ export function RuleValueControl({ leaf, options, onChange, captureCodes = [] }:
           <span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">{label}</span>
           <div className="flex items-center gap-2 py-2">
             <ToggleSwitch checked={value === true} onChange={onChange} label={t(`fields.${leaf.field}`)} />
-            <span className="text-sm text-gray-700 dark:text-gray-300">{value === true ? t('value.yes') : t('value.no')}</span>
+            {/* The switch is named by the setting it holds; its state is the switch itself. */}
+            <span className="text-sm text-gray-700 dark:text-gray-300">{t(`fields.${leaf.field}`)}</span>
           </div>
         </div>
       );

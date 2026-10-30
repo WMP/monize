@@ -34,7 +34,8 @@
       "WANT": "İstek",
       "SAVING": "Tasarruf"
     },
-    "saving": "Kaydediliyor..."
+    "saving": "Kaydediliyor...",
+    "remove": "Bütçeden kaldır"
   },
   "categoryList": {
     "title": "Kategori Bütçeleri",
@@ -83,7 +84,6 @@
     "baseIncomePlaceholder": "Beklenen aylık gelir",
     "active": "Aktif",
     "saveChanges": "Değişiklikleri Kaydet",
-    "saving": "Kaydediliyor...",
     "typeOptions": {
       "MONTHLY": "Aylık",
       "ANNUAL": "Yıllık",
@@ -109,7 +109,8 @@
     "title": "Harcama Isı Haritası - {monthLabel}",
     "ariaLabel": "Harcama ısı haritası",
     "less": "Az",
-    "more": "Çok"
+    "more": "Çok",
+    "readout": "{date}: {amount}"
   },
   "periodDetail": {
     "summaryCards": {
@@ -134,7 +135,8 @@
     "rolloverBadge": "+{amount} devir",
     "underBudgetLabel": "{amount} bütçe altında",
     "overBudgetLabel": "{amount} bütçe üstünde",
-    "carriedForward": "{amount} ileriye taşındı"
+    "carriedForward": "{amount} ileriye taşındı",
+    "dateRange": "{start} ile {end} arası"
   },
   "periodSelector": {
     "label": "Dönem:",
@@ -471,11 +473,18 @@
         "description": "Harcama geçmişinizi analiz ederek ilk bütçenizi oluşturun. Sihirbaz, işlemlerinize göre gerçekçi tutarlar önerecektir.",
         "cta": "İlk Bütçenizi Oluşturun"
       },
+      "loading": "Bütçeler yükleniyor...",
+      "columns": {
+        "name": "Ad",
+        "strategy": "Strateji",
+        "type": "Tür",
+        "categories": "Kategoriler",
+        "started": "Başlangıç",
+        "status": "Durum"
+      },
       "card": {
         "active": "Aktif",
-        "inactive": "Pasif",
-        "categories": "{count} kategori",
-        "started": "{date} tarihinde başladı"
+        "inactive": "Pasif"
       }
     },
     "create": {
@@ -484,6 +493,9 @@
     },
     "detail": {
       "backToBudgets": "Bütçelere Dön",
+      "switchBudget": "Başka bir bütçeye geç",
+      "switchPlaceholder": "Bütçeleri filtrele...",
+      "switchNoMatches": "Eşleşen bütçe yok",
       "notFound": "Bütçe bulunamadı",
       "delete": {
         "title": "Bütçeyi Sil",
@@ -501,7 +513,7 @@
     "edit": {
       "subtitlePrefix": "Düzenle: ",
       "subtitle": "Bütçe ayarlarını ve kategori tahsislerini güncelleyin",
-      "backToDashboard": "Gösterge Paneline Dön",
+      "backToBudget": "{name} bütçesine dön",
       "budgetSettings": "Bütçe Ayarları",
       "categoryAllocations": "Kategori Tahsisleri",
       "income": "Gelir",
@@ -510,12 +522,19 @@
       "percentUsed": "%{percent} kullanıldı",
       "rolloverType": "Devir: {type}",
       "editCategoryTitle": "{name} Düzenle",
+      "remove": {
+        "title": "Kategoriyi Kaldır",
+        "message": "\"{name}\" bu bütçeden kaldırılsın mı? {amount} tutarındaki tahsisi artık bütçelenmeyecek ve geçmiş bütçe dönemlerindeki geçmişi silinecek. İşlemleriniz etkilenmez. Bu işlem geri alınamaz.",
+        "confirm": "Kaldır"
+      },
       "toasts": {
         "updated": "Bütçe güncellendi",
         "updateFailed": "Bütçe güncellenemedi",
         "categoryUpdated": "Kategori güncellendi",
         "categoryFailed": "Kategori güncellenemedi",
-        "loadFailed": "Bütçe yüklenemedi"
+        "loadFailed": "Bütçe yüklenemedi",
+        "categoryRemoved": "Kategori bütçeden kaldırıldı",
+        "categoryRemoveFailed": "Kategori kaldırılamadı"
       }
     }
   },

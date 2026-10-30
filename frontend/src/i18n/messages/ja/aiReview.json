@@ -17,7 +17,8 @@
     "label": "種類で絞り込み",
     "all": "すべて",
     "email_receipt": "メールレシート",
-    "transaction_review": "ルール"
+    "transaction_review": "ルール",
+    "option": "{label} ({count})"
   },
   "status": {
     "pending": "保留中",

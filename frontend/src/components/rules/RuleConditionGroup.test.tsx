@@ -55,7 +55,10 @@ describe('RuleConditionGroup', () => {
     expect(onRoot).toHaveBeenLastCalledWith(expect.objectContaining({ match: 'any', not: false }));
     expect(screen.getByRole('button', { name: 'Any of these' })).toHaveAttribute('aria-pressed', 'true');
 
-    fireEvent.click(screen.getByRole('switch', { name: /Negate this group/ }));
+    // The switch is named beside it, not only for a screen reader.
+    const negate = screen.getByRole('switch', { name: 'Negate Group' });
+    expect(negate.parentElement).toHaveTextContent('Negate Group');
+    fireEvent.click(negate);
     expect(onRoot).toHaveBeenLastCalledWith(expect.objectContaining({ match: 'any', not: true }));
   });
 

@@ -34,7 +34,6 @@
     "units": "口数",
     "avgCostPerUnit": "平均取得単価",
     "heldInAccounts": "保有口座",
-    "openAccount": "{name} を「投資」ページで表示",
     "unitsShare": "{units}（{share}）",
     "valueUnknown": "評価不可",
     "approx": "約 {amount}"

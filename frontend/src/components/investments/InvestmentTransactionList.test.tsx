@@ -257,6 +257,22 @@ describe('InvestmentTransactionList', () => {
     expect(screen.getByText('To')).toBeInTheDocument();
   });
 
+  it('folds its filter bar from a button with aria-expanded, and offers Clear while folded', () => {
+    const onFiltersChange = vi.fn();
+    render(
+      <InvestmentTransactionList
+        transactions={[makeTx()] as any[]}
+        isLoading={false}
+        filters={{ symbol: 'AAPL' }}
+        onFiltersChange={onFiltersChange}
+      />
+    );
+    const toggle = screen.getByRole('button', { name: /^Filter/ });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(screen.getByRole('button', { name: 'Clear Filters' }));
+    expect(onFiltersChange).toHaveBeenCalled();
+  });
+
   it('shows "(filtered)" and active filter count when filters are active', () => {
     const transactions = [makeTx()] as any[];
     render(

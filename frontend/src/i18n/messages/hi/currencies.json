@@ -4,6 +4,8 @@
     "subtitle": "अपने खातों और प्रतिभूतियों में उपयोग की जाने वाली मुद्राएं प्रबंधित करें",
     "refreshRates": "दरें रीफ्रेश करें",
     "refreshing": "रीफ्रेश हो रहा है...",
+    "ratesAge": "({time})",
+    "statusFilterLabel": "स्थिति",
     "newCurrency": "+ नई मुद्रा",
     "searchPlaceholder": "कोड या नाम से खोजें...",
     "statusAll": "सभी ({count})",
@@ -70,9 +72,9 @@
       "activate": "सक्रिय करें",
       "deleteCurrency": "मुद्रा हटाएं"
     },
-    "usageTooltip": "{accounts} खाता(ते), {securities} प्रतिभूति",
     "usageAccounts": "{count, plural, one {# खाता} other {# खाते}}",
-    "usageSecurities": "{count, plural, one {# प्रति} other {# प्रतिभूतियां}}",
+    "usageSecurities": "{count, plural, one {# प्रतिभूति} other {# प्रतिभूतियाँ}}",
+    "rateHelp": "प्रत्येक मुद्रा की एक इकाई का {currency} में मूल्य।",
     "empty": {
       "title": "कोई मुद्रा नहीं",
       "subtitle": "एक मुद्रा जोड़कर शुरू करें।"

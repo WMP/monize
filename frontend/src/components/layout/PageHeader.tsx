@@ -61,9 +61,11 @@ export function PageHeader({ title, subtitle, actions, helpUrl, compactMobileAct
               >
                 <QuestionMarkCircleIcon className="h-5 w-5" />
               </a>
+              {/* Shown on hover and on keyboard focus at every width: help is
+                  never hidden below a breakpoint. */}
               <span
                 role="tooltip"
-                className="pointer-events-none hidden md:group-hover/help:block absolute z-20 left-1/2 -translate-x-1/2 top-full mt-1 w-56 whitespace-normal rounded-md bg-gray-900 dark:bg-gray-700 px-2.5 py-2 text-xs font-normal leading-snug text-white shadow-lg"
+                className="pointer-events-none hidden group-hover/help:block group-focus-within/help:block absolute z-20 left-1/2 -translate-x-1/2 top-full mt-1 w-56 whitespace-normal rounded-md bg-gray-900 dark:bg-gray-700 px-2.5 py-2 text-xs font-normal leading-snug text-white shadow-lg"
               >
                 {t('pageHeader.helpTooltip')}
               </span>

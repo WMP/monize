@@ -17,7 +17,8 @@
     "label": "Filter menurut jenis",
     "all": "Semua",
     "email_receipt": "Struk surel",
-    "transaction_review": "Aturan"
+    "transaction_review": "Aturan",
+    "option": "{label} ({count})"
   },
   "status": {
     "pending": "Menunggu",

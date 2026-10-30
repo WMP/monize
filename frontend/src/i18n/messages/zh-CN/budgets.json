@@ -34,7 +34,8 @@
       "WANT": "欲望",
       "SAVING": "储蓄"
     },
-    "saving": "保存中..."
+    "saving": "保存中...",
+    "remove": "从预算中移除"
   },
   "categoryList": {
     "title": "分类预算",
@@ -83,7 +84,6 @@
     "baseIncomePlaceholder": "预期月收入",
     "active": "活跃",
     "saveChanges": "保存更改",
-    "saving": "保存中...",
     "typeOptions": {
       "MONTHLY": "月度",
       "ANNUAL": "年度",
@@ -109,7 +109,8 @@
     "title": "支出热图 - {monthLabel}",
     "ariaLabel": "支出热图",
     "less": "较少",
-    "more": "较多"
+    "more": "较多",
+    "readout": "{date}：{amount}"
   },
   "periodDetail": {
     "summaryCards": {
@@ -134,7 +135,8 @@
     "rolloverBadge": "+{amount} 滚存",
     "underBudgetLabel": "低于预算 {amount}",
     "overBudgetLabel": "超出预算 {amount}",
-    "carriedForward": "结转 {amount}"
+    "carriedForward": "结转 {amount}",
+    "dateRange": "{start} 至 {end}"
   },
   "periodSelector": {
     "label": "周期：",
@@ -471,11 +473,18 @@
         "description": "通过分析您的支出历史来创建第一个预算。向导将根据您的交易建议切实可行的金额。",
         "cta": "创建您的第一个预算"
       },
+      "loading": "正在加载预算...",
+      "columns": {
+        "name": "名称",
+        "strategy": "策略",
+        "type": "类型",
+        "categories": "分类",
+        "started": "开始日期",
+        "status": "状态"
+      },
       "card": {
         "active": "活跃",
-        "inactive": "非活跃",
-        "categories": "{count} 个分类",
-        "started": "开始于 {date}"
+        "inactive": "非活跃"
       }
     },
     "create": {
@@ -484,6 +493,9 @@
     },
     "detail": {
       "backToBudgets": "返回预算",
+      "switchBudget": "切换到其他预算",
+      "switchPlaceholder": "筛选预算...",
+      "switchNoMatches": "没有匹配的预算",
       "notFound": "未找到预算",
       "delete": {
         "title": "删除预算",
@@ -501,7 +513,7 @@
     "edit": {
       "subtitlePrefix": "编辑：",
       "subtitle": "更新预算设置和分类分配",
-      "backToDashboard": "返回仪表盘",
+      "backToBudget": "返回 {name}",
       "budgetSettings": "预算设置",
       "categoryAllocations": "分类分配",
       "income": "收入",
@@ -510,12 +522,19 @@
       "percentUsed": "已用 {percent}%",
       "rolloverType": "滚存：{type}",
       "editCategoryTitle": "编辑 {name}",
+      "remove": {
+        "title": "移除类别",
+        "message": "要从此预算中移除“{name}”吗？其 {amount} 的分配将不再计入预算，并且其在以往预算周期中的历史记录将被删除。您的交易不受影响。此操作无法撤销。",
+        "confirm": "移除"
+      },
       "toasts": {
         "updated": "预算已更新",
         "updateFailed": "更新预算失败",
         "categoryUpdated": "分类已更新",
         "categoryFailed": "更新分类失败",
-        "loadFailed": "加载预算失败"
+        "loadFailed": "加载预算失败",
+        "categoryRemoved": "已从预算中移除类别",
+        "categoryRemoveFailed": "移除类别失败"
       }
     }
   },

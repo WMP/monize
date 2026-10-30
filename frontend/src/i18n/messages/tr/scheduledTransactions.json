@@ -6,7 +6,7 @@
       "category": "Kategori",
       "amount": "Miktar",
       "schedule": "Program",
-      "auto": "Otomatik",
+      "auto": "Otomatik kayıt",
       "actions": "İşlemler"
     },
     "empty": {
@@ -25,7 +25,6 @@
     "modifiedDateTitle": "Bu gerçekleşme için tarih değiştirildi",
     "splitBadge": "Bölünmüş ({count})",
     "autoPostBadge": "Açık",
-    "autoPostTitle": "Vadesi geldiğinde otomatik kaydedilir",
     "inactiveSuffix": " — Pasif",
     "actionTitles": {
       "post": "İşlemi kaydet",
@@ -76,9 +75,7 @@
     "accountsLabel": "Hesaplar",
     "accountsPlaceholder": "Tüm hesaplar",
     "categoriesLabel": "Kategoriler",
-    "categoriesPlaceholder": "Tüm kategoriler",
-    "collapseAriaLabel": "Filtreleri daralt",
-    "expandAriaLabel": "Filtreleri genişlet"
+    "categoriesPlaceholder": "Tüm kategoriler"
   },
   "postDialog": {
     "title": "İşlemi Kaydet",
@@ -259,7 +256,7 @@
     "toAccountLabel": "Alıcı Hesap",
     "toAccountPlaceholder": "Hedef hesap seçin...",
     "transferAmountLabel": "Transfer Tutarı",
-    "transferCategoryLabel": "Kategori (İsteğe bağlı)",
+    "transferCategoryLabel": "Kategori (isteğe bağlı)",
     "transferCategoryNote": "İsteğe bağlı: Bu transferi kategorilendirin (ör. düzenli bir yatırım katkısı) ki aylık kategori dökümünde görünsün. Gelir veya gider olarak sayılmaz.",
     "actionLabel": "İşlem",
     "securityLabel": "Menkul Kıymet",

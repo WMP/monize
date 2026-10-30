@@ -152,7 +152,7 @@ describe('RuleEditor: the Visual / Expression switch', () => {
     expect(within(leaf).getByLabelText('Field')).toHaveValue('referenceNumber');
     expect(within(leaf).getByLabelText('Operator')).toHaveValue('contains');
     expect(within(leaf).getByLabelText('Value')).toHaveValue('tea');
-    expect(within(negated).getByRole('switch', { name: /Negate this group/ })).toBeChecked();
+    expect(within(negated).getByRole('switch', { name: 'Negate Group' })).toBeChecked();
     expect(within(negated).getByLabelText('Field')).toHaveValue('tagIds');
   });
 

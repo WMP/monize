@@ -4,6 +4,7 @@
     "subtitle": "Tạo thông tin chi tiết về sức khỏe tài chính của bạn",
     "searchPlaceholder": "Tìm kiếm báo cáo theo tên hoặc mô tả...",
     "allReports": "Tất cả báo cáo",
+    "categoryWithCount": "{label} ({count})",
     "removeFavourite": "Xóa khỏi mục yêu thích",
     "addFavourite": "Thêm vào mục yêu thích",
     "tableReport": "Báo cáo",
@@ -137,7 +138,8 @@
   },
   "reportPage": {
     "notFound": "Không tìm thấy báo cáo",
-    "notFoundDesc": "Báo cáo được yêu cầu không tồn tại."
+    "notFoundDesc": "Báo cáo được yêu cầu không tồn tại.",
+    "viewLabel": "Chế độ xem"
   },
   "error": {
     "defaultMessage": "Không thể tải dữ liệu báo cáo. Vui lòng thử lại.",
@@ -514,8 +516,6 @@
     "viewMonthly": "Hàng tháng",
     "viewDaily": "Hàng ngày",
     "viewBySecurity": "Theo chứng khoán",
-    "displayChart": "Biểu đồ",
-    "displayTable": "Bảng",
     "showLabel": "Hiển thị:",
     "seriesDividends": "Cổ tức",
     "seriesInterest": "Lãi suất",
@@ -1251,7 +1251,6 @@
     "incompleteTooltip": "Một số ngày trong khoảng thời gian này thiếu giá, tỷ giá hối đoái hoặc số dư tiền mặt, nên các số liệu phụ thuộc vào từng ngày sẽ không được hiển thị.",
     "measuredFromClose": "Kể từ khi đóng cửa phiên giao dịch ngày {date}",
     "notAvailable": "N/A",
-    "intradayUnavailable": "Không có giá nội ngày chi tiết",
     "intradayUnavailableTitle": "Chế độ xem nội ngày không khả dụng cho kết hợp tài khoản này",
     "intradayUnavailableDesc": "Một hoặc nhiều vị thế sử dụng nhà cung cấp báo giá (MSN Money) không công bố dữ liệu nội ngày{skipped}. Chuyển sang phạm vi dài hơn để xem ảnh chụp hàng ngày.",
     "intradayUnavailableSkipped": ": {symbols}",
@@ -1302,8 +1301,6 @@
     "costBasis": "Cơ sở chi phí",
     "realizedGainLoss": "Lãi/Lỗ đã thực hiện",
     "securitiesSold": "Chứng khoán đã bán",
-    "viewChart": "Biểu đồ",
-    "viewTable": "Bảng",
     "noTransactions": "Không tìm thấy giao tác bán nào trong kỳ này.",
     "noGainsLosses": "Không có lãi hoặc lỗ để hiển thị.",
     "bySecurityTitle": "Lãi đã thực hiện theo chứng khoán",
@@ -1339,7 +1336,7 @@
     "sixMonthTotal": "Tổng 6 tháng",
     "monthlyEstimate": "Ước tính hàng tháng",
     "identifiedPayees": "người nhận đã xác định",
-    "minOccurrencesLabel": "Số lần xuất hiện tối thiểu:",
+    "minOccurrencesLabel": "Số lần xuất hiện tối thiểu",
     "inLast6Months": "(trong 6 tháng qua)",
     "noRecurring": "Không tìm thấy chi phí định kỳ nào với {count}+ lần xuất hiện trong 6 tháng qua.",
     "failedToLoad": "Không thể tải dữ liệu chi phí định kỳ.",
@@ -1699,8 +1696,6 @@
     "activeBills": "Hóa đơn đang hoạt động",
     "overdue": "Quá hạn",
     "thisMonth": "Tháng này",
-    "autoPostsTitle": "Tự động đăng khi đến hạn",
-    "manualPostTitle": "Yêu cầu đăng thủ công",
     "autoLabel": "Tự động",
     "manualLabel": "Thủ công",
     "overdueLabel": "Quá hạn",
@@ -1834,6 +1829,7 @@
     "removeAriaLabel": "Xóa {title} khỏi so sánh",
     "removeTitle": "Xóa khỏi so sánh",
     "runFailed": "Chạy thất bại",
+    "never": "Chưa bao giờ",
     "errors": {
       "loadScenarioFailed": "Không thể tải kịch bản.",
       "simulationFailed": "Mô phỏng thất bại."
@@ -1847,7 +1843,6 @@
     "backToReports": "Quay lại báo cáo",
     "deleteButton": "Xóa báo cáo",
     "deleteConfirmMessage": "Bạn có chắc muốn xóa \"{name}\"? Hành động này không thể hoàn tác.",
-    "deleting": "Đang xóa...",
     "toasts": {
       "loadFailed": "Không thể tải báo cáo",
       "updated": "Đã cập nhật báo cáo",

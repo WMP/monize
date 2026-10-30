@@ -808,4 +808,29 @@ describe("UncategorizedTransactionsReport", () => {
     expect(screen.getByText("JPY -5000.00")).toBeInTheDocument();
     expect(screen.getByText("$-50.00")).toBeInTheDocument();
   });
+
+  // The toolbar holds the date controls, so it stays mounted while the report
+  // reloads and after a failed load: an early return for either state would
+  // unmount it, and the focus of whoever is using it.
+  it('keeps the toolbar mounted while loading and after a failed load', async () => {
+    let fail!: (error: Error) => void;
+    mockGetUncategorizedTransactions.mockReturnValue(
+      new Promise((_resolve, reject) => {
+        fail = reject;
+      }),
+    );
+    render(<UncategorizedTransactionsReport />);
+    const toolbar = screen.getByTestId('date-range-selector');
+    expect(document.querySelector('.animate-pulse')).toBeTruthy();
+
+    await act(async () => {
+      fail(new Error('boom'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Try Again' })).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('date-range-selector')).toBe(toolbar);
+  });
+
 });

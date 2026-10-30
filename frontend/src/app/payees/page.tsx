@@ -29,6 +29,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { SummaryCard, SummaryIcons } from '@/components/ui/SummaryCard';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { CARD_CLASS } from '@/components/ui/Card';
+import { SEGMENTED_TOOLBAR_GROUP_CLASS, toolbarSegmentClass } from '@/components/ui/segmented-control';
 import { useFormModal } from '@/hooks/useFormModal';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { createLogger } from '@/lib/logger';
@@ -50,6 +51,7 @@ function PayeesContent() {
   const t = useTranslations('payees');
   // The dialog's title is the section's own name, so the two cannot drift.
   const tLookup = useTranslations('settings.payeeLookup');
+  const tCommon = useTranslations('common');
   const [payees, setPayees] = useState<Payee[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -386,30 +388,23 @@ function PayeesContent() {
         </div>
 
         {/* Search and Status Filter */}
-        <div className="mb-6 flex flex-col sm:flex-row gap-4">
+        <div className="mb-6 flex flex-wrap items-center gap-4">
           <input
             type="text"
             placeholder={t('page.searchPlaceholder')}
+            aria-label={t('page.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="block w-full sm:max-w-md rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400"
+            className="block w-full sm:w-auto sm:flex-1 sm:max-w-md rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400"
           />
-          <div className="flex rounded-md shadow-sm">
+          <div role="group" aria-label={t('page.statusFilterLabel')} className={SEGMENTED_TOOLBAR_GROUP_CLASS}>
             {(['all', 'active', 'inactive'] as PayeeStatusFilter[]).map((status) => (
               <button
                 key={status}
+                type="button"
                 onClick={() => handleStatusFilterChange(status)}
-                className={`px-4 py-2 text-sm font-medium border ${
-                  statusFilter === status
-                    ? 'bg-blue-600 text-white border-blue-600 dark:bg-blue-500 dark:border-blue-500'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
-                } ${
-                  status === 'all' ? 'rounded-l-md' : ''
-                } ${
-                  status === 'inactive' ? 'rounded-r-md' : ''
-                } ${
-                  status !== 'all' ? '-ml-px' : ''
-                }`}
+                aria-pressed={statusFilter === status}
+                className={toolbarSegmentClass(statusFilter === status)}
               >
                 {status === 'active' ? t('page.statusActive', { count: activeCount }) :
                  status === 'inactive' ? t('page.statusInactive', { count: inactiveCount }) :
@@ -417,22 +412,14 @@ function PayeesContent() {
               </button>
             ))}
           </div>
-          <div className="flex rounded-md shadow-sm">
+          <div role="group" aria-label={t('page.categoryFilterLabel')} className={SEGMENTED_TOOLBAR_GROUP_CLASS}>
             {(['all', 'noDefaultCategory', 'uncategorizedTransactions'] as PayeeCategoryFilter[]).map((filter) => (
               <button
                 key={filter}
+                type="button"
                 onClick={() => handleCategoryFilterChange(filter)}
-                className={`px-4 py-2 text-sm font-medium border ${
-                  categoryFilter === filter
-                    ? 'bg-blue-600 text-white border-blue-600 dark:bg-blue-500 dark:border-blue-500'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
-                } ${
-                  filter === 'all' ? 'rounded-l-md' : ''
-                } ${
-                  filter === 'uncategorizedTransactions' ? 'rounded-r-md' : ''
-                } ${
-                  filter !== 'all' ? '-ml-px' : ''
-                }`}
+                aria-pressed={categoryFilter === filter}
+                className={toolbarSegmentClass(categoryFilter === filter)}
               >
                 {filter === 'noDefaultCategory' ? t('page.categoryFilterNoCategory', { count: payeesWithoutCategory }) :
                  filter === 'uncategorizedTransactions' ? t('page.categoryFilterUncategorized', { count: payeesWithUncategorizedTx }) :
@@ -457,7 +444,13 @@ function PayeesContent() {
           onClose={() => setShowLookupSettings(false)}
           title={tLookup('title')}
           maxWidth="3xl"
+          padding="md"
           pushHistory
+          footer={
+            <Button type="button" variant="outline" onClick={() => setShowLookupSettings(false)}>
+              {tCommon('close')}
+            </Button>
+          }
         >
           <PayeeLookupSection className="" />
         </Modal>

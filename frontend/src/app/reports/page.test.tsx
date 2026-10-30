@@ -190,7 +190,7 @@ describe('ReportsPage', () => {
   it('renders the All Reports filter button', async () => {
     render(<ReportsPage />);
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'All Reports' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^All Reports \(\d+\)$/ })).toBeInTheDocument();
     });
   });
 
@@ -249,8 +249,8 @@ describe('ReportsPage', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByRole('button', { name: 'Insights' }),
-        ).toHaveClass('bg-blue-600');
+          screen.getByRole('button', { name: /^Insights \(\d+\)$/ }),
+        ).toHaveAttribute('aria-pressed', 'true');
       });
       // The linked category's report is on screen; the remembered one is not.
       expect(
@@ -266,8 +266,8 @@ describe('ReportsPage', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByRole('button', { name: 'All Reports' }),
-        ).toHaveClass('bg-blue-600');
+          screen.getByRole('button', { name: /^All Reports \(\d+\)$/ }),
+        ).toHaveAttribute('aria-pressed', 'true');
       });
     });
 
@@ -275,13 +275,13 @@ describe('ReportsPage', () => {
       currentSearchParams = new URLSearchParams('category=insights');
       render(<ReportsPage />);
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Insights' })).toHaveClass('bg-blue-600');
+        expect(screen.getByRole('button', { name: /^Insights \(\d+\)$/ })).toHaveAttribute('aria-pressed', 'true');
       });
 
-      fireEvent.click(screen.getByRole('button', { name: 'All Reports' }));
+      fireEvent.click(screen.getByRole('button', { name: /^All Reports \(\d+\)$/ }));
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'All Reports' })).toHaveClass('bg-blue-600');
+        expect(screen.getByRole('button', { name: /^All Reports \(\d+\)$/ })).toHaveAttribute('aria-pressed', 'true');
       });
     });
   });
@@ -296,15 +296,15 @@ describe('ReportsPage', () => {
   it('renders category filter buttons', async () => {
     render(<ReportsPage />);
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Spending' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Income' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Net Worth' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Tax' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Debt & Loans' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Investment' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Insights' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Maintenance' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Bills' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^Spending \(\d+\)$/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^Income \(\d+\)$/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^Net Worth \(\d+\)$/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^Tax \(\d+\)$/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^Debt & Loans \(\d+\)$/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^Investment \(\d+\)$/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^Insights \(\d+\)$/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^Maintenance \(\d+\)$/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^Bills \(\d+\)$/ })).toBeInTheDocument();
     });
   });
 
@@ -480,6 +480,22 @@ describe('ReportsPage', () => {
     });
     expect(screen.getByText('Tax Summary')).toBeInTheDocument();
     expect(screen.queryByText('Income vs Expenses')).not.toBeInTheDocument();
+  });
+
+  it('counts each category segment over the reports the search admits', async () => {
+    render(<ReportsPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Spending by Category')).toBeInTheDocument();
+    });
+    fireEvent.change(screen.getByPlaceholderText(/search reports/i), {
+      target: { value: 'Tax Summary' },
+    });
+    // One report matches: the All and Tax segments say so, the rest say none.
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'All Reports (1)' })).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: 'Tax (1)' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Spending (0)' })).toBeInTheDocument();
   });
 
   it('filters reports by description when searching', async () => {
@@ -1093,7 +1109,7 @@ describe('ReportsPage', () => {
   it('activates category filter button visually when clicked', async () => {
     render(<ReportsPage />);
     await waitFor(() => expect(screen.getByText('Spending by Category')).toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { name: 'Tax' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Tax \(\d+\)$/ }));
     expect(mockSetCategoryFilter).toHaveBeenCalledWith('tax');
   });
 
@@ -1101,7 +1117,7 @@ describe('ReportsPage', () => {
     currentCategoryFilter = 'tax';
     render(<ReportsPage />);
     await waitFor(() => expect(screen.getByText('Tax Summary')).toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { name: 'All Reports' }));
+    fireEvent.click(screen.getByRole('button', { name: /^All Reports \(\d+\)$/ }));
     expect(mockSetCategoryFilter).toHaveBeenCalledWith('all');
   });
 

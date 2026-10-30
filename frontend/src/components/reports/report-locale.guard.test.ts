@@ -172,14 +172,7 @@ const FOUR_DP_TO_FIXED = /\.toFixed\(\s*4\s*\)/g;
  * for a chart-shaped label, `formatChartDate`); leaving it fails the staleness
  * check below.
  */
-const ENGLISH_MONTH_BASELINE: Record<string, string> = {
-  '/src/components/reports/DuplicateTransactionReport.tsx':
-    "the duplicate-pair table's transaction date on screen; not owned by this change",
-  '/src/components/reports/LoanAmortizationReport.tsx':
-    'the projected payoff month on screen and in the PDF, and the schedule row date; not owned by this change',
-  '/src/components/reports/UpcomingBillsReport.tsx':
-    "the calendar's month heading, the PDF subtitle and each bill's due date; not owned by this change",
-};
+const ENGLISH_MONTH_BASELINE: Record<string, string> = {};
 
 describe('the comment stripper', () => {
   it('blanks a comment while preserving line numbers', () => {

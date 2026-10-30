@@ -77,7 +77,7 @@ describe('CsvColumnMappingStep', () => {
     renderStep();
 
     expect(screen.getByText('Column Mapping')).toBeInTheDocument();
-    expect(screen.getByText('Date *')).toBeInTheDocument();
+    expect(screen.getByText('Date', { selector: 'label' })).toBeInTheDocument();
     // "Payee" appears in both the preview table header and the mapping label
     expect(screen.getAllByText('Payee')).toHaveLength(2);
     expect(screen.getByText('Memo')).toBeInTheDocument();
@@ -804,8 +804,8 @@ describe('CsvColumnMappingStep', () => {
         columnMapping: { ...defaultMapping(), amount: 5, investmentMode: true },
       });
 
-      expect(screen.getByText('Action *')).toBeInTheDocument();
-      expect(screen.getByText('Security (symbol or name) *')).toBeInTheDocument();
+      expect(screen.getByText('Action', { selector: 'label' })).toBeInTheDocument();
+      expect(screen.getByText('Security (Symbol or Name)')).toBeInTheDocument();
       expect(screen.getByText('Quantity')).toBeInTheDocument();
       expect(screen.getByText('Price')).toBeInTheDocument();
       expect(screen.getByText('Commission')).toBeInTheDocument();
@@ -827,7 +827,7 @@ describe('CsvColumnMappingStep', () => {
       expect(screen.getByText('Sign')).toBeInTheDocument();
       expect(screen.getByText('Category')).toBeInTheDocument();
       expect(screen.getByText('Transfer Detection Rules')).toBeInTheDocument();
-      expect(screen.queryByText('Action *')).not.toBeInTheDocument();
+      expect(screen.queryByText('Action', { selector: 'label' })).not.toBeInTheDocument();
     });
 
     it('shows validation error when Next clicked without an action column', () => {

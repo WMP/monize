@@ -4,6 +4,7 @@
     "subtitle": "Einblicke in Ihre finanzielle Situation gewinnen",
     "searchPlaceholder": "Berichte nach Name oder Beschreibung suchen...",
     "allReports": "Alle Berichte",
+    "categoryWithCount": "{label} ({count})",
     "removeFavourite": "Aus Favoriten entfernen",
     "addFavourite": "Zu Favoriten hinzufügen",
     "tableReport": "Bericht",
@@ -137,7 +138,8 @@
   },
   "reportPage": {
     "notFound": "Bericht nicht gefunden",
-    "notFoundDesc": "Der angeforderte Bericht existiert nicht."
+    "notFoundDesc": "Der angeforderte Bericht existiert nicht.",
+    "viewLabel": "Ansicht"
   },
   "error": {
     "defaultMessage": "Berichtsdaten konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
@@ -514,8 +516,6 @@
     "viewMonthly": "Monatlich",
     "viewDaily": "Täglich",
     "viewBySecurity": "Nach Wertpapier",
-    "displayChart": "Diagramm",
-    "displayTable": "Tabelle",
     "showLabel": "Anzeigen:",
     "seriesDividends": "Dividenden",
     "seriesInterest": "Zinsen",
@@ -1251,7 +1251,6 @@
     "incompleteTooltip": "Für einige Tage in diesem Zeitraum fehlt ein Kurs, ein Wechselkurs oder ein Kassenbestand, daher werden die davon abhängigen Zahlen nicht angezeigt.",
     "measuredFromClose": "Seit dem Handelsschluss am {date}",
     "notAvailable": "k. A.",
-    "intradayUnavailable": "Detaillierte Intraday-Kurse nicht verfügbar",
     "intradayUnavailableTitle": "Intraday-Ansicht für diese Kontokombination nicht verfügbar",
     "intradayUnavailableDesc": "Eine oder mehrere Positionen verwenden einen Kursanbieter (MSN Money), der keine Intraday-Daten bereitstellt{skipped}. Wechseln Sie zu einem längeren Zeitraum, um Tages-Schnappschüsse zu sehen.",
     "intradayUnavailableSkipped": ": {symbols}",
@@ -1302,8 +1301,6 @@
     "costBasis": "Einstandswert",
     "realizedGainLoss": "Realisierter Gewinn/Verlust",
     "securitiesSold": "Verkaufte Wertpapiere",
-    "viewChart": "Diagramm",
-    "viewTable": "Tabelle",
     "noTransactions": "Keine Verkaufsbuchungen für diesen Zeitraum gefunden.",
     "noGainsLosses": "Keine Gewinne oder Verluste anzuzeigen.",
     "bySecurityTitle": "Realisierte Gewinne nach Wertpapier",
@@ -1339,7 +1336,7 @@
     "sixMonthTotal": "6-Monats-Summe",
     "monthlyEstimate": "Monatliche Schätzung",
     "identifiedPayees": "erkannte Zahlungsempfänger",
-    "minOccurrencesLabel": "Mindestanzahl Vorkommen:",
+    "minOccurrencesLabel": "Mindestanzahl Vorkommen",
     "inLast6Months": "(in den letzten 6 Monaten)",
     "noRecurring": "Keine wiederkehrenden Ausgaben mit {count}+ Vorkommen in den letzten 6 Monaten gefunden.",
     "failedToLoad": "Wiederkehrende Ausgaben konnten nicht geladen werden.",
@@ -1699,8 +1696,6 @@
     "activeBills": "Aktive Rechnungen",
     "overdue": "Überfällig",
     "thisMonth": "Diesen Monat",
-    "autoPostsTitle": "Wird bei Fälligkeit automatisch gebucht",
-    "manualPostTitle": "Erfordert manuelle Buchung",
     "autoLabel": "Auto",
     "manualLabel": "Manuell",
     "overdueLabel": "Überfällig",
@@ -1834,6 +1829,7 @@
     "removeAriaLabel": "{title} aus dem Vergleich entfernen",
     "removeTitle": "Aus dem Vergleich entfernen",
     "runFailed": "Durchlauf fehlgeschlagen",
+    "never": "Nie",
     "errors": {
       "loadScenarioFailed": "Szenario konnte nicht geladen werden.",
       "simulationFailed": "Simulation fehlgeschlagen."
@@ -1847,7 +1843,6 @@
     "backToReports": "Zurück zu Berichten",
     "deleteButton": "Bericht löschen",
     "deleteConfirmMessage": "Möchten Sie \"{name}\" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
-    "deleting": "Wird gelöscht...",
     "toasts": {
       "loadFailed": "Bericht konnte nicht geladen werden",
       "updated": "Bericht aktualisiert",

@@ -553,11 +553,11 @@ describe('SecurityList', () => {
     useDensityStore.setState({ densities: { securities: 'normal' } });
     render(<SecurityList securities={securities} onEdit={onEdit} onToggleActive={onToggleActive} onOpen={onOpen} />);
     // Default in tests is "yahoo" (preferences store mock returns undefined → '?? yahoo').
-    const yahooBadge = screen.getByText('Yahoo');
-    expect(yahooBadge).toBeInTheDocument();
-    // Italic class indicates the value is inherited from the default rather than an override.
+    // The badge says the provider is the default in words, not in a hover-only
+    // title a phone never shows; the italic face still marks it.
+    const yahooBadge = screen.getByText('Yahoo (default)');
     expect(yahooBadge.className).toContain('italic');
-    expect(yahooBadge.title).toMatch(/default/i);
+    expect(yahooBadge).not.toHaveAttribute('title');
   });
 
   it('names the bond engine, not the inherited provider, for a bond-linked security', () => {

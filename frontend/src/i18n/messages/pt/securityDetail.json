@@ -34,7 +34,6 @@
     "units": "Unidades",
     "avgCostPerUnit": "Custo médio / unidade",
     "heldInAccounts": "Detido em contas",
-    "openAccount": "Mostrar {name} na página Investimentos",
     "unitsShare": "{units} ({share})",
     "valueUnknown": "Sem cotação",
     "approx": "~ {amount}"

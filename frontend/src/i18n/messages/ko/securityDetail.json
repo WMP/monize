@@ -34,7 +34,6 @@
     "units": "수량",
     "avgCostPerUnit": "평균 단가",
     "heldInAccounts": "보유 계좌",
-    "openAccount": "투자 페이지에서 {name} 보기",
     "unitsShare": "{units} ({share})",
     "valueUnknown": "평가 불가",
     "approx": "약 {amount}"

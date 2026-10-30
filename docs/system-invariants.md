@@ -963,6 +963,13 @@ Enforcement         The balance decision is made once per pair, keyed on VOID.
                     is refused rather than cascaded away, leaving the other leg
                     one-sided (A26-M19):
                     backend/test/integration/account-delete-race.integration.spec.ts.
+                    A conversion between a transaction and a transfer leg
+                    (TransactionConversionService) creates or removes the
+                    counterpart in the same transaction as the row's rewrite,
+                    posting the pair from the create's column set and reversing
+                    the removed leg through removeLockedTransactionLeg; a VOID
+                    row moves nothing in either direction:
+                    backend/test/integration/transaction-conversion.integration.spec.ts.
 Concurrency scope   per transfer pair
 Failure response    consistent balances across the pair on every VOID transition.
 Required tests      Per status-changing path, both legs' balances stay consistent
@@ -5201,8 +5208,8 @@ Enforcement         Client: every figure goes through useNumberFormat(); a pure
                     and a shrink-only baseline names the readouts not yet
                     migrated, each with an exact count, so a new site and a
                     stale entry both fail. ui-conventions.test.ts fails a UI
-                    import of the English-only formatRelativeTime (use
-                    useRelativeTime). The PDF header's generation time is
+                    import of the removed English-only formatRelativeTime, or
+                    its return to lib/format.ts (use useRelativeTime). The PDF header's generation time is
                     formatted by the reader's date, time and timezone
                     preferences and labelled from the catalog (pdf-export.ts).
                     The percentage scan is keyed on the literal '%' rather than

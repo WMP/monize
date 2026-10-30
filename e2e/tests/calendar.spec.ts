@@ -115,6 +115,20 @@ async function showPreviousMonth(page: Page, aDayInIt: string) {
   await expect(dayCell(page, aDayInIt)).toBeVisible();
 }
 
+/** Step the open calendar forward one month, and wait for that month's grid. */
+async function showNextMonth(page: Page, aDayInIt: string) {
+  await page.getByRole('button', { name: 'Next month', exact: true }).click();
+  await expect(dayCell(page, aDayInIt)).toBeVisible();
+}
+
+/**
+ * The 15th of the month `ymd` is in: a day no adjacent month's grid can show as
+ * a leading or trailing day, so waiting for it proves the month has changed.
+ */
+function midMonthOf(ymd: string): string {
+  return `${ymd.slice(0, 8)}15`;
+}
+
 test.describe('Transactions calendar', () => {
   test('draws the month, its balances and a projected day, and survives a reload', async ({
     authedPage: page,
@@ -125,6 +139,11 @@ test.describe('Transactions calendar', () => {
     const payday = shiftDays(today, -5);
     const spendDay = shiftDays(today, -3);
     const billDay = shiftDays(today, 3);
+    // Three days ahead crosses into the next month at a month's end (it did,
+    // on the 30th and 31st), and the grid opens on today's month. A day of its
+    // own month is always in that month's grid, so the spec steps forward for
+    // the bill and back for the rows (see `dayOfCurrentMonth`).
+    const billNextMonth = billDay.slice(0, 7) !== today.slice(0, 7);
     const payee = `Cal Payee ${uniqueId()}`;
     const schedule = `Cal Rent ${uniqueId()}`;
 
@@ -154,10 +173,12 @@ test.describe('Transactions calendar', () => {
     await expect(dayCell(page, spendDay)).toContainText(payee);
     await expect(dayCell(page, spendDay)).toContainText('-$42.50');
     // An occurrence lands on its due date and links to where it is edited.
+    if (billNextMonth) await showNextMonth(page, midMonthOf(billDay));
     await expect(dayCell(page, billDay)).toContainText(schedule);
     await expect(
       dayCell(page, billDay).getByRole('link', { name: new RegExp(schedule) }),
     ).toHaveAttribute('href', /\/bills\?highlight=/);
+    if (billNextMonth) await showPreviousMonth(page, midMonthOf(today));
 
     await page.getByRole('button', { name: 'Balances', exact: true }).click();
 
@@ -166,6 +187,7 @@ test.describe('Transactions calendar', () => {
       '$457.50',
     );
     // ...and projected after it, from the same balance and the bill due that day.
+    if (billNextMonth) await showNextMonth(page, midMonthOf(billDay));
     const projected = dayCell(page, billDay).getByTestId('calendar-balance-projected');
     await expect(projected).toContainText('$357.50');
     await expect(projected.getByLabel('Projected')).toBeVisible();

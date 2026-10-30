@@ -141,7 +141,7 @@ describe('TaxSummaryReport', () => {
     mockGetTaxSummary.mockRejectedValue(new Error('Network error'));
     render(<TaxSummaryReport />);
     await waitFor(() => {
-      expect(screen.getByText('Try again')).toBeInTheDocument();
+      expect(screen.getByText('Try Again')).toBeInTheDocument();
     });
   });
 

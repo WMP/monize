@@ -60,6 +60,7 @@ import { useFormSubmitRef } from '@/hooks/useFormSubmitRef';
 import { useFormDirtyNotify } from '@/hooks/useFormDirtyNotify';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { FormActions } from '@/components/ui/FormActions';
+import { ArrowDownTrayIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 
 const logger = createLogger('AccountForm');
 
@@ -1324,15 +1325,7 @@ export function AccountForm({
             <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
               {t('form.cashSection.title')}
             </span>
-            <svg
-              className={`h-4 w-4 text-gray-500 transition-transform ${showCashSection ? '' : '-rotate-90'}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              aria-hidden="true"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
+            <ChevronDownIcon className={`h-4 w-4 text-gray-500 transition-transform ${showCashSection ? '' : '-rotate-90'}`} aria-hidden="true" />
           </button>
           {showCashSection && (
             <div className="space-y-4 border-t border-gray-200 px-4 py-4 dark:border-gray-700">
@@ -1450,22 +1443,8 @@ export function AccountForm({
               className="flex items-center gap-1.5 px-2.5 py-2 rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               title={t('form.exportTitle')}
             >
-              <svg
-                className="w-5 h-5 text-gray-500 dark:text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                />
-              </svg>
-              <span className="hidden sm:inline text-sm text-gray-700 dark:text-gray-300">
-                {t('form.exportLabel')}
-              </span>
+              <ArrowDownTrayIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+              <span className="hidden sm:inline text-sm text-gray-700 dark:text-gray-300">{t('form.exportLabel')}</span>
             </button>
           </div>
         )}
@@ -1510,10 +1489,8 @@ export function AccountForm({
         maxWidth="lg"
         className="p-6"
         pushHistory
+        title={t('form.newInstitutionTitle')}
       >
-        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-          {t('form.newInstitutionTitle')}
-        </h2>
         <InstitutionForm
           initialName={pendingInstitutionName}
           onSubmit={handleInstitutionCreated}

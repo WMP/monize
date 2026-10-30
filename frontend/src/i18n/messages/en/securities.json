@@ -11,6 +11,7 @@
     "subtitle": "Manage your stocks, ETFs, mutual funds, and other securities",
     "newSecurity": "+ New Security",
     "searchPlaceholder": "Search by symbol or name...",
+    "statusFilterLabel": "Status",
     "statusAll": "All ({count})",
     "statusActive": "Active ({count})",
     "statusInactive": "Inactive ({count})",
@@ -65,10 +66,7 @@
       "inactive": "Inactive",
       "inactiveShort": "Ina"
     },
-    "providerTitle": {
-      "override": "Per-security provider override",
-      "inherited": "Inherited from your default Quote Provider preference"
-    },
+    "providerInherited": "{provider} (default)",
     "columnTitles": {
       "shares": "Current shares held across all accounts",
       "value": "Shares held across all accounts at the most recent price, in the security's own currency",
@@ -218,11 +216,10 @@
   "priceForm": {
     "dateLabel": "Date",
     "closePriceLabel": "Close Price",
-    "openPriceLabel": "Open Price",
-    "highPriceLabel": "High Price",
-    "lowPriceLabel": "Low Price",
-    "volumeLabel": "Volume",
-    "optionalPlaceholder": "Optional",
+    "openPriceLabel": "Open Price (optional)",
+    "highPriceLabel": "High Price (optional)",
+    "lowPriceLabel": "Low Price (optional)",
+    "volumeLabel": "Volume (optional)",
     "submitCreate": "Add Price",
     "submitUpdate": "Update Price"
   },

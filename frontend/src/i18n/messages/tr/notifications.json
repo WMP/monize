@@ -35,7 +35,7 @@
     "createFailed": "Hatırlatıcı ayarlanamadı",
     "dialogTitle": "Bana hatırlat",
     "dialogDescription": "Harekete geçene kadar bu bildirimi daha sonra tekrar al.",
-    "modeLabel": "Ne sıklıkla",
+    "modeLabel": "Sıklık",
     "modeRepeat": "Ben durdurana kadar tekrarla",
     "modeOnce": "Sadece bir kez daha",
     "intervalLabelRepeat": "Bana hatırlat, her",

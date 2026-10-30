@@ -36,6 +36,8 @@ interface BudgetCategoryFormProps {
   currencyCode: string;
   onSave: (data: UpdateBudgetCategoryData) => Promise<void>;
   onCancel: () => void;
+  /** Offers a "Remove from budget" action; the caller confirms and deletes. */
+  onRemove?: () => void;
   isSaving?: boolean;
 }
 
@@ -47,6 +49,7 @@ export function BudgetCategoryForm({
   currencyCode,
   onSave,
   onCancel,
+  onRemove,
   isSaving = false,
 }: BudgetCategoryFormProps) {
   const t = useTranslations('budgets');
@@ -218,13 +221,20 @@ export function BudgetCategoryForm({
         placeholder={t('categoryForm.notesPlaceholder')}
       />
 
-      <div className="flex justify-end gap-3 pt-2">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          {tc('cancel')}
-        </Button>
-        <Button type="submit" disabled={isSaving}>
-          {isSaving ? t('categoryForm.saving') : tc('save')}
-        </Button>
+      <div className={`flex flex-wrap gap-3 pt-2 ${onRemove ? 'justify-between' : 'justify-end'}`}>
+        {onRemove && (
+          <Button type="button" variant="danger" onClick={onRemove} disabled={isSaving}>
+            {t('categoryForm.remove')}
+          </Button>
+        )}
+        <div className="flex gap-3">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            {tc('cancel')}
+          </Button>
+          <Button type="submit" disabled={isSaving}>
+            {isSaving ? t('categoryForm.saving') : tc('save')}
+          </Button>
+        </div>
       </div>
     </form>
   );
