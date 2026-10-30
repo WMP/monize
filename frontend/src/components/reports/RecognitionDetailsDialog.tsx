@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { DateInput } from "@/components/ui/DateInput";
+import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import { EmptyState } from "@/components/ui/EmptyState";
 import {
   TABLE_CLASS,
@@ -47,11 +48,11 @@ export function RecognitionDetailsDialog({
       padding="md"
       isOpen
       title={t("title")}
+      description={t("help")}
       onClose={onClose}
       maxWidth="3xl"
     >
       <div className="space-y-4">
-        <p>{t("help")}</p>
         {input && (
           <div className="grid gap-3 sm:grid-cols-2">
             <DateInput
@@ -72,8 +73,11 @@ export function RecognitionDetailsDialog({
           <p role="status">{tc("loading")}</p>
         ) : error ? (
           <div role="alert">
-            <p>{t("failed")}</p>
-            <Button onClick={reload}>{t("retry")}</Button>
+            <EmptyState
+              icon={<ExclamationTriangleIcon />}
+              title={t("failed")}
+              action={<Button onClick={reload}>{t("retry")}</Button>}
+            />
           </div>
         ) : (
           data && (

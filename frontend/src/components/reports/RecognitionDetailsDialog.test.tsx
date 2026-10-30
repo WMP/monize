@@ -95,6 +95,6 @@ it("shows request failures and retries instead of displaying an empty result", a
     .mockResolvedValueOnce({ ...result, rows: [], fxComplete: true, total: 0 });
   render(<RecognitionDetailsDialog input={input} onClose={vi.fn()} />);
   await screen.findByRole("alert");
-  fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+  fireEvent.click(screen.getByRole("button", { name: /try again/i }));
   await waitFor(() => expect(reportingDetailsApi.get).toHaveBeenCalledTimes(2));
 });

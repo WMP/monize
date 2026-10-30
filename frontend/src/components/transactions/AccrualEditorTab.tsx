@@ -10,7 +10,9 @@ import {
 } from "@/lib/accruals";
 import { clearAllCache } from "@/lib/apiCache";
 import type { UpdateTransactionData } from "@/types/transaction";
+import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Select } from "@/components/ui/Select";
 import { Input } from "@/components/ui/Input";
 import { NumericInput } from "@/components/ui/NumericInput";
@@ -245,10 +247,15 @@ export function AccrualEditorTab({
       <p>{t("reviewHelp")}</p>
       {editor.failed ? (
         <div role="alert">
-          <p>{t("failed")}</p>
-          <Button type="button" onClick={editor.retry}>
-            {t("retry")}
-          </Button>
+          <EmptyState
+            icon={<ExclamationTriangleIcon />}
+            title={t("failed")}
+            action={
+              <Button type="button" onClick={editor.retry}>
+                {t("retry")}
+              </Button>
+            }
+          />
         </div>
       ) : !editor.ready ? (
         <p role="status">{t("title")}</p>

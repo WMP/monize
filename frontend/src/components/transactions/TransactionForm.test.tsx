@@ -5637,7 +5637,7 @@ describe('TransactionForm initialStagedFiles', () => {
       const source=createExistingTransaction();
       await act(async()=>{render(<TransactionForm transaction={source} />);});
       await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Accrual'}));});
-      await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Review accrual changes'}));});
+      await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Review Accrual Changes'}));});
       expect(accrualsApi.editorPreview).toHaveBeenLastCalledWith(source.id,expect.objectContaining({settings:[expect.objectContaining({sourceTransactionId:source.id,preset:'NTM'})]}));
       expect(mockUpdate).not.toHaveBeenCalled();
       expect(accrualsApi.editorSave).not.toHaveBeenCalled();
@@ -5658,7 +5658,7 @@ describe('TransactionForm initialStagedFiles', () => {
       expect(screen.getByLabelText('Amount')).not.toBeVisible();
       await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Transaction'}));});
       expect(screen.getByLabelText('Amount')).toHaveValue('-75.00');
-      expect(screen.getByRole('button',{name:'Review accrual changes'})).toBeInTheDocument();
+      expect(screen.getByRole('button',{name:'Review Accrual Changes'})).toBeInTheDocument();
       // Upstream refuses conversion of an existing expense to a transfer.
       // The schedule remains available without offering an unsaveable mode.
       expect(screen.queryByRole('button', {name:'Transfer'})).not.toBeInTheDocument();
@@ -5689,7 +5689,7 @@ describe('TransactionForm initialStagedFiles', () => {
       expect(mockUpdate).toHaveBeenCalledTimes(1);
       expect(accrualsApi.sourcePreview).toHaveBeenCalledTimes(1);
       expect(mockOnSuccess).not.toHaveBeenCalled();
-      await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Save reviewed changes'}));});
+      await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Save Reviewed Changes'}));});
       expect(mockUpdate).toHaveBeenCalledTimes(2);
       expect(mockUpdate.mock.calls[1][1]).toMatchObject({accrualImpactFingerprint:'first-token'});
       expect(mockOnSuccess).toHaveBeenCalledTimes(1);
@@ -5711,7 +5711,7 @@ describe('TransactionForm initialStagedFiles', () => {
       await act(async () => { render(<TransactionForm transaction={tx} />); });
       await act(async () => { fireEvent.click(screen.getByRole('button',{name:/Update Transaction/i})); });
       expect(vi.mocked(accrualsApi.sourcePreview).mock.calls[0][1].splits).toEqual([expect.objectContaining({id,amount:-50})]);
-      await act(async () => { fireEvent.click(screen.getByRole('button',{name:'Save reviewed changes'})); });
+      await act(async () => { fireEvent.click(screen.getByRole('button',{name:'Save Reviewed Changes'})); });
       expect(mockUpdate.mock.calls[1][1].splits).toEqual([expect.objectContaining({id,amount:-50})]);
     });
     it('does not update when review is cancelled', async () => {

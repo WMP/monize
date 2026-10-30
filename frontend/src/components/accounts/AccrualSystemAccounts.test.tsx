@@ -86,7 +86,7 @@ it("shows a retryable failure rather than zero or an empty list", async () => {
   });
   expect(screen.getByRole("alert")).toBeInTheDocument();
   await act(async () => {
-    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    fireEvent.click(screen.getByRole("button", { name: "Try Again" }));
   });
   expect(accrualsApi.systemBalances).toHaveBeenCalledTimes(2);
   await screen.findByText("USD");

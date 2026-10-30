@@ -75,7 +75,7 @@ it("freezes the exact submitted patch and only returns it after explicit review"
   patch.tagIds.push("later");
   const view = render(result.current.dialog!);
   await act(async () => {
-    fireEvent.click(screen.getByText("Save reviewed changes"));
+    fireEvent.click(screen.getByText("Save Reviewed Changes"));
   });
   expect(await pending).toEqual({
     amount: -1200,

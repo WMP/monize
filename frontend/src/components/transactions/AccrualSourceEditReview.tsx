@@ -77,11 +77,11 @@ export function AccrualSourceEditReview({
       padding="md"
       isOpen
       title={t("reviewEdit")}
+      description={t("reviewHelp")}
       onClose={() => onDecision(false)}
       maxWidth="lg"
     >
       <div className="space-y-4">
-        <p>{t("reviewHelp")}</p>
         {preview.impacts.map((impact) => (
           <section key={impact.scheduleId} className="space-y-3">
             <p>
@@ -184,7 +184,7 @@ export function AccrualSourceEditReview({
         <div className="flex justify-end gap-2">
           <Button
             type="button"
-            variant="secondary"
+            variant="outline"
             onClick={() => onDecision(false)}
           >
             {tc("cancel")}

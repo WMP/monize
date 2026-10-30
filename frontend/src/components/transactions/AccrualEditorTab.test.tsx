@@ -170,7 +170,7 @@ it("shows an actual lookup failure and recovers through the active tab retry", a
   await act(async () => render(<ActiveEditor />));
   expect(screen.getByRole("alert")).toBeInTheDocument();
   expect(screen.queryByRole("button",{name:"Preview"})).not.toBeInTheDocument();
-  await act(async () => fireEvent.click(screen.getByRole("button",{name:"Retry"})));
+  await act(async () => fireEvent.click(screen.getByRole("button",{name:"Try Again"})));
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   expect(screen.getByRole("button",{name:"Preview"})).toBeInTheDocument();
 });

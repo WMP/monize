@@ -17,6 +17,7 @@ import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
+import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TABLE_CLASS, TABLE_BODY_CLASS, Th, Td } from "@/components/ui/Table";
 import { ReportToolbarActions } from "@/components/reports/ReportToolbarActions";
@@ -75,8 +76,11 @@ function SystemAccountContent({ embedded }: { embedded: boolean }) {
         <p role="status">{common("loading")}</p>
       ) : error ? (
         <div role="alert">
-          <p>{tc("failed")}</p>
-          <Button onClick={reload}>{tc("retry")}</Button>
+          <EmptyState
+            icon={<ExclamationTriangleIcon />}
+            title={tc("failed")}
+            action={<Button onClick={reload}>{tc("retry")}</Button>}
+          />
         </div>
       ) : !accounts.length ? (
         <EmptyState title={t("empty")} />
@@ -274,8 +278,11 @@ function MovementDetails({
         <p role="status">{common("loading")}</p>
       ) : error ? (
         <div role="alert">
-          <p>{tc("failed")}</p>
-          <Button onClick={reload}>{tc("retry")}</Button>
+          <EmptyState
+            icon={<ExclamationTriangleIcon />}
+            title={tc("failed")}
+            action={<Button onClick={reload}>{tc("retry")}</Button>}
+          />
         </div>
       ) : data ? (
         renderData(data)
