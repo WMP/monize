@@ -125,17 +125,16 @@ export const CategoryPayeeBarChart = memo(function CategoryPayeeBarChart({
 }: CategoryPayeeBarChartProps) {
   const t = useTranslations('transactions');
   const chartTitle = t('charts.monthlyTotals.title');
-  const { formatCurrency: formatDefault, formatCurrencyAxis: axisDefault, formatNumber } =
-    useNumberFormat();
+  const { formatCurrency, formatCurrencyAxis, formatNumber } = useNumberFormat();
   // The server names the currency its totals are in; the user default otherwise.
   const currency = data.find((d) => d.currency)?.currency;
-  const formatCurrency = useCallback(
-    (v: number) => formatDefault(v, currency),
-    [formatDefault, currency],
+  const formatMoney = useCallback(
+    (v: number) => formatCurrency(v, currency),
+    [formatCurrency, currency],
   );
-  const formatCurrencyAxis = useCallback(
-    (v: number) => axisDefault(v, currency),
-    [axisDefault, currency],
+  const formatMoneyAxis = useCallback(
+    (v: number) => formatCurrencyAxis(v, currency),
+    [formatCurrencyAxis, currency],
   );
   const formatChartDate = useChartDateFormat();
   const chartRef = useRef<HTMLDivElement>(null);
@@ -228,11 +227,11 @@ export const CategoryPayeeBarChart = memo(function CategoryPayeeBarChart({
     ? [
         {
           label: t(`charts.monthlyTotals.${AVG_LABEL_KEY[granularity]}`),
-          value: formatCurrency(summary.periodAvg) + (summary.partial ? ' *' : ''),
+          value: formatMoney(summary.periodAvg) + (summary.partial ? ' *' : ''),
         },
         {
           label: t('charts.monthlyTotals.total'),
-          value: formatCurrency(summary.total) + (summary.partial ? ' *' : ''),
+          value: formatMoney(summary.total) + (summary.partial ? ' *' : ''),
         },
         {
           label: t('charts.monthlyTotals.transactions'),
@@ -361,10 +360,10 @@ export const CategoryPayeeBarChart = memo(function CategoryPayeeBarChart({
               tick={{ fill: chartColors.axis, fontSize: 11 }}
               tickLine={false}
               axisLine={false}
-              tickFormatter={formatCurrencyAxis}
+              tickFormatter={formatMoneyAxis}
               width="auto"
             />
-            <Tooltip content={<MonthlyTotalTooltip formatCurrency={formatCurrency} />} />
+            <Tooltip content={<MonthlyTotalTooltip formatCurrency={formatMoney} />} />
             <Bar
               dataKey="absTotal"
               radius={[4, 4, 0, 0]}
@@ -389,8 +388,8 @@ export const CategoryPayeeBarChart = memo(function CategoryPayeeBarChart({
                   textAnchor={verticalLabels ? 'start' : 'middle'}
                   formatter={(value: unknown) =>
                     isMobile
-                      ? formatCurrencyAxis(Number(value))
-                      : formatCurrency(Number(value))
+                      ? formatMoneyAxis(Number(value))
+                      : formatMoney(Number(value))
                   }
                   style={{
                     fill: chartColors.axis,
@@ -415,7 +414,7 @@ export const CategoryPayeeBarChart = memo(function CategoryPayeeBarChart({
                 gainLossColor(summary.periodAvg)
               }`}
             >
-              {formatCurrency(summary.periodAvg)}
+              {formatMoney(summary.periodAvg)}
               {summary.partial && ' *'}
             </div>
           </div>
@@ -426,7 +425,7 @@ export const CategoryPayeeBarChart = memo(function CategoryPayeeBarChart({
                 gainLossColor(summary.total)
               }`}
             >
-              {formatCurrency(summary.total)}
+              {formatMoney(summary.total)}
               {summary.partial && ' *'}
             </div>
           </div>

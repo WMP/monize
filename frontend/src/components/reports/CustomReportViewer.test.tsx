@@ -540,9 +540,8 @@ describe("CustomReportViewer", () => {
       render(<CustomReportViewer reportId="rpt-1" />);
 
       expect(await screen.findByTestId("truncated-notice")).toBeInTheDocument();
-      expect(screen.getByTestId("truncated-total")).toHaveTextContent("$200.00");
-      // No invented exclusion: nothing was left out for want of a rate.
-      expect(screen.queryByTestId("partial-total")).not.toBeInTheDocument();
+      // The shared marker, explained by the row limit, not by a missing rate.
+      expect(screen.getByTestId("partial-total")).toHaveTextContent("$200.00");
       // The chart's Total row (table and PDF) is still marked partial.
       expect(screen.getByTestId("report-chart")).toHaveAttribute("data-partial", "1");
     });

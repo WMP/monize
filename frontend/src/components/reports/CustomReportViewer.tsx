@@ -26,7 +26,6 @@ import { getErrorMessage } from '@/lib/errors';
 import { useTranslations } from 'next-intl';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PartialTotal } from '@/components/ui/PartialTotal';
-import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { PartialDataNotice } from '@/components/reports/PartialDataNotice';
 import { isComplete, reportTotal, type ConvertedTotal } from '@/lib/currency-total';
 
@@ -311,22 +310,17 @@ export function CustomReportViewer({ reportId }: CustomReportViewerProps) {
               <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {/* A null total is withheld, not zero: show the part that converted
                     and mark it. The count metric's total is never null. */}
-                {truncatedOnly ? (
-                  <span className="inline-flex items-baseline gap-1" data-testid="truncated-total">
-                    <span>{formatValue(summaryTotal?.value ?? 0)}</span>
-                    <span className="text-amber-600 dark:text-amber-400" aria-hidden="true">
-                      *
-                    </span>
-                    <InfoTooltip placement="top" text={t('customReportViewer.truncatedNotice')} usePortal />
-                  </span>
-                ) : (
-                  <PartialTotal
-                    total={summaryTotal ?? reportTotal(0, null)}
-                    displayCurrency={result.currency ?? defaultCurrency}
-                  >
-                    {formatValue(summaryTotal?.value ?? 0)}
-                  </PartialTotal>
-                )}
+                <PartialTotal
+                  total={
+                    truncatedOnly
+                      ? { ...(summaryTotal ?? reportTotal(0, null)), excludedCount: 1 }
+                      : (summaryTotal ?? reportTotal(0, null))
+                  }
+                  displayCurrency={result.currency ?? defaultCurrency}
+                  explanation={truncatedOnly ? t('customReportViewer.truncatedNotice') : undefined}
+                >
+                  {formatValue(summaryTotal?.value ?? 0)}
+                </PartialTotal>
               </div>
               <div className="text-sm text-gray-500 dark:text-gray-400">
                 {t('customReportViewer.transactionCount', { count: result.summary.count })}
