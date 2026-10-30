@@ -12,6 +12,7 @@ import { accrualPreviewFingerprint } from "./accrual-fingerprint";
 import { loadAccrualSource } from "./accrual-source";
 import { findAccrual, storedAccrualPlan } from "./accrual-store";
 import { accrualErrors } from "./accrual-errors";
+import { userHasAnyAccrualSchedule } from "./accrual-user-gate";
 
 /** Stable key order; arrays retain their explicit order. No financial coercion. */
 export function canonical(value: unknown): unknown {
@@ -101,11 +102,14 @@ export async function resolveSourceAccrualEdit(
     transactionId,
     patch.splits,
   );
-  const rows: { sourceSplitId: string | null }[] = await m.query(
-    `SELECT source_split_id AS "sourceSplitId" FROM accrual_schedules
-     WHERE user_id=$1 AND source_transaction_id=$2 ORDER BY id`,
-    [userId, transactionId],
-  );
+  const rows: { sourceSplitId: string | null }[] =
+    (await userHasAnyAccrualSchedule(m, userId))
+      ? await m.query(
+          `SELECT source_split_id AS "sourceSplitId" FROM accrual_schedules
+           WHERE user_id=$1 AND source_transaction_id=$2 ORDER BY id`,
+          [userId, transactionId],
+        )
+      : [];
   const impacts: AccrualEditResolution["impacts"] = [];
   const signatures: string[] = [];
   for (const row of rows) {

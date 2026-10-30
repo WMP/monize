@@ -116,6 +116,9 @@ export class AccrualsService {
     userId: string,
     dto: AccrualPreviewDto,
     mutable: boolean,
+    /** FOR UPDATE on the transaction/schedule rows; independent of `mutable`'s
+     * reconciled-row check, which a preview enforces too, just without locking. */
+    lock: boolean = mutable,
   ) {
     const source = await loadAccrualSource(
       m,
@@ -124,7 +127,7 @@ export class AccrualsService {
       dto.sourceSplitId ?? null,
       mutable,
       true,
-      mutable,
+      lock,
     );
     const family = source.family ?? dto.family;
     if (!family) throw accrualErrors.family();
@@ -148,7 +151,7 @@ export class AccrualsService {
       userId,
       source.snapshot.transactionId,
       source.snapshot.splitId,
-      mutable,
+      lock,
     );
     const fingerprint = accrualPreviewFingerprint(
       source.snapshot,
@@ -241,7 +244,13 @@ export class AccrualsService {
   async preview(userId: string, dto: AccrualPreviewDto) {
     requireAccrualOwner(userId);
     return withScopedDb(this.dataSource, async (m) => {
-      const resolved = await this.resolve(m, userId, dto, true);
+      // Nothing commits here, so never FOR UPDATE -- but the reconciled-row
+      // check still applies (an edit blocked at save time should also be
+      // blocked at preview time): mutable=true keeps that check, lock=false
+      // drops only the row lock. save() re-locks and re-verifies the
+      // fingerprint/revision against this preview's answer on its own, so a
+      // race in between is refused there, not prevented here.
+      const resolved = await this.resolve(m, userId, dto, true, false);
       return this.previewView(resolved);
     });
   }

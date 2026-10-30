@@ -6,6 +6,7 @@ import type { AccrualFamily } from "./accrual-balance";
 import type { AccrualSourceSnapshot } from "./accrual-fingerprint";
 import { AccrualAllocationEntity } from "./entities/accrual-allocation.entity";
 import { parseAccrualMoney, formatAccrualMoney } from "./accrual-money";
+import { markAccrualScheduleExists } from "./accrual-user-gate";
 
 export interface StoredAccrual {
   id: string;
@@ -135,5 +136,8 @@ export async function writeAccrual(
       amount: row.amount,
     })),
   );
+  // A cached "this user has no schedules" answer from earlier in this same
+  // request/job must not survive the user's first schedule (accrual-user-gate.ts).
+  markAccrualScheduleExists(userId);
   return id;
 }
