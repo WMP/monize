@@ -399,10 +399,16 @@
     "submitCreateAndNewDescription": "Enregistrer et en saisir une autre, avec le même compte et la même date.",
     "submitOptions": "Choisir ce qui se passe après la création",
     "submitUpdate": "Mettre à jour {mode}",
+    "submitConvert": "Convertir en {mode}",
     "reconciledConfirm": {
       "title": "Modifier une transaction rapprochée ?",
       "message": "Cette transaction est rapprochée. La modifier affectera un rapprochement terminé. Voulez-vous quand même enregistrer vos modifications ?",
       "confirm": "Enregistrer les modifications"
+    },
+    "counterpartConfirm": {
+      "title": "Convertir ce virement ?",
+      "message": "L'autre côté de ce virement a déjà été pointé ou rapproché. Le convertir en transaction supprime cette écriture de l'autre compte et modifie un solde vérifié avec un relevé. Voulez-vous continuer ?",
+      "confirm": "Convertir quand même"
     },
     "modeLabel": {
       "transfer": "Virement",
@@ -432,7 +438,8 @@
       "destinationRequired": "Veuillez sélectionner un compte destination",
       "sameAccount": "Les comptes source et destination doivent être différents",
       "negativeTransfer": "Le montant du virement ne doit pas être négatif",
-      "convertToTransferUnsupported": "Une transaction existante ne peut pas être transformée en virement ici. Supprimez-la et créez plutôt le virement.",
+      "convertedToTransfer": "Converti en virement",
+      "convertedToTransaction": "Converti en transaction",
       "payeeCreated": "Bénéficiaire « {name} » créé",
       "payeeCreateFailed": "Échec de la création du bénéficiaire",
       "payeeReactivated": "Bénéficiaire « {name} » réactivé",
@@ -475,7 +482,8 @@
       "loading": "Chargement des garanties",
       "loadError": "Les garanties de cette transaction n'ont pas pu être chargées.",
       "empty": "Aucune garantie pour l'instant"
-    }
+    },
+    "conversionLockedNote": "Ce virement appartient à une transaction fractionnée ou au compte d'un autre propriétaire ; il ne peut donc rester ici qu'un virement. Modifiez-le depuis la répartition ou supprimez-le et créez l'écriture souhaitée."
   },
   "splitEditor": {
     "header": "Détails de la répartition",

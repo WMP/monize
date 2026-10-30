@@ -399,10 +399,16 @@
     "submitCreateAndNewDescription": "保存して、同じ口座と日付で次の入力を始めます。",
     "submitOptions": "作成後の動作を選択",
     "submitUpdate": "{mode}を更新",
+    "submitConvert": "{mode}に変換",
     "reconciledConfirm": {
       "title": "照合済みの取引を編集しますか？",
       "message": "この取引は照合済みです。変更すると完了した照合に影響します。それでも変更を保存しますか？",
       "confirm": "変更を保存"
+    },
+    "counterpartConfirm": {
+      "title": "この振替を変換しますか？",
+      "message": "この振替の相手側はすでに確認済みまたは照合済みです。取引に変換すると、その項目が相手口座から削除され、明細と照合済みの残高が変わります。続行しますか？",
+      "confirm": "変換する"
     },
     "modeLabel": {
       "transfer": "振替",
@@ -432,7 +438,8 @@
       "destinationRequired": "振替先口座を選択してください",
       "sameAccount": "振替元と振替先の口座は異なる必要があります",
       "negativeTransfer": "振替金額はマイナスにできません",
-      "convertToTransferUnsupported": "既存の取引はここで振替に変更できません。取引を削除して、代わりに振替を作成してください。",
+      "convertedToTransfer": "振替に変換しました",
+      "convertedToTransaction": "取引に変換しました",
       "payeeCreated": "支払先「{name}」を作成しました",
       "payeeCreateFailed": "支払先の作成に失敗しました",
       "payeeReactivated": "支払先「{name}」を再有効化しました",
@@ -475,7 +482,8 @@
       "loading": "保証を読み込み中",
       "loadError": "この取引の保証を読み込めませんでした。",
       "empty": "保証はまだありません"
-    }
+    },
+    "conversionLockedNote": "この振替は分割取引または他の所有者の口座に属しているため、ここでは振替のままにしかできません。分割から変更するか、削除して必要な項目を作成してください。"
   },
   "splitEditor": {
     "header": "分割の詳細",

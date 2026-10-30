@@ -34,7 +34,8 @@
       "WANT": "Zachcianka",
       "SAVING": "Oszczędność"
     },
-    "saving": "Zapisywanie..."
+    "saving": "Zapisywanie...",
+    "remove": "Usuń z budżetu"
   },
   "categoryList": {
     "title": "Budżety kategorii",
@@ -521,12 +522,19 @@
       "percentUsed": "{percent}% wykorzystane",
       "rolloverType": "Przenoszenie: {type}",
       "editCategoryTitle": "Edytuj {name}",
+      "remove": {
+        "title": "Usuń kategorię",
+        "message": "Usunąć \"{name}\" z tego budżetu? Przydział {amount} nie będzie już budżetowany, a jego historia z poprzednich okresów budżetu zostanie usunięta. Twoje transakcje pozostaną bez zmian. Tej operacji nie można cofnąć.",
+        "confirm": "Usuń"
+      },
       "toasts": {
         "updated": "Budżet zaktualizowany",
         "updateFailed": "Nie udało się zaktualizować budżetu",
         "categoryUpdated": "Kategoria zaktualizowana",
         "categoryFailed": "Nie udało się zaktualizować kategorii",
-        "loadFailed": "Nie udało się załadować budżetu"
+        "loadFailed": "Nie udało się załadować budżetu",
+        "categoryRemoved": "Kategoria usunięta z budżetu",
+        "categoryRemoveFailed": "Nie udało się usunąć kategorii"
       }
     }
   },

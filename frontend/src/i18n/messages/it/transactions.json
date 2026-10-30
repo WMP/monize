@@ -399,10 +399,16 @@
     "submitCreateAndNewDescription": "Salva e inseriscine un'altra, con lo stesso conto e la stessa data.",
     "submitOptions": "Scegli cosa succede dopo la creazione",
     "submitUpdate": "Aggiorna {mode}",
+    "submitConvert": "Converti in {mode}",
     "reconciledConfirm": {
       "title": "Modificare la transazione riconciliata?",
       "message": "Questa transazione è riconciliata. Modificarla influirà su una riconciliazione completata. Vuoi salvare comunque le modifiche?",
       "confirm": "Salva modifiche"
+    },
+    "counterpartConfirm": {
+      "title": "Convertire questo trasferimento?",
+      "message": "L'altro lato di questo trasferimento è già stato contabilizzato o riconciliato. Convertirlo in una transazione rimuove quella voce dall'altro conto e modifica un saldo verificato con un estratto conto. Vuoi continuare?",
+      "confirm": "Converti comunque"
     },
     "modeLabel": {
       "transfer": "Trasferimento",
@@ -432,7 +438,8 @@
       "destinationRequired": "Seleziona un conto di destinazione",
       "sameAccount": "Il conto di origine e quello di destinazione devono essere diversi",
       "negativeTransfer": "L'importo del trasferimento non deve essere negativo",
-      "convertToTransferUnsupported": "Una transazione esistente non può essere trasformata qui in un trasferimento. Eliminala e crea invece il trasferimento.",
+      "convertedToTransfer": "Convertito in trasferimento",
+      "convertedToTransaction": "Convertito in transazione",
       "payeeCreated": "Beneficiario \"{name}\" creato",
       "payeeCreateFailed": "Creazione beneficiario non riuscita",
       "payeeReactivated": "Beneficiario \"{name}\" riattivato",
@@ -475,7 +482,8 @@
       "loading": "Caricamento delle garanzie",
       "loadError": "Impossibile caricare le garanzie di questa transazione.",
       "empty": "Ancora nessuna garanzia"
-    }
+    },
+    "conversionLockedNote": "Questo trasferimento appartiene a una transazione suddivisa o al conto di un altro proprietario, quindi qui può restare solo un trasferimento. Modificalo dalla suddivisione oppure eliminalo e crea la voce desiderata."
   },
   "splitEditor": {
     "header": "Dettagli suddivisione",

@@ -163,4 +163,35 @@ describe('BudgetCategoryForm', () => {
     expect(screen.getByLabelText('Warning at (%)')).toBeInTheDocument();
     expect(screen.getByLabelText('Critical at (%)')).toBeInTheDocument();
   });
+
+  it('offers no remove action unless the caller can remove the line', () => {
+    render(
+      <BudgetCategoryForm
+        category={mockCategory}
+        currencyCode="CAD"
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: 'Remove from budget' })).not.toBeInTheDocument();
+  });
+
+  it('calls onRemove without saving when the remove action is clicked', () => {
+    const handleRemove = vi.fn();
+    const handleSave = vi.fn();
+    render(
+      <BudgetCategoryForm
+        category={mockCategory}
+        currencyCode="CAD"
+        onSave={handleSave}
+        onCancel={vi.fn()}
+        onRemove={handleRemove}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from budget' }));
+    expect(handleRemove).toHaveBeenCalledTimes(1);
+    expect(handleSave).not.toHaveBeenCalled();
+  });
 });

@@ -871,6 +871,30 @@ describe("ActionHistoryService", () => {
         expect(mockQueryRunner.manager.update).not.toHaveBeenCalled();
       });
 
+      it("refuses the undo of a conversion between a transaction and a transfer", async () => {
+        const action = {
+          ...splitAction(undefined, undefined),
+          beforeData: {
+            accountId: "acc-1",
+            amount: -50,
+            isTransfer: false,
+            linkedTransactionId: null,
+          },
+          afterData: {
+            accountId: "acc-1",
+            amount: -50,
+            isTransfer: true,
+            linkedTransactionId: "tx-2",
+          },
+        };
+        arrange(action);
+
+        await expect(service.undo(userId)).rejects.toMatchObject({
+          response: { errorCode: "UNDO_CONVERSION" },
+        });
+        expect(mockQueryRunner.manager.update).not.toHaveBeenCalled();
+      });
+
       it("still undoes a VOID of a row without legs", async () => {
         const action = {
           ...splitAction(undefined, undefined),

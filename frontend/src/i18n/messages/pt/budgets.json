@@ -34,7 +34,8 @@
       "WANT": "Desejo",
       "SAVING": "Poupança"
     },
-    "saving": "A guardar..."
+    "saving": "A guardar...",
+    "remove": "Remover do orçamento"
   },
   "categoryList": {
     "title": "Orçamentos por Categoria",
@@ -521,12 +522,19 @@
       "percentUsed": "{percent}% utilizado",
       "rolloverType": "Transição: {type}",
       "editCategoryTitle": "Editar {name}",
+      "remove": {
+        "title": "Remover categoria",
+        "message": "Remover \"{name}\" deste orçamento? A sua alocação de {amount} deixará de ser orçamentada e o seu histórico nos períodos de orçamento anteriores será eliminado. As suas transações não são afetadas. Esta ação não pode ser anulada.",
+        "confirm": "Remover"
+      },
       "toasts": {
         "updated": "Orçamento atualizado",
         "updateFailed": "Falha ao atualizar orçamento",
         "categoryUpdated": "Categoria atualizada",
         "categoryFailed": "Falha ao atualizar categoria",
-        "loadFailed": "Falha ao carregar orçamento"
+        "loadFailed": "Falha ao carregar orçamento",
+        "categoryRemoved": "Categoria removida do orçamento",
+        "categoryRemoveFailed": "Falha ao remover a categoria"
       }
     }
   },

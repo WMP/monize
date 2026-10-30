@@ -39,6 +39,7 @@ import {
 } from "../common/db/locks";
 import { assertReconciledRowsMutable } from "./reconciled-lock.util";
 import { removeLockedTransactionLeg } from "./remove-transaction-leg";
+import { transferLegColumns } from "./transfer-leg-columns";
 import { autoTransferPayeeName } from "./transfer-payee-label.util";
 import { withSystemContext } from "../common/db/with-context";
 import {
@@ -767,31 +768,12 @@ export class TransactionTransferService {
     prepared: PreparedTransfer,
     manager?: EntityManager,
   ): Promise<WrittenTransfer> {
-    const {
-      effectiveUserId: userId,
-      dto,
-      fromOwnerId,
-      toOwnerId,
-      hasForeignLeg,
-      toAmount,
-      sourceCurrency,
-      destinationCurrency,
-      effectiveExchangeRate,
-      fromPayeeName,
-      toPayeeName,
-    } = prepared;
-    const {
-      fromAccountId,
-      toAccountId,
-      transactionDate,
-      amount,
-      description,
-      payeeId,
-      referenceNumber,
-      status = TransactionStatus.UNRECONCILED,
-      categoryId,
-      externalId,
-    } = dto;
+    const { dto, fromOwnerId, toOwnerId, hasForeignLeg } = prepared;
+    const { fromAccountId, toAccountId, transactionDate, amount, externalId } =
+      dto;
+    // The create's column set, shared with the in-place conversion of an
+    // existing row so a converted leg is byte for byte a created one.
+    const legs = transferLegColumns(prepared);
 
     // Both legs, their linkage, and the balance updates commit atomically.
     // Each leg is owned by ITS account's owner; per-user reference data
@@ -830,39 +812,12 @@ export class TransactionTransferService {
       }
 
       const fromTransaction = m.create(Transaction, {
-        userId: fromOwnerId,
-        accountId: fromAccountId,
-        transactionDate: transactionDate as any,
-        amount: -amount,
-        currencyCode: sourceCurrency,
-        exchangeRate: 1,
-        description: description || null,
-        referenceNumber,
-        status,
-        isTransfer: true,
-        payeeId: fromOwnerId === userId ? payeeId || null : null,
-        payeeName: fromPayeeName,
-        categoryId: fromOwnerId === userId ? categoryId || null : null,
+        ...legs.from,
         // The key lives on the source leg only: it is unique per account, and
         // the request names the transfer from the source account's side.
         externalId: externalId ?? null,
       });
-
-      const toTransaction = m.create(Transaction, {
-        userId: toOwnerId,
-        accountId: toAccountId,
-        transactionDate: transactionDate as any,
-        amount: toAmount,
-        currencyCode: destinationCurrency,
-        exchangeRate: effectiveExchangeRate,
-        description: description || null,
-        referenceNumber,
-        status,
-        isTransfer: true,
-        payeeId: toOwnerId === userId ? payeeId || null : null,
-        payeeName: toPayeeName,
-        categoryId: toOwnerId === userId ? categoryId || null : null,
-      });
+      const toTransaction = m.create(Transaction, legs.to);
 
       const savedFromTransaction = await m.save(fromTransaction);
       const savedToTransaction = await m.save(toTransaction);
@@ -896,7 +851,7 @@ export class TransactionTransferService {
       // VOID, and `recalculateCurrentBalance` -- which excludes VOID rows --
       // then silently "corrected" the accounts the next time anything triggered
       // a recompute. Money appeared to move and then unmove (audit P5-001).
-      if (status === TransactionStatus.VOID) {
+      if (legs.from.status === TransactionStatus.VOID) {
         return { savedFromId: fromId, savedToId: toId };
       }
 
@@ -914,7 +869,10 @@ export class TransactionTransferService {
         );
       } else {
         await this.accountsService.updateBalance(fromAccountId, -amount);
-        await this.accountsService.updateBalance(toAccountId, toAmount);
+        await this.accountsService.updateBalance(
+          toAccountId,
+          prepared.toAmount,
+        );
       }
 
       return { savedFromId: fromId, savedToId: toId };

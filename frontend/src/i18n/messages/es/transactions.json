@@ -399,10 +399,16 @@
     "submitCreateAndNewDescription": "Guardar y empezar otra, manteniendo la cuenta y la fecha.",
     "submitOptions": "Elegir qué ocurre después de crear",
     "submitUpdate": "Actualizar {mode}",
+    "submitConvert": "Convertir en {mode}",
     "reconciledConfirm": {
       "title": "¿Editar transacción conciliada?",
       "message": "Esta transacción está conciliada. Modificarla afectará a una conciliación completada. ¿Desea guardar los cambios de todas formas?",
       "confirm": "Guardar cambios"
+    },
+    "counterpartConfirm": {
+      "title": "¿Convertir esta transferencia?",
+      "message": "La otra parte de esta transferencia ya se ha marcado como compensada o conciliada. Convertirla en una transacción eliminará esa entrada de la otra cuenta y cambiará un saldo que se comprobó contra un extracto. ¿Desea continuar?",
+      "confirm": "Convertir de todos modos"
     },
     "modeLabel": {
       "transfer": "Transferencia",
@@ -432,7 +438,8 @@
       "destinationRequired": "Selecciona una cuenta destino",
       "sameAccount": "Las cuentas origen y destino deben ser diferentes",
       "negativeTransfer": "La cantidad de la transferencia no debe ser negativa",
-      "convertToTransferUnsupported": "Una transacción existente no se puede convertir aquí en una transferencia. Elimínala y crea la transferencia en su lugar.",
+      "convertedToTransfer": "Convertida en transferencia",
+      "convertedToTransaction": "Convertida en transacción",
       "payeeCreated": "Beneficiario \"{name}\" creado",
       "payeeCreateFailed": "Error al crear el beneficiario",
       "payeeReactivated": "Beneficiario \"{name}\" reactivado",
@@ -475,7 +482,8 @@
       "loading": "Cargando garantías",
       "loadError": "No se pudieron cargar las garantías de esta transacción.",
       "empty": "Aún no hay garantías"
-    }
+    },
+    "conversionLockedNote": "Esta transferencia pertenece a una transacción dividida o a la cuenta de otro propietario, por lo que aquí solo puede seguir siendo una transferencia. Modifíquela desde la división o elimínela y cree la entrada que desee."
   },
   "splitEditor": {
     "header": "Detalles del desglose",

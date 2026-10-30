@@ -399,10 +399,16 @@
     "submitCreateAndNewDescription": "[XX-Save it and start another, keeping the account and date.-XX]",
     "submitOptions": "[XX-Choose what happens after creating-XX]",
     "submitUpdate": "[XX-Update {mode}-XX]",
+    "submitConvert": "[XX-Convert to {mode}-XX]",
     "reconciledConfirm": {
       "title": "[XX-Edit reconciled transaction?-XX]",
       "message": "[XX-This transaction is reconciled. Changing its date or amount will affect a completed reconciliation. Do you want to save your changes anyway?-XX]",
       "confirm": "[XX-Save changes-XX]"
+    },
+    "counterpartConfirm": {
+      "title": "[XX-Convert this transfer?-XX]",
+      "message": "[XX-The other side of this transfer has already been cleared or reconciled. Converting it to a transaction removes that entry from the other account and changes a balance that was checked against a statement. Do you want to continue?-XX]",
+      "confirm": "[XX-Convert anyway-XX]"
     },
     "modeLabel": {
       "transfer": "[XX-Transfer-XX]",
@@ -432,7 +438,8 @@
       "destinationRequired": "[XX-Please select a destination account-XX]",
       "sameAccount": "[XX-Source and destination accounts must be different-XX]",
       "negativeTransfer": "[XX-Transfer amount must not be negative-XX]",
-      "convertToTransferUnsupported": "[XX-An existing transaction can't be turned into a transfer here. Delete it and create the transfer instead.-XX]",
+      "convertedToTransfer": "[XX-Converted to a transfer-XX]",
+      "convertedToTransaction": "[XX-Converted to a transaction-XX]",
       "payeeCreated": "[XX-Payee \"{name}\" created-XX]",
       "payeeCreateFailed": "[XX-Failed to create payee-XX]",
       "payeeReactivated": "[XX-Payee \"{name}\" reactivated-XX]",
@@ -475,7 +482,8 @@
       "loading": "[XX-Loading warranties-XX]",
       "loadError": "[XX-The warranties for this transaction could not be loaded.-XX]",
       "empty": "[XX-No warranties yet-XX]"
-    }
+    },
+    "conversionLockedNote": "[XX-This transfer belongs to a split transaction or to another owner's account, so it can only stay a transfer here. Change it from the split or delete it and create the entry you want.-XX]"
   },
   "splitEditor": {
     "header": "[XX-Split Details-XX]",

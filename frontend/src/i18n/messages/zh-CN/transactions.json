@@ -399,10 +399,16 @@
     "submitCreateAndNewDescription": "保存并开始下一笔，保留账户和日期。",
     "submitOptions": "选择创建后的行为",
     "submitUpdate": "更新{mode}",
+    "submitConvert": "转换为{mode}",
     "reconciledConfirm": {
       "title": "编辑已对账的交易？",
       "message": "此交易已对账。更改它会影响已完成的对账。仍要保存更改吗？",
       "confirm": "保存更改"
+    },
+    "counterpartConfirm": {
+      "title": "转换此转账？",
+      "message": "此转账的另一方已清算或已对账。将其转换为交易会从另一账户中移除该条目，并更改已与对账单核对的余额。是否继续？",
+      "confirm": "仍然转换"
     },
     "modeLabel": {
       "transfer": "转账",
@@ -432,7 +438,8 @@
       "destinationRequired": "请选择目标账户",
       "sameAccount": "来源账户和目标账户必须不同",
       "negativeTransfer": "转账金额不能为负数",
-      "convertToTransferUnsupported": "无法在此处将现有交易转换为转账。请删除该交易，然后改为创建转账。",
+      "convertedToTransfer": "已转换为转账",
+      "convertedToTransaction": "已转换为交易",
       "payeeCreated": "收款人\"{name}\"已创建",
       "payeeCreateFailed": "创建收款人失败",
       "payeeReactivated": "收款人\"{name}\"已重新激活",
@@ -475,7 +482,8 @@
       "loading": "正在加载保修",
       "loadError": "无法加载此交易的保修。",
       "empty": "还没有保修"
-    }
+    },
+    "conversionLockedNote": "此转账属于拆分交易或其他所有者的账户，因此在此只能保留为转账。请从拆分中更改，或删除后新建所需的条目。"
   },
   "splitEditor": {
     "header": "拆分详情",

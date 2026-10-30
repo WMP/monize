@@ -34,7 +34,8 @@
       "WANT": "欲しいもの",
       "SAVING": "貯蓄"
     },
-    "saving": "保存中..."
+    "saving": "保存中...",
+    "remove": "予算から削除"
   },
   "categoryList": {
     "title": "カテゴリ予算",
@@ -521,12 +522,19 @@
       "percentUsed": "{percent}% 使用済み",
       "rolloverType": "繰越：{type}",
       "editCategoryTitle": "{name} を編集",
+      "remove": {
+        "title": "カテゴリを削除",
+        "message": "この予算から「{name}」を削除しますか？{amount} の割り当ては予算に含まれなくなり、過去の予算期間の履歴も削除されます。取引には影響しません。この操作は元に戻せません。",
+        "confirm": "削除"
+      },
       "toasts": {
         "updated": "予算が更新されました",
         "updateFailed": "予算の更新に失敗しました",
         "categoryUpdated": "カテゴリが更新されました",
         "categoryFailed": "カテゴリの更新に失敗しました",
-        "loadFailed": "予算の読み込みに失敗しました"
+        "loadFailed": "予算の読み込みに失敗しました",
+        "categoryRemoved": "カテゴリを予算から削除しました",
+        "categoryRemoveFailed": "カテゴリを削除できませんでした"
       }
     }
   },

@@ -163,6 +163,15 @@ describe('PayrollDeductionsPage', () => {
     expect(screen.queryByText('Previous Periods')).not.toBeInTheDocument();
   });
 
+  it('stretches each disclosure button across a phone line, alone on its row', async () => {
+    await renderPage();
+    for (const name of [/Show year-to-date/, /Show previous periods/]) {
+      const toggle = screen.getByRole('button', { name });
+      expect(toggle.className).toContain('w-full');
+      expect(toggle.className).toContain('sm:w-auto');
+    }
+  });
+
   it('says when rows in another currency were left out of the paid figure', async () => {
     mockList.mockResolvedValue([rule({ foreignCurrencyRows: 2 })]);
     await renderPage();

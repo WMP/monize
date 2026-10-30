@@ -37,3 +37,18 @@ export const SEGMENT_INACTIVE_CLASS =
 export function segmentClass(isActive: boolean): string {
   return `${SEGMENT_BASE_CLASS} ${isActive ? SEGMENT_ACTIVE_CLASS : SEGMENT_INACTIVE_CLASS}`;
 }
+
+/**
+ * The pill as a filter in a list page's toolbar row: the full width of the
+ * line on a phone, where the row wraps and the filter lands on a line of its
+ * own under the search, and its own width from `sm` up. A flex item of that
+ * `flex-wrap` row, so the pill's `inline-flex` is blockified and `w-full`
+ * takes the line. Pair it with `toolbarSegmentClass`, which spreads the
+ * segments across the width the pill gains.
+ */
+export const SEGMENTED_TOOLBAR_GROUP_CLASS = `${SEGMENTED_GROUP_CLASS} w-full sm:w-auto`;
+
+/** One segment of `SEGMENTED_TOOLBAR_GROUP_CLASS`: grows to share the phone line. */
+export function toolbarSegmentClass(isActive: boolean): string {
+  return `${segmentClass(isActive)} grow sm:grow-0`;
+}

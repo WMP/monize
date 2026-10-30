@@ -21,7 +21,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { SummaryCard, SummaryIcons } from '@/components/ui/SummaryCard';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { CARD_CLASS } from '@/components/ui/Card';
-import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
+import { SEGMENTED_TOOLBAR_GROUP_CLASS, toolbarSegmentClass } from '@/components/ui/segmented-control';
 import { useFormModal } from '@/hooks/useFormModal';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { createLogger } from '@/lib/logger';
@@ -220,14 +220,14 @@ function CategoriesContent() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="block w-full sm:w-auto sm:flex-1 sm:max-w-md rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400"
           />
-          <div role="group" aria-label={t('page.typeFilterLabel')} className={SEGMENTED_GROUP_CLASS}>
+          <div role="group" aria-label={t('page.typeFilterLabel')} className={SEGMENTED_TOOLBAR_GROUP_CLASS}>
             {(['all', 'expense', 'income'] as const).map((type) => (
               <button
                 key={type}
                 type="button"
                 onClick={() => setFilterType(type)}
                 aria-pressed={filterType === type}
-                className={segmentClass(filterType === type)}
+                className={toolbarSegmentClass(filterType === type)}
               >
                 {type === 'all' ? t('page.filterAll', { count: categories.length }) :
                  type === 'expense' ? t('page.filterExpenses', { count: expenseCount }) :

@@ -109,7 +109,8 @@ The page is `<main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">` at full width (
 
 ### Filters
 
-- **A filter of one list is the segmented control** (`SEGMENTED_GROUP_CLASS` + `segmentClass`), next to the search, **with counts**: "All (9)", "Active (3)", "Inactive (6)".
+- **A filter of one list is the segmented control** (`SEGMENTED_TOOLBAR_GROUP_CLASS` + `toolbarSegmentClass` in a list toolbar), next to the search, **with counts**: "All (9)", "Active (3)", "Inactive (6)".
+- **A control alone on its line on a phone fills the line.** The search, a filter's segmented control, a `Select` and a disclosure button below a list all take `w-full sm:w-auto`; see `ui-conventions.md`, "A control alone on a phone line fills it".
 - **Filters are always visible.** Do not fold People / From date / To date behind a `<details>` "Filter by ..." disclosure. A filter the user cannot see is a filter the user forgets is applied. The one exception is a register's many-field filter panel (below).
 
 ### Refresh and export

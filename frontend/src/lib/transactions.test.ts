@@ -244,6 +244,23 @@ describe('transactionsApi', () => {
     expect(apiClient.delete).toHaveBeenCalledWith('/transactions/tx-1/transfer');
   });
 
+  it('convertToTransfer posts to /transactions/:id/convert-to-transfer', async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({ data: { fromTransaction: {}, toTransaction: {} } });
+    await transactionsApi.convertToTransfer('tx-1', { amount: 100 } as any);
+    expect(apiClient.post).toHaveBeenCalledWith('/transactions/tx-1/convert-to-transfer', {
+      amount: 100,
+    });
+  });
+
+  it('convertToTransaction posts to /transactions/:id/convert-to-transaction', async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({ data: { id: 'tx-1' } });
+    const result = await transactionsApi.convertToTransaction('tx-1', { amount: -100 } as any);
+    expect(apiClient.post).toHaveBeenCalledWith('/transactions/tx-1/convert-to-transaction', {
+      amount: -100,
+    });
+    expect(result.id).toBe('tx-1');
+  });
+
   it('updateTransfer patches /transactions/:id/transfer', async () => {
     vi.mocked(apiClient.patch).mockResolvedValue({ data: { from: {}, to: {} } });
     await transactionsApi.updateTransfer('tx-1', { amount: 200 } as any);

@@ -34,7 +34,8 @@
       "WANT": "선택",
       "SAVING": "저축"
     },
-    "saving": "저장 중..."
+    "saving": "저장 중...",
+    "remove": "예산에서 제거"
   },
   "categoryList": {
     "title": "카테고리 예산",
@@ -521,12 +522,19 @@
       "percentUsed": "{percent}% 사용됨",
       "rolloverType": "이월: {type}",
       "editCategoryTitle": "{name} 편집",
+      "remove": {
+        "title": "카테고리 제거",
+        "message": "이 예산에서 \"{name}\"을(를) 제거하시겠습니까? {amount} 배정액은 더 이상 예산에 포함되지 않으며, 지난 예산 기간의 내역도 삭제됩니다. 거래에는 영향이 없습니다. 이 작업은 취소할 수 없습니다.",
+        "confirm": "제거"
+      },
       "toasts": {
         "updated": "예산이 업데이트되었습니다",
         "updateFailed": "예산 업데이트에 실패했습니다",
         "categoryUpdated": "카테고리가 업데이트되었습니다",
         "categoryFailed": "카테고리 업데이트에 실패했습니다",
-        "loadFailed": "예산 로드에 실패했습니다"
+        "loadFailed": "예산 로드에 실패했습니다",
+        "categoryRemoved": "카테고리를 예산에서 제거했습니다",
+        "categoryRemoveFailed": "카테고리를 제거하지 못했습니다"
       }
     }
   },

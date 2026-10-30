@@ -399,10 +399,16 @@
     "submitCreateAndNewDescription": "儲存並開始下一筆，保留帳戶與日期。",
     "submitOptions": "選擇建立後的行為",
     "submitUpdate": "更新{mode}",
+    "submitConvert": "轉換為{mode}",
     "reconciledConfirm": {
       "title": "編輯已對帳的交易？",
       "message": "此交易已對帳。變更將影響已完成的對帳。仍要儲存變更嗎？",
       "confirm": "儲存變更"
+    },
+    "counterpartConfirm": {
+      "title": "轉換此轉帳？",
+      "message": "此轉帳的另一方已結清或已對帳。將其轉換為交易會從另一帳戶移除該項目，並變更已與對帳單核對的餘額。是否繼續？",
+      "confirm": "仍然轉換"
     },
     "modeLabel": {
       "transfer": "轉帳",
@@ -432,7 +438,8 @@
       "destinationRequired": "請選擇目的科目",
       "sameAccount": "來源科目與目的科目不能相同",
       "negativeTransfer": "轉帳金額不得為負數",
-      "convertToTransferUnsupported": "無法在此將現有交易轉換為轉帳。請刪除該交易，然後改為建立轉帳。",
+      "convertedToTransfer": "已轉換為轉帳",
+      "convertedToTransaction": "已轉換為交易",
       "payeeCreated": "收款人「{name}」已建立",
       "payeeCreateFailed": "建立收款人失敗",
       "payeeReactivated": "收款人「{name}」已重新啟用",
@@ -475,7 +482,8 @@
       "loading": "正在載入保固",
       "loadError": "無法載入此交易的保固。",
       "empty": "尚無保固"
-    }
+    },
+    "conversionLockedNote": "此轉帳屬於拆分交易或其他擁有者的帳戶，因此在此只能保留為轉帳。請從拆分中變更，或刪除後新建所需的項目。"
   },
   "splitEditor": {
     "header": "分割詳情",

@@ -399,10 +399,16 @@
     "submitCreateAndNewDescription": "Simpan dan mulai yang baru, dengan akun dan tanggal yang sama.",
     "submitOptions": "Pilih apa yang terjadi setelah membuat",
     "submitUpdate": "Perbarui {mode}",
+    "submitConvert": "Konversi ke {mode}",
     "reconciledConfirm": {
       "title": "Edit transaksi yang telah direkonsiliasi?",
       "message": "Transaksi ini telah direkonsiliasi. Mengubahnya akan memengaruhi rekonsiliasi yang telah selesai. Apakah Anda tetap ingin menyimpan perubahan?",
       "confirm": "Simpan perubahan"
+    },
+    "counterpartConfirm": {
+      "title": "Konversi transfer ini?",
+      "message": "Sisi lain transfer ini sudah dibersihkan atau direkonsiliasi. Mengonversinya menjadi transaksi akan menghapus entri tersebut dari akun lain dan mengubah saldo yang telah dicocokkan dengan laporan. Lanjutkan?",
+      "confirm": "Tetap konversi"
     },
     "modeLabel": {
       "transfer": "Transfer",
@@ -432,7 +438,8 @@
       "destinationRequired": "Silakan pilih akun tujuan",
       "sameAccount": "Akun sumber dan tujuan harus berbeda",
       "negativeTransfer": "Jumlah transfer tidak boleh negatif",
-      "convertToTransferUnsupported": "Transaksi yang sudah ada tidak dapat diubah menjadi transfer di sini. Hapus transaksi tersebut dan buat transfer sebagai gantinya.",
+      "convertedToTransfer": "Dikonversi menjadi transfer",
+      "convertedToTransaction": "Dikonversi menjadi transaksi",
       "payeeCreated": "Penerima \"{name}\" dibuat",
       "payeeCreateFailed": "Gagal membuat penerima",
       "payeeReactivated": "Penerima \"{name}\" diaktifkan kembali",
@@ -475,7 +482,8 @@
       "loading": "Memuat garansi",
       "loadError": "Garansi untuk transaksi ini tidak dapat dimuat.",
       "empty": "Belum ada garansi"
-    }
+    },
+    "conversionLockedNote": "Transfer ini milik transaksi terpisah atau akun pemilik lain, sehingga di sini hanya dapat tetap menjadi transfer. Ubah dari pemisahan atau hapus dan buat entri yang Anda inginkan."
   },
   "splitEditor": {
     "header": "Detail Pembagian",
