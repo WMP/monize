@@ -63,6 +63,7 @@
     "clickToEnable": "Klik om in te schakelen",
     "resetPassword": "Wachtwoord opnieuw instellen",
     "resetTwoFactor": "2FA opnieuw instellen",
+    "unlinkSso": "SSO ontkoppelen",
     "noUsers": "Geen gebruikers gevonden.",
     "storageLoading": "Laden…",
     "storageUnavailable": "Niet beschikbaar",
@@ -99,7 +100,8 @@
       "disableFailed": "Gebruiker uitschakelen mislukt",
       "resetFailed": "Wachtwoord opnieuw instellen mislukt",
       "twoFactorReset": "De tweestapsverificatie van {name} is opnieuw ingesteld. Ze zijn afgemeld.",
-      "resetTwoFactorFailed": "Tweestapsverificatie opnieuw instellen mislukt"
+      "resetTwoFactorFailed": "Tweestapsverificatie opnieuw instellen mislukt",
+      "unlinkSsoFailed": "SSO ontkoppelen mislukt"
     },
     "dialogs": {
       "promoteTitle": "Gebruiker promoveren?",
@@ -114,6 +116,11 @@
       "resetTitle": "Wachtwoord opnieuw instellen?",
       "resetMessage": "Er wordt een nieuw tijdelijk wachtwoord gegenereerd voor {name}. Ze moeten het bij de volgende inlog wijzigen.",
       "resetConfirm": "Wachtwoord opnieuw instellen",
+      "unlinkSsoTitle": "SSO ontkoppelen?",
+      "unlinkSsoMessage": "Hiermee wordt het account van {name} omgezet naar een lokaal account. Een latere SSO-aanmelding met hetzelfde e-mailadres kan het opnieuw koppelen. Het systeem maakt een tijdelijk wachtwoord aan en {name} moet het bij de volgende inlog wijzigen.",
+      "unlinkSsoConfirm": "SSO ontkoppelen",
+      "unlinkSsoResultTitle": "SSO ontkoppeld",
+      "unlinkSsoResultDesc": "Het account van {name} is nu een lokaal account. Deel dit tijdelijke wachtwoord met de gebruiker zodat die kan inloggen.",
       "resetTwoFactorTitle": "Tweestapsverificatie opnieuw instellen?",
       "resetTwoFactorMessage": "Hiermee wordt de tweestapsverificatie van {name} uitgeschakeld, worden hun back-upcodes en vertrouwde apparaten verwijderd en worden ze overal afgemeld. Daarna kunnen ze inloggen met hun wachtwoord en 2FA opnieuw instellen. Gebruik dit als ze hun authenticator-app en back-upcodes kwijt zijn, of nadat JWT_SECRET is gewijzigd.",
       "resetTwoFactorConfirm": "2FA opnieuw instellen",

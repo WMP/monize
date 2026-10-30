@@ -63,6 +63,7 @@
     "clickToEnable": "Cliquer pour activer",
     "resetPassword": "Réinitialiser le mot de passe",
     "resetTwoFactor": "Réinitialiser la 2FA",
+    "unlinkSso": "Dissocier le SSO",
     "noUsers": "Aucun utilisateur trouvé.",
     "storageLoading": "Chargement…",
     "storageUnavailable": "Indisponible",
@@ -99,7 +100,8 @@
       "disableFailed": "Échec de la désactivation de l'utilisateur",
       "resetFailed": "Échec de la réinitialisation du mot de passe",
       "twoFactorReset": "L'authentification à deux facteurs de {name} a été réinitialisée. Ses sessions ont été fermées.",
-      "resetTwoFactorFailed": "Échec de la réinitialisation de l'authentification à deux facteurs"
+      "resetTwoFactorFailed": "Échec de la réinitialisation de l'authentification à deux facteurs",
+      "unlinkSsoFailed": "Échec de la dissociation du SSO"
     },
     "dialogs": {
       "promoteTitle": "Promouvoir l'utilisateur ?",
@@ -114,6 +116,11 @@
       "resetTitle": "Réinitialiser le mot de passe ?",
       "resetMessage": "Cela va générer un nouveau mot de passe temporaire pour {name}. Il devra le modifier à la prochaine connexion.",
       "resetConfirm": "Réinitialiser le mot de passe",
+      "unlinkSsoTitle": "Dissocier le SSO ?",
+      "unlinkSsoMessage": "Cela convertit le compte de {name} en compte local. Une connexion SSO ultérieure avec la même adresse e-mail peut le lier à nouveau. Le système génère un mot de passe temporaire, et {name} devra le modifier à la prochaine connexion.",
+      "unlinkSsoConfirm": "Dissocier le SSO",
+      "unlinkSsoResultTitle": "SSO dissocié",
+      "unlinkSsoResultDesc": "Le compte de {name} est maintenant un compte local. Communiquez-lui ce mot de passe temporaire pour qu'il puisse se connecter.",
       "resetTwoFactorTitle": "Réinitialiser l'authentification à deux facteurs ?",
       "resetTwoFactorMessage": "Cela désactive l'authentification à deux facteurs de {name}, supprime ses codes de secours et ses appareils de confiance, et le déconnecte partout. Il pourra ensuite se connecter avec son mot de passe et reconfigurer la 2FA. À utiliser s'il a perdu son application d'authentification et ses codes de secours, ou après une modification de JWT_SECRET.",
       "resetTwoFactorConfirm": "Réinitialiser la 2FA",

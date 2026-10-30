@@ -101,6 +101,7 @@ describe("credential writes are atomic (integration)", () => {
       {} as never,
       {} as never,
       {} as never,
+      { get: (_key: string, fallback?: unknown) => fallback } as never,
     );
     admin = new AdminService(
       oauthStub as never,

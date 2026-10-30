@@ -37,7 +37,8 @@
   },
   "security": {
     "heading": "[XX-Security-XX]",
-    "ssoNotice": "[XX-Your account uses Single Sign-On (SSO) for authentication. The password below is not used for login but can be kept as a backup if SSO is disabled.-XX]",
+    "ssoPasswordFallbackNotice": "[XX-Your account uses Single Sign-On (SSO). You can also sign in with the password below when SSO is unavailable. Enable two-factor authentication to protect this fallback sign-in.-XX]",
+    "ssoNotice": "[XX-Your account uses Single Sign-On (SSO). Password sign-in is turned off for SSO accounts on this server.-XX]",
     "currentPasswordLabel": "[XX-Current Password-XX]",
     "currentPasswordPlaceholder": "[XX-Enter current password-XX]",
     "newPasswordLabel": "[XX-New Password-XX]",

@@ -63,6 +63,7 @@
     "clickToEnable": "Click to enable",
     "resetPassword": "Reset Password",
     "resetTwoFactor": "Reset 2FA",
+    "unlinkSso": "Unlink SSO",
     "noUsers": "No users found.",
     "storageLoading": "Loading…",
     "storageUnavailable": "Unavailable",
@@ -99,7 +100,8 @@
       "disableFailed": "Failed to disable user",
       "resetFailed": "Failed to reset password",
       "twoFactorReset": "Two-factor authentication was reset for {name}. They have been signed out.",
-      "resetTwoFactorFailed": "Failed to reset two-factor authentication"
+      "resetTwoFactorFailed": "Failed to reset two-factor authentication",
+      "unlinkSsoFailed": "Failed to unlink SSO"
     },
     "dialogs": {
       "promoteTitle": "Promote User?",
@@ -114,6 +116,11 @@
       "resetTitle": "Reset Password?",
       "resetMessage": "This will generate a new temporary password for {name}. They will be required to change it on next login.",
       "resetConfirm": "Reset Password",
+      "unlinkSsoTitle": "Unlink SSO?",
+      "unlinkSsoMessage": "This converts the account of {name} to a local account. A later SSO sign-in with the same email address can link it again. The system generates a temporary password, and {name} must change it on next login.",
+      "unlinkSsoConfirm": "Unlink SSO",
+      "unlinkSsoResultTitle": "SSO Unlinked",
+      "unlinkSsoResultDesc": "The account of {name} is now a local account. Share this temporary password with them to sign in.",
       "resetTwoFactorTitle": "Reset Two-Factor Authentication?",
       "resetTwoFactorMessage": "This switches off two-factor authentication for {name}, deletes their backup codes and trusted devices, and signs them out everywhere. They can then sign in with their password and set up 2FA again. Use it when they have lost their authenticator and backup codes, or after JWT_SECRET was changed.",
       "resetTwoFactorConfirm": "Reset 2FA",

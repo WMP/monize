@@ -137,7 +137,9 @@ export class BackupEncryptionService {
       enabled: user.backupEncryptionEnabled,
       manageable: user.authProvider === "oidc",
       method:
-        user.authProvider === "oidc" ? "backup-password" : "login-password",
+        user.authProvider === "oidc" && !user.backupKeyPasswordRef
+          ? "backup-password"
+          : "login-password",
       available: this.encryption.isConfigured(),
     };
   }
@@ -278,8 +280,11 @@ export class BackupEncryptionService {
       const user = await this.scoped(User, (repo) =>
         repo.findOne({ where: { id: userId } }),
       );
-      // OIDC accounts have no password of ours to wrap under.
-      if (!user || user.authProvider !== "local") return;
+      if (!user || !user.passwordHash) return;
+      // An SSO account is re-wrapped only when its existing wrap is under the
+      // login password (ref set), so the wrap follows a password change. No
+      // wrap, a legacy dedicated backupPasswordEnc or a dedicated wrap stay.
+      if (user.authProvider === "oidc" && !user.backupKeyPasswordRef) return;
       if (this.wrapIsCurrentFor(user, verifiedPasswordHash)) return;
 
       const key = await createWrappedBackupKey(password);

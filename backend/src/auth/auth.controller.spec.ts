@@ -572,11 +572,23 @@ describe("AuthController", () => {
       expect(result).toEqual({
         local: true,
         oidc: false,
+        oidcPasswordLogin: false,
         registration: true,
         smtp: true,
         force2fa: false,
         demo: false,
       });
+    });
+
+    it("reports oidcPasswordLogin only when the flag is true", async () => {
+      const get = configService.get.getMockImplementation()!;
+      configService.get.mockImplementation((key: string, d?: string) =>
+        key === "OIDC_ALLOW_PASSWORD_LOGIN" ? "true" : get(key, d),
+      );
+
+      const result = await controller.getAuthMethods();
+
+      expect(result.oidcPasswordLogin).toBe(true);
     });
 
     it("reflects oidc enabled status", async () => {

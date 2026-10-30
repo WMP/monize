@@ -115,6 +115,11 @@
     "deleteLastAdmin": "[XX-Cannot delete the last admin account.-XX]",
     "cannotResetOwnPassword": "[XX-You cannot reset your own password through the admin panel-XX]",
     "noLocalPassword": "[XX-Cannot reset password for accounts without a local password-XX]",
+    "cannotUnlinkOwnSso": "[XX-You cannot unlink your own SSO account through the admin panel-XX]",
+    "notSsoAccount": "[XX-This account is not an SSO account-XX]",
+    "unlinkSsoNeedsEmail": "[XX-This account has no email address, so it cannot sign in with a password-XX]",
+    "localAuthDisabled": "[XX-Password sign-in is turned off on this server-XX]",
+    "ssoPasswordLoginDisabled": "[XX-Password sign-in is turned off for SSO accounts. Use Unlink SSO instead.-XX]",
     "cannotResetOwnTwoFactor": "[XX-You cannot reset your own two-factor authentication through the admin panel-XX]",
     "twoFactorNotEnabled": "[XX-This user does not have two-factor authentication set up.-XX]"
   },

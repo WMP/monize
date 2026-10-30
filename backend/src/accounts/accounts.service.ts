@@ -15,7 +15,10 @@ import {
   AccountType,
   AccountSubType,
 } from "./entities/account.entity";
-import { Transaction } from "../transactions/entities/transaction.entity";
+import {
+  Transaction,
+  TransactionStatus,
+} from "../transactions/entities/transaction.entity";
 import { InvestmentTransaction } from "../securities/entities/investment-transaction.entity";
 import { Holding } from "../securities/entities/holding.entity";
 import { Institution } from "../institutions/entities/institution.entity";
@@ -475,7 +478,11 @@ export class AccountsService {
     userId: string,
     includeInactive = false,
   ): Promise<
-    (Account & { canDelete?: boolean; futureTransactionsSum?: number })[]
+    (Account & {
+      canDelete?: boolean;
+      futureTransactionsSum?: number;
+      lastReconciledDate?: string | null;
+    })[]
   > {
     return withScopedDb(this.dataSource, async (m) => {
       const queryBuilder = m
@@ -546,6 +553,25 @@ export class AccountsService {
           [accountIds, today],
         );
 
+      // The statement date the account was last reconciled to. A reconcile
+      // stamps every row it closes with that date; a row reconciled without
+      // one (an import) contributes its own transaction date instead. TO_CHAR
+      // because a raw select bypasses the DATE transformer.
+      const lastReconciled: Array<{
+        accountId: string;
+        lastReconciledDate: string;
+      }> = await m.query(
+        `SELECT t.account_id as "accountId",
+                TO_CHAR(MAX(COALESCE(t.reconciled_date, t.transaction_date)), 'YYYY-MM-DD')
+                  as "lastReconciledDate"
+         FROM transactions t
+         WHERE t.account_id = ANY($1)
+           AND t.status = $2
+           AND ${LEDGER_MOVEMENT_PREDICATE}
+         GROUP BY t.account_id`,
+        [accountIds, TransactionStatus.RECONCILED],
+      );
+
       const txCountMap = new Map<string, number>();
       for (const row of txCounts)
         txCountMap.set(row.accountId, parseInt(row.cnt, 10));
@@ -555,6 +581,9 @@ export class AccountsService {
       const futureSumMap = new Map<string, number>();
       for (const row of futureSums)
         futureSumMap.set(row.accountId, roundMoney(Number(row.futureSum)));
+      const lastReconciledMap = new Map<string, string>();
+      for (const row of lastReconciled)
+        lastReconciledMap.set(row.accountId, row.lastReconciledDate);
       const currentBalanceMap = new Map<string, number>();
       for (const row of currentSums)
         currentBalanceMap.set(
@@ -570,6 +599,7 @@ export class AccountsService {
           !(txCountMap.get(account.id) || 0) &&
           !(invTxCountMap.get(account.id) || 0),
         futureTransactionsSum: futureSumMap.get(account.id) ?? 0,
+        lastReconciledDate: lastReconciledMap.get(account.id) ?? null,
       }));
     });
   }

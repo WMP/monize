@@ -750,6 +750,26 @@ describe('AccountList', () => {
     expect(rows[3]).toHaveTextContent('Closed Acct');
   });
 
+  it('sorts by Last Reconciled, longest-unreconciled first', () => {
+    const accounts = [
+      createAccount({ id: 'a1', name: 'Alpha', lastReconciledDate: '2026-09-30' }),
+      createAccount({ id: 'a2', name: 'Bravo', lastReconciledDate: null }),
+      createAccount({ id: 'a3', name: 'Charlie', lastReconciledDate: '2026-06-30' }),
+    ];
+
+    render(
+      <AccountList accounts={accounts} onEdit={mockOnEdit} defaultCurrency="CAD" convertToDefault={exchangeMocks.convertToDefault} onRefresh={mockOnRefresh} />
+    );
+
+    fireEvent.click(screen.getByText('Last Reconciled'));
+
+    // rows[0] = table header, rows[1] = the CHEQUING group header.
+    const rows = screen.getAllByRole('row');
+    expect(rows[2]).toHaveTextContent('Bravo');
+    expect(rows[3]).toHaveTextContent('Charlie');
+    expect(rows[4]).toHaveTextContent('Alpha');
+  });
+
   it('enables Close button when account balance is zero', () => {
     const account = createAccount({ currentBalance: 0 });
 

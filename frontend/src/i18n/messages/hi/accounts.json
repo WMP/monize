@@ -50,6 +50,7 @@
       "accountName": "खाते का नाम",
       "type": "प्रकार",
       "status": "स्थिति",
+      "lastReconciled": "अंतिम मिलान",
       "balance": "शेष राशि",
       "actions": "क्रियाएं"
     },
@@ -92,7 +93,10 @@
     "jointSharedBy": "{owner} द्वारा साझा",
     "jointSharedWith": "{count, plural, one {# व्यक्ति} other {# लोगों}} के साथ साझा",
     "includeInNetWorth": "मेरी कुल संपत्ति में शामिल करें",
-    "excludeFromNetWorth": "मेरी कुल संपत्ति से बाहर रखें"
+    "excludeFromNetWorth": "मेरी कुल संपत्ति से बाहर रखें",
+    "neverReconciled": "कभी नहीं",
+    "lastReconciledOn": "{date} को मिलान किया गया",
+    "neverReconciledCard": "कभी मिलान नहीं किया गया"
   },
   "contextMenu": {
     "subtypeBrokerage": "ब्रोकरेज",

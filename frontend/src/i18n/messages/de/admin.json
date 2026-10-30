@@ -63,6 +63,7 @@
     "clickToEnable": "Klicken zum Aktivieren",
     "resetPassword": "Passwort zurücksetzen",
     "resetTwoFactor": "2FA zurücksetzen",
+    "unlinkSso": "SSO trennen",
     "noUsers": "Keine Benutzer gefunden.",
     "storageLoading": "Wird geladen…",
     "storageUnavailable": "Nicht verfügbar",
@@ -99,7 +100,8 @@
       "disableFailed": "Benutzer konnte nicht deaktiviert werden",
       "resetFailed": "Passwort konnte nicht zurückgesetzt werden",
       "twoFactorReset": "Die Zwei-Faktor-Authentifizierung für {name} wurde zurückgesetzt. Die Person wurde abgemeldet.",
-      "resetTwoFactorFailed": "Zwei-Faktor-Authentifizierung konnte nicht zurückgesetzt werden"
+      "resetTwoFactorFailed": "Zwei-Faktor-Authentifizierung konnte nicht zurückgesetzt werden",
+      "unlinkSsoFailed": "SSO konnte nicht getrennt werden"
     },
     "dialogs": {
       "promoteTitle": "Benutzer befördern?",
@@ -114,6 +116,11 @@
       "resetTitle": "Passwort zurücksetzen?",
       "resetMessage": "Dadurch wird ein neues temporäres Passwort für {name} generiert. Die Person muss es bei der nächsten Anmeldung ändern.",
       "resetConfirm": "Passwort zurücksetzen",
+      "unlinkSsoTitle": "SSO trennen?",
+      "unlinkSsoMessage": "Dadurch wird das Konto von {name} in ein lokales Konto umgewandelt. Eine spätere SSO-Anmeldung mit derselben E-Mail-Adresse kann es wieder verknüpfen. Das System erzeugt ein temporäres Passwort, und {name} muss es bei der nächsten Anmeldung ändern.",
+      "unlinkSsoConfirm": "SSO trennen",
+      "unlinkSsoResultTitle": "SSO getrennt",
+      "unlinkSsoResultDesc": "Das Konto von {name} ist jetzt ein lokales Konto. Geben Sie dieses temporäre Passwort an die Person weiter, damit sie sich anmelden kann.",
       "resetTwoFactorTitle": "Zwei-Faktor-Authentifizierung zurücksetzen?",
       "resetTwoFactorMessage": "Dadurch wird die Zwei-Faktor-Authentifizierung für {name} ausgeschaltet, ihre Backup-Codes und vertrauenswürdigen Geräte werden gelöscht und sie wird überall abgemeldet. Danach kann sich die Person mit ihrem Passwort anmelden und 2FA neu einrichten. Verwenden Sie dies, wenn sie ihre Authentifizierungs-App und ihre Backup-Codes verloren hat oder nachdem JWT_SECRET geändert wurde.",
       "resetTwoFactorConfirm": "2FA zurücksetzen",

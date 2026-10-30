@@ -18,6 +18,7 @@ describe("AdminController", () => {
       updateUserStatus: jest.fn(),
       deleteUser: jest.fn(),
       resetUserPassword: jest.fn(),
+      unlinkUserSso: jest.fn(),
       resetUserTwoFactor: jest.fn(),
       getUserStorageUsage: jest.fn(),
     };
@@ -126,6 +127,20 @@ describe("AdminController", () => {
 
       expect(result).toBe("reset");
       expect(mockAdminService.resetUserPassword).toHaveBeenCalledWith(
+        "user-1",
+        "target-user-1",
+      );
+    });
+  });
+
+  describe("unlinkSso()", () => {
+    it("delegates to adminService.unlinkUserSso with adminId and userId", () => {
+      mockAdminService.unlinkUserSso!.mockReturnValue("unlinked");
+
+      const result = controller.unlinkSso(mockReq, "target-user-1");
+
+      expect(result).toBe("unlinked");
+      expect(mockAdminService.unlinkUserSso).toHaveBeenCalledWith(
         "user-1",
         "target-user-1",
       );

@@ -961,6 +961,58 @@ describe("AuthService", () => {
       expect(refreshTokensRepository.save).not.toHaveBeenCalled();
     });
 
+    it("with OIDC_ALLOW_PASSWORD_LOGIN signs an SSO account in with its password", async () => {
+      (service as any).oidcPasswordLogin = true;
+      const hashedPassword = await bcrypt.hash("ValidPass123!", 10);
+      usersRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        authProvider: "oidc",
+        passwordHash: hashedPassword,
+      });
+
+      const result = await service.login({
+        email: "test@example.com",
+        password: "ValidPass123!",
+      });
+
+      expect(result.accessToken).toBeDefined();
+    });
+
+    it("with OIDC_ALLOW_PASSWORD_LOGIN still challenges an SSO account that has TOTP", async () => {
+      (service as any).oidcPasswordLogin = true;
+      const hashedPassword = await bcrypt.hash("ValidPass123!", 10);
+      usersRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        authProvider: "oidc",
+        passwordHash: hashedPassword,
+        twoFactorSecret: "encrypted-secret",
+      });
+      preferencesRepository.findOne.mockResolvedValue({
+        twoFactorEnabled: true,
+      });
+
+      const result = await service.login({
+        email: "test@example.com",
+        password: "ValidPass123!",
+      });
+
+      expect(result.requires2FA).toBe(true);
+      expect(result).not.toHaveProperty("accessToken");
+    });
+
+    it("with OIDC_ALLOW_PASSWORD_LOGIN still refuses a wrong password for an SSO account", async () => {
+      (service as any).oidcPasswordLogin = true;
+      usersRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        authProvider: "oidc",
+        passwordHash: await bcrypt.hash("ValidPass123!", 10),
+      });
+
+      await expect(
+        service.login({ email: "test@example.com", password: "wrong" }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
     it("throws for non-existent user", async () => {
       usersRepository.findOne.mockResolvedValue(null);
 
@@ -1421,6 +1473,32 @@ describe("AuthService", () => {
       ).rejects.toThrow("New account registration is disabled.");
     });
 
+    it("merges directly into an account that is already SSO and kept its password (no confirmation email)", async () => {
+      const existing: any = {
+        id: "u1",
+        email: "user@example.com",
+        passwordHash: "hash",
+        authProvider: "oidc",
+        oidcSubject: "old-sub",
+      };
+      usersRepository.findOne
+        .mockResolvedValueOnce(null) // by oidcSubject
+        .mockResolvedValueOnce(existing); // by email
+      usersRepository.save.mockImplementation(async (u: any) => u);
+      const sendSpy = jest
+        .spyOn(service as any, "sendOidcLinkEmail")
+        .mockResolvedValue(undefined);
+
+      const result = await service.findOrCreateOidcUser(
+        { ...oidcProfile, email_verified: true },
+        false,
+      );
+
+      expect(result.linkPending).toBeFalsy();
+      expect(existing.oidcSubject).toBe("oidc-sub-123");
+      expect(sendSpy).not.toHaveBeenCalled();
+    });
+
     it("with OIDC_REQUIRE_VERIFIED_EMAIL=false merges directly into a matching password account (no confirmation email)", async () => {
       configService.get.mockImplementation((key: string) => {
         if (key === "JWT_SECRET")
@@ -1448,9 +1526,9 @@ describe("AuthService", () => {
       expect(result.user).toBe(existing);
       expect(existing.oidcSubject).toBe("oidc-sub-123");
       expect(existing.authProvider).toBe("oidc");
-      // The local password ends with the link (#1858), and so does every
-      // credential issued on it, as on the confirmed link (INV-AUTH-005).
-      expect(existing.passwordHash).toBeNull();
+      // The password stays; the credentials issued under the old method end
+      // with the change, as on the confirmed link (INV-AUTH-005).
+      expect(existing.passwordHash).toBe("hash");
       expect(patRepository.update).toHaveBeenCalledWith(
         { userId: "u1", isRevoked: false },
         { isRevoked: true },
@@ -1490,8 +1568,7 @@ describe("AuthService", () => {
       expect(result.user).toBe(existing);
       expect(existing.oidcSubject).toBe("oidc-sub-123");
       expect(existing.authProvider).toBe("oidc");
-      // The local password ends with the link (#1858).
-      expect(existing.passwordHash).toBeNull();
+      expect(existing.passwordHash).toBe("hash");
       expect(sendSpy).not.toHaveBeenCalled();
     });
   });
@@ -2096,7 +2173,7 @@ describe("AuthService", () => {
       expect(result.isNewUser).toBe(true);
     });
 
-    it("clears a local password an SSO account still holds on its next OIDC login", async () => {
+    it("keeps the local password an SSO account holds on its next OIDC login", async () => {
       const existing: any = {
         id: "oidc-existing",
         email: "oidc@example.com",
@@ -2114,10 +2191,57 @@ describe("AuthService", () => {
         email_verified: true,
       });
 
-      expect(existing.passwordHash).toBeNull();
-      expect(existing.resetToken).toBeNull();
+      expect(existing.passwordHash).toBe("linked-before-1858");
+      expect(existing.resetToken).toBe("pending-reset");
       expect(existing.oidcSubject).toBe("oidc-sub-123");
       expect(usersRepository.save).toHaveBeenCalledWith(existing);
+    });
+
+    it("with OIDC_ALLOW_PASSWORD_LOGIN keeps the password and the TOTP secret on an OIDC login", async () => {
+      (service as any).oidcPasswordLogin = true;
+      const existing: any = {
+        id: "oidc-existing",
+        email: "oidc@example.com",
+        oidcSubject: "oidc-sub-123",
+        authProvider: "oidc",
+        passwordHash: "kept-hash",
+        resetToken: "pending-reset",
+        twoFactorSecret: "totp-secret",
+        backupCodes: "[]",
+      };
+      usersRepository.findOne.mockResolvedValueOnce(existing);
+      usersRepository.save.mockImplementation((u) => u);
+
+      await service.findOrCreateOidcUser({
+        sub: "oidc-sub-123",
+        email: "oidc@example.com",
+        email_verified: true,
+      });
+
+      expect(existing.passwordHash).toBe("kept-hash");
+      expect(existing.resetToken).toBe("pending-reset");
+      expect(existing.twoFactorSecret).toBe("totp-secret");
+      expect(existing.backupCodes).toBe("[]");
+    });
+
+    it("clears the TOTP secret of an SSO account on an OIDC login by default", async () => {
+      const existing: any = {
+        id: "oidc-existing",
+        email: "oidc@example.com",
+        oidcSubject: "oidc-sub-123",
+        authProvider: "oidc",
+        twoFactorSecret: "totp-secret",
+      };
+      usersRepository.findOne.mockResolvedValueOnce(existing);
+      usersRepository.save.mockImplementation((u) => u);
+
+      await service.findOrCreateOidcUser({
+        sub: "oidc-sub-123",
+        email: "oidc@example.com",
+        email_verified: true,
+      });
+
+      expect(existing.twoFactorSecret).toBeNull();
     });
 
     it("does not flag a returning OIDC user as new", async () => {
@@ -2268,6 +2392,60 @@ describe("AuthService", () => {
       expect(result.user.id).toBe("oidc-only-user");
       expect(result.user.oidcSubject).toBe("oidc-sub-direct");
       expect(result.user.authProvider).toBe("oidc");
+    });
+
+    describe("an existing SSO account found by email", () => {
+      const ssoByEmail = (): any => ({
+        ...mockUser,
+        id: "sso-user",
+        authProvider: "oidc",
+        oidcSubject: null,
+        passwordHash: "kept-hash",
+        mustChangePassword: true,
+        resetToken: "reset-before-link",
+        resetTokenExpiry: new Date(),
+      });
+      const login = () =>
+        service.findOrCreateOidcUser({
+          sub: "oidc-sub-merge",
+          email: "test@example.com",
+          email_verified: true,
+        });
+
+      beforeEach(() => {
+        usersRepository.save.mockImplementation((u) => u);
+      });
+
+      it("merges directly, revokes nothing and clears reset state and the forced change with the flag off", async () => {
+        stageOneTokenFamily();
+        const existing = ssoByEmail();
+        usersRepository.findOne
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce(existing);
+
+        const result = await login();
+
+        expect(result.linkPending).toBeFalsy();
+        expect(existing.oidcSubject).toBe("oidc-sub-merge");
+        expect(existing.passwordHash).toBe("kept-hash");
+        expect(existing.resetToken).toBeNull();
+        expect(existing.resetTokenExpiry).toBeNull();
+        expect(existing.mustChangePassword).toBe(false);
+        expect(refreshTokensRepository.update).not.toHaveBeenCalled();
+      });
+
+      it("asks for link confirmation with the flag on and a password kept", async () => {
+        (service as any).oidcPasswordLogin = true;
+        const existing = ssoByEmail();
+        usersRepository.findOne
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce(existing);
+
+        const result = await login();
+
+        expect(result.linkPending).toBe(true);
+        expect(existing.oidcSubject).toBeNull();
+      });
     });
 
     it("does NOT link to existing user when email is unverified", async () => {
@@ -3493,16 +3671,13 @@ describe("AuthService", () => {
       expect(result.oidcLinkPending).toBe(false);
       expect(result.oidcLinkToken).toBeNull();
       expect(result.pendingOidcSubject).toBeNull();
-      // No local password survives the link: the OIDC login drops the TOTP
-      // secret, so it would be a single factor on every password path (#1858).
-      expect(result.passwordHash).toBeNull();
-      expect(result.resetToken).toBeNull();
-      expect(result.mustChangePassword).toBe(false);
+      // The link keeps the local password; OIDC_ALLOW_PASSWORD_LOGIN decides
+      // whether it may sign in.
+      expect(result.passwordHash).toBe(mockUser.passwordHash);
     });
 
-    it("confirmOidcLink keeps a login-password backup key as the SSO account's backup key", async () => {
-      // A ref to the hash the link clears would read as stale, and the next
-      // backup run would drop the key and write plaintext from then on.
+    it("confirmOidcLink leaves the backup key and its password ref alone", async () => {
+      const ref = loginPasswordRef(mockUser.passwordHash);
       const pendingUser = {
         ...mockUser,
         oidcLinkPending: true,
@@ -3511,41 +3686,17 @@ describe("AuthService", () => {
         backupEncryptionEnabled: true,
         backupKeyEnc: "enc",
         backupKeyWrap: "wrap",
-        backupKeyPasswordRef: loginPasswordRef(mockUser.passwordHash),
+        backupKeyPasswordRef: ref,
       };
       usersRepository.findOne.mockResolvedValue(pendingUser);
       usersRepository.save.mockImplementation((u) => u);
 
       const result = await service.confirmOidcLink("some-token");
 
-      expect(result.backupKeyPasswordRef).toBeNull();
+      expect(result.backupKeyPasswordRef).toBe(ref);
       expect(result.backupKeyEnc).toBe("enc");
       expect(result.backupKeyWrap).toBe("wrap");
       expect(result.backupEncryptionEnabled).toBe(true);
-    });
-
-    it("confirmOidcLink drops a backup key wrapped under an older password", async () => {
-      // A reset replaced the hash without re-wrapping: only the forgotten
-      // password opens this wrap, so it must not become the live key.
-      const pendingUser = {
-        ...mockUser,
-        oidcLinkPending: true,
-        oidcLinkExpiresAt: new Date(Date.now() + 3600000),
-        pendingOidcSubject: "oidc-sub-confirmed",
-        backupEncryptionEnabled: true,
-        backupKeyEnc: "enc",
-        backupKeyWrap: "wrap",
-        backupKeyPasswordRef: loginPasswordRef("$2a$10$an-older-hash"),
-      };
-      usersRepository.findOne.mockResolvedValue(pendingUser);
-      usersRepository.save.mockImplementation((u) => u);
-
-      const result = await service.confirmOidcLink("some-token");
-
-      expect(result.backupKeyPasswordRef).toBeNull();
-      expect(result.backupKeyEnc).toBeNull();
-      expect(result.backupKeyWrap).toBeNull();
-      expect(result.backupEncryptionEnabled).toBe(false);
     });
 
     it("confirmOidcLink ends every credential the local password stood behind", async () => {

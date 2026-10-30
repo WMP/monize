@@ -115,6 +115,11 @@
     "deleteLastAdmin": "Nie można usunąć ostatniego konta administratora.",
     "cannotResetOwnPassword": "Nie możesz zresetować własnego hasła z panelu administratora",
     "noLocalPassword": "Nie można zresetować hasła dla kont bez lokalnego hasła",
+    "cannotUnlinkOwnSso": "Nie możesz odłączyć własnego konta SSO z panelu administratora",
+    "notSsoAccount": "To konto nie jest kontem SSO",
+    "unlinkSsoNeedsEmail": "To konto nie ma adresu e-mail, więc nie może się logować hasłem",
+    "localAuthDisabled": "Logowanie hasłem jest wyłączone na tym serwerze",
+    "ssoPasswordLoginDisabled": "Logowanie hasłem jest wyłączone dla kont SSO. Użyj opcji Odłącz SSO.",
     "cannotResetOwnTwoFactor": "Nie możesz zresetować własnego uwierzytelniania dwuskładnikowego z panelu administratora",
     "twoFactorNotEnabled": "Ten użytkownik nie ma skonfigurowanego uwierzytelniania dwuskładnikowego."
   },

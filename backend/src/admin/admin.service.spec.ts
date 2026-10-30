@@ -959,5 +959,160 @@ describe("AdminService", () => {
         service.resetUserPassword("admin-1", "user-2"),
       ).rejects.toThrow(BadRequestException);
     });
+
+    it("refuses an SSO account when local auth is off", async () => {
+      configService.get.mockImplementation((key: string, def?: string) =>
+        key === "LOCAL_AUTH_ENABLED" ? "false" : def,
+      );
+      usersRepository.findOne.mockResolvedValue({
+        ...mockTargetUser,
+        authProvider: "oidc",
+      });
+
+      await expect(
+        service.resetUserPassword("admin-1", "user-2"),
+      ).rejects.toThrow("Password sign-in is turned off on this server");
+      expect(usersRepository.save).not.toHaveBeenCalled();
+    });
+
+    it("refuses an SSO account while password sign-in is off for SSO accounts", async () => {
+      usersRepository.findOne.mockResolvedValue({
+        ...mockTargetUser,
+        authProvider: "oidc",
+      });
+
+      await expect(
+        service.resetUserPassword("admin-1", "user-2"),
+      ).rejects.toThrow("Password sign-in is turned off for SSO accounts");
+      expect(usersRepository.save).not.toHaveBeenCalled();
+    });
+
+    it("resets an SSO account's password when the flag allows it", async () => {
+      configService.get.mockImplementation((key: string, def?: string) =>
+        key === "OIDC_ALLOW_PASSWORD_LOGIN" ? "true" : def,
+      );
+      usersRepository.findOne.mockResolvedValue({
+        ...mockTargetUser,
+        authProvider: "oidc",
+      });
+
+      await service.resetUserPassword("admin-1", "user-2");
+
+      expect(usersRepository.save).toHaveBeenCalled();
+    });
+  });
+
+  describe("unlinkUserSso", () => {
+    const ssoUser = () => ({
+      ...mockTargetUser,
+      authProvider: "oidc",
+      passwordHash: null,
+      oidcSubject: "sub-1",
+      pendingOidcSubject: "sub-2",
+      oidcLinkPending: true,
+      oidcLinkToken: "tok",
+      oidcLinkExpiresAt: new Date(),
+    });
+
+    it("converts to a local account with a temporary password and revokes like reset", async () => {
+      usersRepository.findOne.mockResolvedValue(ssoUser());
+
+      const result = await service.unlinkUserSso("admin-1", "user-2");
+
+      expect(result.temporaryPassword.length).toBeGreaterThan(8);
+      const saved = usersRepository.save.mock.calls[0][0];
+      expect(saved.authProvider).toBe("local");
+      expect(saved.oidcSubject).toBeNull();
+      expect(saved.pendingOidcSubject).toBeNull();
+      expect(saved.oidcLinkPending).toBe(false);
+      expect(saved.oidcLinkToken).toBeNull();
+      expect(saved.oidcLinkExpiresAt).toBeNull();
+      expect(saved.mustChangePassword).toBe(true);
+      expect(saved.passwordHash).not.toBe(result.temporaryPassword);
+      expect(patRepository.update).toHaveBeenCalledWith(
+        { userId: "user-2", isRevoked: false },
+        { isRevoked: true },
+      );
+      expect(trustedDevicesRepository.delete).toHaveBeenCalledWith({
+        userId: "user-2",
+      });
+      expect(refreshTokensRepository.update).toHaveBeenCalledWith(
+        { userId: "user-2", isRevoked: false },
+        { isRevoked: true },
+      );
+      expect(oauthProviderService.revokeAllForUser).toHaveBeenCalledWith(
+        "user-2",
+      );
+    });
+
+    it("reads the row under a write lock", async () => {
+      usersRepository.findOne.mockResolvedValue(ssoUser());
+
+      await service.unlinkUserSso("admin-1", "user-2");
+
+      expect(usersRepository.findOne).toHaveBeenCalledWith({
+        where: { id: "user-2" },
+        lock: { mode: "pessimistic_write" },
+      });
+    });
+
+    it("clears a backup key held under a dedicated backup password", async () => {
+      usersRepository.findOne.mockResolvedValue({
+        ...ssoUser(),
+        backupEncryptionEnabled: true,
+        backupKeyEnc: "enc:key",
+        backupKeyWrap: "wrap",
+        backupKeyPasswordRef: null,
+      });
+
+      await service.unlinkUserSso("admin-1", "user-2");
+
+      const saved = usersRepository.save.mock.calls[0][0];
+      expect(saved).toMatchObject({
+        backupEncryptionEnabled: false,
+        backupKeyEnc: null,
+        backupKeyWrap: null,
+        backupKeyPasswordRef: null,
+      });
+    });
+
+    it("refuses an account with no email address and writes nothing", async () => {
+      usersRepository.findOne.mockResolvedValue({ ...ssoUser(), email: null });
+      await expect(service.unlinkUserSso("admin-1", "user-2")).rejects.toThrow(
+        "no email address",
+      );
+      expect(usersRepository.save).not.toHaveBeenCalled();
+    });
+
+    it("refuses when local auth is turned off, before any read", async () => {
+      configService.get.mockImplementation((key: string, def?: string) =>
+        key === "LOCAL_AUTH_ENABLED" ? "false" : def,
+      );
+      await expect(service.unlinkUserSso("admin-1", "user-2")).rejects.toThrow(
+        "Password sign-in is turned off on this server",
+      );
+      expect(usersRepository.findOne).not.toHaveBeenCalled();
+    });
+
+    it("refuses to unlink the caller's own account", async () => {
+      await expect(service.unlinkUserSso("admin-1", "admin-1")).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it("throws NotFoundException when user not found", async () => {
+      usersRepository.findOne.mockResolvedValue(null);
+      await expect(
+        service.unlinkUserSso("admin-1", "nonexistent"),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("throws BadRequestException for a non-SSO account and writes nothing", async () => {
+      usersRepository.findOne.mockResolvedValue({ ...mockTargetUser });
+      await expect(service.unlinkUserSso("admin-1", "user-2")).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(usersRepository.save).not.toHaveBeenCalled();
+    });
   });
 });

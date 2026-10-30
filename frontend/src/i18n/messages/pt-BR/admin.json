@@ -63,6 +63,7 @@
     "clickToEnable": "Clique para ativar",
     "resetPassword": "Redefinir Senha",
     "resetTwoFactor": "Redefinir 2FA",
+    "unlinkSso": "Desvincular SSO",
     "noUsers": "Nenhum usuário encontrado.",
     "storageLoading": "Carregando…",
     "storageUnavailable": "Indisponível",
@@ -99,7 +100,8 @@
       "disableFailed": "Falha ao desativar usuário",
       "resetFailed": "Falha ao redefinir senha",
       "twoFactorReset": "A autenticação de dois fatores de {name} foi redefinida. As sessões foram encerradas.",
-      "resetTwoFactorFailed": "Falha ao redefinir a autenticação de dois fatores"
+      "resetTwoFactorFailed": "Falha ao redefinir a autenticação de dois fatores",
+      "unlinkSsoFailed": "Falha ao desvincular o SSO"
     },
     "dialogs": {
       "promoteTitle": "Promover Usuário?",
@@ -114,6 +116,11 @@
       "resetTitle": "Redefinir Senha?",
       "resetMessage": "Isto irá gerar uma nova senha temporária para {name}. O usuário será obrigado a alterá-la no próximo login.",
       "resetConfirm": "Redefinir Senha",
+      "unlinkSsoTitle": "Desvincular SSO?",
+      "unlinkSsoMessage": "Isto converte a conta de {name} em uma conta local. Um login SSO posterior com o mesmo endereço de e-mail pode vinculá-la novamente. O sistema gera uma senha temporária e o usuário {name} será obrigado a alterá-la no próximo login.",
+      "unlinkSsoConfirm": "Desvincular SSO",
+      "unlinkSsoResultTitle": "SSO desvinculado",
+      "unlinkSsoResultDesc": "A conta de {name} agora é uma conta local. Compartilhe esta senha temporária com o usuário para que ele possa fazer login.",
       "resetTwoFactorTitle": "Redefinir a Autenticação de Dois Fatores?",
       "resetTwoFactorMessage": "Isto desativa a autenticação de dois fatores de {name}, exclui os códigos de recuperação e os dispositivos confiáveis e encerra todas as sessões. Depois, o usuário poderá entrar com a senha e configurar o 2FA de novo. Use quando o usuário tiver perdido o aplicativo autenticador e os códigos de recuperação, ou depois de alterar o JWT_SECRET.",
       "resetTwoFactorConfirm": "Redefinir 2FA",

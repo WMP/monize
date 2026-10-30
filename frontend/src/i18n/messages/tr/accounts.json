@@ -50,6 +50,7 @@
       "accountName": "Hesap Adı",
       "type": "Tür",
       "status": "Durum",
+      "lastReconciled": "Son Mutabakat",
       "balance": "Bakiye",
       "actions": "İşlemler"
     },
@@ -92,7 +93,10 @@
     "jointSharedBy": "{owner} tarafından paylaşıldı",
     "jointSharedWith": "{count, plural, other {# kişiyle}} paylaşıldı",
     "includeInNetWorth": "Net değerime dahil et",
-    "excludeFromNetWorth": "Net değerimden hariç tut"
+    "excludeFromNetWorth": "Net değerimden hariç tut",
+    "neverReconciled": "Hiç",
+    "lastReconciledOn": "{date} tarihinde mutabakat yapıldı",
+    "neverReconciledCard": "Hiç mutabakat yapılmadı"
   },
   "contextMenu": {
     "subtypeBrokerage": "Aracılık",

@@ -17,6 +17,7 @@ describe('UserManagementTable', () => {
   const onToggleStatus = vi.fn();
   const onResetPassword = vi.fn();
   const onResetTwoFactor = vi.fn();
+  const onUnlinkSso = vi.fn();
   const onDeleteUser = vi.fn();
 
   const users = [
@@ -60,6 +61,7 @@ describe('UserManagementTable', () => {
     onChangeRole,
     onToggleStatus,
     onResetPassword,
+    onUnlinkSso,
     onResetTwoFactor,
     onDeleteUser,
   };
@@ -140,6 +142,26 @@ describe('UserManagementTable', () => {
     expect(resetTwoFactorButtons).toHaveLength(2);
     fireEvent.click(resetTwoFactorButtons[0]);
     expect(onResetTwoFactor).toHaveBeenCalledWith(expect.objectContaining({ id: 'u3' }));
+  });
+
+  it('offers Reset Password for an SSO row with a password only while SSO password login is on', () => {
+    const ssoWithPassword = users.map((u) => (u.id === 'u2' ? { ...u, hasPassword: true } : u));
+    const { rerender } = render(<UserManagementTable {...defaultProps} users={ssoWithPassword} />);
+    expect(screen.getAllByText('Reset Password')).toHaveLength(1); // u3 only
+    rerender(<UserManagementTable {...defaultProps} users={ssoWithPassword} oidcPasswordLogin />);
+    expect(screen.getAllByText('Reset Password')).toHaveLength(2);
+  });
+
+  it('offers Unlink SSO only for SSO users other than the admin themself', () => {
+    const { rerender } = render(<UserManagementTable {...defaultProps} />);
+    const buttons = screen.getAllByText('Unlink SSO');
+    expect(buttons).toHaveLength(1); // u2 is the only oidc row
+    fireEvent.click(buttons[0]);
+    expect(onUnlinkSso).toHaveBeenCalledWith(expect.objectContaining({ id: 'u2' }));
+
+    // An SSO admin looking at their own row gets no action.
+    rerender(<UserManagementTable {...defaultProps} currentUserId="u2" />);
+    expect(screen.queryByText('Unlink SSO')).not.toBeInTheDocument();
   });
 
   it('does not show actions for current user (self)', () => {

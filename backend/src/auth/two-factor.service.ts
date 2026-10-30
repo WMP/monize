@@ -33,6 +33,7 @@ import { TokenService } from "./token.service";
 import { tr } from "../i18n/translate";
 import { patchUserPreferences } from "../users/user-preference-writer";
 import { isTwoFactorActive } from "./two-factor-state";
+import { oidcPasswordLoginAllowed } from "./oidc/oidc-password-login";
 import { AuthAttemptCounterService } from "./auth-attempt-counter.service";
 import { SingleUseTokenService } from "./single-use-token.service";
 
@@ -586,7 +587,10 @@ export class TwoFactorService {
       );
     }
 
-    if (user.authProvider === "oidc") {
+    if (
+      user.authProvider === "oidc" &&
+      !oidcPasswordLoginAllowed(this.configService)
+    ) {
       throw new BadRequestException(
         tr(
           "errors.auth.twoFactorNotAvailableForSso",
@@ -836,7 +840,10 @@ export class TwoFactorService {
             tr("errors.auth.userNotFound", "User not found"),
           );
         }
-        if (user.authProvider === "oidc") {
+        if (
+          user.authProvider === "oidc" &&
+          !oidcPasswordLoginAllowed(this.configService)
+        ) {
           throw new BadRequestException(
             tr(
               "errors.auth.twoFactorNotAvailableForSso",

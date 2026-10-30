@@ -50,6 +50,7 @@
       "accountName": "账户名称",
       "type": "类型",
       "status": "状态",
+      "lastReconciled": "上次对账",
       "balance": "余额",
       "actions": "操作"
     },
@@ -92,7 +93,10 @@
     "jointSharedBy": "由 {owner} 共享",
     "jointSharedWith": "已与 {count, plural, other {# 人}}共享",
     "includeInNetWorth": "计入我的净资产",
-    "excludeFromNetWorth": "从我的净资产中排除"
+    "excludeFromNetWorth": "从我的净资产中排除",
+    "neverReconciled": "从未",
+    "lastReconciledOn": "已对账至 {date}",
+    "neverReconciledCard": "从未对账"
   },
   "contextMenu": {
     "subtypeBrokerage": "券商账户",

@@ -39,6 +39,8 @@ interface SecuritySectionProps {
   user: User;
   preferences: UserPreferences;
   force2fa: boolean;
+  /** Instance flag: an SSO account with a local password is treated like a local one for 2FA. */
+  oidcPasswordLogin?: boolean;
   onPreferencesUpdated: (prefs: UserPreferences) => void;
 }
 
@@ -56,12 +58,14 @@ function isDisableCodeComplete(code: string): boolean {
   return /^(\d{6}|[a-f0-9]{4}-[a-f0-9]{4})$/.test(code);
 }
 
-export function SecuritySection({ user, preferences, force2fa, onPreferencesUpdated }: SecuritySectionProps) {
+export function SecuritySection({ user, preferences, force2fa, oidcPasswordLogin = false, onPreferencesUpdated }: SecuritySectionProps) {
   const t = useTranslations('settings.security');
   const tc = useTranslations('common');
   const updatePreferencesStore = usePreferencesStore((state) => state.updatePreferences);
   const router = useRouter();
   const { formatDate } = useDateFormat();
+  // An SSO user stays on the SSO-only view unless the instance lets the local password sign in.
+  const ssoOnly = user.authProvider === 'oidc' && !(oidcPasswordLogin && user.hasPassword);
 
   const {
     register,
@@ -187,8 +191,8 @@ export function SecuritySection({ user, preferences, force2fa, onPreferencesUpda
 
   // Each time the devices are (re)read below, they show as loading from this
   // render on ("info from previous render"), not from inside the effect.
-  const canLoadDevices = twoFactorEnabled && user.hasPassword && user.authProvider !== 'oidc';
-  const devicesKey = `${twoFactorEnabled}|${user.hasPassword}|${user.authProvider}`;
+  const canLoadDevices = twoFactorEnabled && user.hasPassword && !ssoOnly;
+  const devicesKey = `${twoFactorEnabled}|${user.hasPassword}|${ssoOnly}`;
   const [devicesLoadKey, setDevicesLoadKey] = useState<string | null>(null);
   if (devicesLoadKey !== devicesKey) {
     setDevicesLoadKey(devicesKey);
@@ -211,10 +215,10 @@ export function SecuritySection({ user, preferences, force2fa, onPreferencesUpda
   };
 
   useEffect(() => {
-    if (twoFactorEnabled && user.hasPassword && user.authProvider !== 'oidc') {
+    if (twoFactorEnabled && user.hasPassword && !ssoOnly) {
       loadTrustedDevices();
     }
-  }, [twoFactorEnabled, user.hasPassword, user.authProvider]);
+  }, [twoFactorEnabled, user.hasPassword, ssoOnly]);
 
   const handleRevokeDevice = async (id: string) => {
     try {
@@ -245,10 +249,11 @@ export function SecuritySection({ user, preferences, force2fa, onPreferencesUpda
       {user.authProvider === 'oidc' && (
         <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
           <p className="text-sm text-blue-700 dark:text-blue-300">
-            {t('ssoNotice')}
+            {oidcPasswordLogin ? t('ssoPasswordFallbackNotice') : t('ssoNotice')}
           </p>
         </div>
       )}
+      {!ssoOnly && (
       <form onSubmit={handleSubmit(onSubmitPassword)}>
         <div className="space-y-4">
           <Input
@@ -289,6 +294,7 @@ export function SecuritySection({ user, preferences, force2fa, onPreferencesUpda
           </Button>
         </div>
       </form>
+      )}
 
       {/* Two-Factor Authentication. `id` is the target of the sign-in-by-backup-code
           redirect (`/settings#two-factor`), which useScrollSpy scrolls to. */}
@@ -296,7 +302,7 @@ export function SecuritySection({ user, preferences, force2fa, onPreferencesUpda
         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
           {t('twoFactor.heading')}
         </h3>
-        {user.authProvider === 'oidc' ? (
+        {ssoOnly ? (
           <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
             <p className="text-sm text-blue-700 dark:text-blue-300">
               {t('twoFactor.ssoUnavailable')}
@@ -496,7 +502,7 @@ export function SecuritySection({ user, preferences, force2fa, onPreferencesUpda
       </Modal>
 
       {/* Backup Codes */}
-      {twoFactorEnabled && user.authProvider !== 'oidc' && (
+      {twoFactorEnabled && !ssoOnly && (
         <div className="border-t border-gray-200 dark:border-gray-700 mt-6 pt-6">
           <div className="flex items-center justify-between">
             <div>
@@ -531,7 +537,7 @@ export function SecuritySection({ user, preferences, force2fa, onPreferencesUpda
       </Modal>
 
       {/* Trusted Devices */}
-      {twoFactorEnabled && user.authProvider !== 'oidc' && (
+      {twoFactorEnabled && !ssoOnly && (
         <div className="border-t border-gray-200 dark:border-gray-700 mt-6 pt-6">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">

@@ -17,6 +17,7 @@ import {
   ObjectLiteral,
   Repository,
 } from "typeorm";
+import { ConfigService } from "@nestjs/config";
 import { withScopedDb } from "../common/db/scoped-db";
 import * as bcrypt from "bcryptjs";
 import { tr } from "../i18n/translate";
@@ -48,6 +49,10 @@ import {
   OidcReauthService,
   type OidcReauthPurpose,
 } from "../auth/oidc/oidc-reauth.service";
+import {
+  localPasswordUsable,
+  oidcPasswordLoginAllowed,
+} from "../auth/oidc/oidc-password-login";
 import { toUserProfile } from "./user-profile";
 import { isTwoFactorActive } from "../auth/two-factor-state";
 import { UserMaintenanceService } from "../common/jobs/user-maintenance.service";
@@ -73,6 +78,7 @@ export class UsersService {
     private oidcReauth: OidcReauthService,
     private maintenance: UserMaintenanceService,
     private emailChange: EmailChangeService,
+    private configService: ConfigService,
   ) {}
 
   /**
@@ -128,7 +134,11 @@ export class UsersService {
           ),
         );
       }
-      if (!user.passwordHash) {
+      // `!user.passwordHash` narrows the type for bcrypt; the helper is the policy.
+      if (
+        !user.passwordHash ||
+        !localPasswordUsable(user, oidcPasswordLoginAllowed(this.configService))
+      ) {
         throw new BadRequestException(
           tr(
             "errors.users.emailChangeNoLocalPassword",
@@ -445,7 +455,11 @@ export class UsersService {
       );
     }
 
-    if (!user.passwordHash) {
+    // `!user.passwordHash` narrows the type; the helper is the policy.
+    if (
+      !user.passwordHash ||
+      !localPasswordUsable(user, oidcPasswordLoginAllowed(this.configService))
+    ) {
       throw new BadRequestException(
         tr("errors.users.noPasswordSet", "No password set for this account"),
       );

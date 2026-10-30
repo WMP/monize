@@ -50,6 +50,7 @@
       "accountName": "勘定科目名",
       "type": "種類",
       "status": "ステータス",
+      "lastReconciled": "最終照合日",
       "balance": "残高",
       "actions": "操作"
     },
@@ -92,7 +93,10 @@
     "jointSharedBy": "{owner} さんが共有",
     "jointSharedWith": "{count, plural, other {# 人}}と共有",
     "includeInNetWorth": "自分の純資産に含める",
-    "excludeFromNetWorth": "自分の純資産から除外する"
+    "excludeFromNetWorth": "自分の純資産から除外する",
+    "neverReconciled": "未照合",
+    "lastReconciledOn": "{date} に照合済み",
+    "neverReconciledCard": "未照合"
   },
   "contextMenu": {
     "subtypeBrokerage": "証券口座",

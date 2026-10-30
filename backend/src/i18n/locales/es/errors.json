@@ -115,6 +115,11 @@
     "deleteLastAdmin": "No se puede eliminar la última cuenta de administrador.",
     "cannotResetOwnPassword": "No puedes restablecer tu propia contraseña desde el panel de administración",
     "noLocalPassword": "No se puede restablecer la contraseña de cuentas sin contraseña local",
+    "cannotUnlinkOwnSso": "No puedes desvincular tu propia cuenta SSO desde el panel de administración",
+    "notSsoAccount": "Esta cuenta no es una cuenta SSO",
+    "unlinkSsoNeedsEmail": "Esta cuenta no tiene dirección de correo electrónico, por lo que no puede iniciar sesión con contraseña",
+    "localAuthDisabled": "El inicio de sesión con contraseña está desactivado en este servidor",
+    "ssoPasswordLoginDisabled": "El inicio de sesión con contraseña está desactivado para las cuentas SSO. Use Desvincular SSO.",
     "cannotResetOwnTwoFactor": "No puedes restablecer tu propia autenticación de dos factores desde el panel de administración",
     "twoFactorNotEnabled": "Este usuario no tiene configurada la autenticación de dos factores."
   },
