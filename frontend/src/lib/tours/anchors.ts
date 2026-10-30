@@ -126,6 +126,11 @@ export const TOUR_ANCHORS = {
   taxesPayrollDeductions: 'taxes-payroll-deductions',
   payrollNewRuleButton: 'payroll-new-rule-button',
   payrollRulesList: 'payroll-rules-list',
+
+  // Accrual accounting: the Settings toggle that turns the feature on, and
+  // the Cash/Accrual switch it then unlocks on every page that carries one.
+  settingsAccrualToggle: 'settings-accrual-toggle',
+  reportingBasisControl: 'reporting-basis-control',
 } as const;
 
 export type TourAnchorId = (typeof TOUR_ANCHORS)[keyof typeof TOUR_ANCHORS];

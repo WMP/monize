@@ -432,7 +432,7 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
         <div className={GROUP_DIVIDER_CLASS}>
           <h3 className={GROUP_HEADING_CLASS}>{t('groups.transactions')}</h3>
           <div className="space-y-4">
-            <div className="flex items-center">
+            <div {...tourAnchor(TOUR_ANCHORS.settingsAccrualToggle)} className="flex items-center">
               <label htmlFor="accrualEnabled" className="flex items-center gap-2 cursor-pointer">
                 <ToggleSwitch
                   checked={accrualEnabled.value}

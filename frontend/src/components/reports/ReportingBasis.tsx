@@ -18,6 +18,9 @@ import {
   SEGMENTED_GROUP_CLASS,
   segmentClass,
 } from "@/components/ui/segmented-control";
+import { InfoTooltip } from "@/components/ui/InfoTooltip";
+import { CARD_CLASS } from "@/components/ui/Card";
+import { TOUR_ANCHORS, tourAnchor } from "@/lib/tours/anchors";
 import { usePreferencesStore } from "@/store/preferencesStore";
 import { useAuthStore } from "@/store/authStore";
 
@@ -171,7 +174,10 @@ export function ReportingBasisControl({
   const defaultBasis = preference === "accrual" ? "accrual" : "cash";
   if (!context || !accrualFeatureEnabled) return null;
   return (
-    <div className="mb-4 space-y-2">
+    <div
+      {...tourAnchor(TOUR_ANCHORS.reportingBasisControl)}
+      className={`${CARD_CLASS} mb-4 inline-flex items-center gap-1.5 px-1.5 py-1.5`}
+    >
       <div
         className={SEGMENTED_GROUP_CLASS}
         role="group"
@@ -196,9 +202,7 @@ export function ReportingBasisControl({
           );
         })}
       </div>
-      <p className="text-sm text-gray-600 dark:text-gray-300">
-        {t(detail ? "detailHelp" : "help")}
-      </p>
+      <InfoTooltip text={t(detail ? "detailHelp" : "help")} />
     </div>
   );
 }

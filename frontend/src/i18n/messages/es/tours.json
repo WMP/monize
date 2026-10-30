@@ -557,5 +557,33 @@
         }
       }
     }
+  },
+  "accruals": {
+    "basics": {
+      "title": "Accrual accounting",
+      "steps": {
+        "welcome": {
+          "title": "What Accrual adds to Cash",
+          "body": "Cash shows a bill the day it is paid. Accrual spreads it instead: a prepaid insurance premium or a mortgage escrow is recognized a little at a time, over the months it actually covers, so a monthly total is not thrown off by which day a large payment happened to land. Cash stays your account balances; Accrual is a second, optional lens over the same transactions."
+        },
+        "enableToggle": {
+          "title": "Turn it on here first",
+          "body": "Accrual accounting is off by default. Turn this on, and a Cash/Accrual switch appears on every page that can show figures either way."
+        },
+        "basisControl": {
+          "title": "Switch any page between the two",
+          "body": "Once the feature is on, this switch appears above the page title on Transactions, Budgets, Reports and more. It is a view, not a setting: switching it here never changes anyone else's view or what is actually stored.",
+          "fallbackBody": "Once you turn the feature on in Settings, this same switch appears above the page title here, and on Budgets, Reports and more."
+        },
+        "editTransaction": {
+          "title": "Set a schedule from the transaction itself",
+          "body": "Open an existing transaction and choose its Accrual tab to spread it over months, or remove a schedule you no longer want. A schedule is set per transaction, from the transaction — there is no separate place to create one."
+        },
+        "netBalances": {
+          "title": "The net balances live on Accounts",
+          "body": "Accounts gains a System Accruals view once the feature is on: the net prepaid-expense and unearned-revenue balances across every scheduled entry, as of any date you choose."
+        }
+      }
+    }
   }
 }
