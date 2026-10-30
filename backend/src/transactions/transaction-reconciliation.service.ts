@@ -466,6 +466,10 @@ export class TransactionReconciliationService {
     const [account, transactions, reconciledResult, clearedResult, lastRow] =
       await withScopedDb(this.dataSource, async (m) => {
         const owned = await this.accountsService.findOne(userId, accountId);
+        // Every outstanding row is listed, including those dated after the
+        // statement date: a row the register dates later than the bank posted
+        // it still has to be reachable to be ticked. Which rows start ticked
+        // is the client's call (`initialReconcileSelection`).
         const listed = await m
           .getRepository(Transaction)
           .createQueryBuilder("transaction")
@@ -479,9 +483,6 @@ export class TransactionReconciliationService {
               TransactionStatus.UNRECONCILED,
               TransactionStatus.CLEARED,
             ],
-          })
-          .andWhere("transaction.transactionDate <= :statementDate", {
-            statementDate,
           })
           .orderBy("transaction.transactionDate", "ASC")
           .addOrderBy("transaction.createdAt", "ASC")
