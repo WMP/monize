@@ -213,16 +213,58 @@ The generator is `frontend/scripts/build-website-docs.mjs`. It renders with the 
 - **Links between pages** are written `[text](accounts.md#financial-institutions)` so they also
   work when the Markdown is read on GitHub; the build turns them into `/docs/accounts#...`. A link
   to a page or heading that does not exist fails the build.
-- **Heading anchors** use GitHub's slug rules, so the app's help links (for example
-  `/docs/accounts#financial-institutions`) keep working only while the heading text does. Renaming
-  a heading means grepping `frontend/src` for its old anchor. Where a heading's slug is taken, put
-  `<a id="name"></a>` on the line above it; that is the only HTML the pages render.
+- **Heading anchors** use GitHub's slug rules, and the app's help links land on them: every one
+  is an entry in `frontend/src/lib/docs-links.ts`, and `docs-links.test.ts` fails when a page or
+  heading it names no longer exists. Renaming a heading means updating that entry. Where a
+  heading's slug is taken, put `<a id="name"></a>` on the line above it; that is the only HTML the
+  pages render.
 - **The table of contents is generated** from the `##` and `###` headings; do not write one by hand.
 - **Callouts** are GitHub's syntax: a blockquote starting `> [!NOTE]`, `[!TIP]`, `[!IMPORTANT]`,
   `[!WARNING]` or `[!CAUTION]`.
 - **Screenshots** go in `docs/images/` as `.png` and are referenced as `images/<name>.png`. A
   picture alone in its paragraph becomes a figure with its alt text as the caption. A screenshot
   that is referenced but not there renders as "Screenshot pending" and the build lists it.
+
+### Screenshots
+
+Every documentation screenshot is taken by Playwright, never by hand, so a changed screen is one
+command away from a current picture. Each picture is a test in `e2e/docs-screenshots/` whose title
+is the PNG's file name; it seeds nothing of its own beyond what `e2e/readme/01-seed.spec.ts` adds to
+the built-in demo data, opens the screen, waits for it to settle and writes
+`docs/images/<name>.png`.
+
+**When to add or retake one:** a page section that walks through a screen, a dialog or a widget
+shows it; a change that alters how that screen looks retakes its picture in the same PR. A
+setting that is one switch, or text that the page already says, needs no picture.
+
+**Adding one:** reference `images/<name>.png` in the Markdown, add a test titled `<name>` to
+`e2e/docs-screenshots/`, run it, and commit the PNG with the page. Crop to the part the section is
+about with `shoot(page, name, { dir: DOCS_IMAGE_DIR, element })`; whole-screen pictures are the
+1600x1000 desktop viewport, dark theme.
+
+**Running them** needs a Monize instance holding the demo data, with rate limits raised, demo
+mode off (it renames the sign-in button and adds a banner) and no plain-HTTP warning. The e2e
+stack does all of that, built from the working tree so the pictures show the branch:
+
+```bash
+# repository root
+printf 'services:\n  backend:\n    environment:\n      DEMO_MODE: "false"\n  frontend:\n    environment:\n      DISABLE_HTTPS_HEADERS: "true"\n' > /tmp/monize-docs.yml
+docker compose -p monize-docs -f docker-compose.e2e.yml -f /tmp/monize-docs.yml up -d --build --wait
+# the e2e stack skips the demo seed the production entrypoint runs; run it once
+docker compose -p monize-docs -f docker-compose.e2e.yml exec -e DEMO_MODE=true backend node dist/database/seed.js
+
+cd e2e && npm ci
+BASE_URL=http://localhost:3001 npm run docs:screenshots                           # showcase seed, then every picture
+BASE_URL=http://localhost:3001 npm run docs:screenshots -- -g budget-dashboard   # one picture, by file name
+docker compose -p monize-docs -f ../docker-compose.e2e.yml down -v
+```
+
+A picture of a state the demo data does not reach (an AI insight, an admin dialog, an emergency
+access claim) needs that state seeded through the API in the test first; until then the page
+shows "Screenshot pending" and `npm run docs:build` lists it.
+
+Set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` where `npx playwright install chromium` is not an option.
+`e2e/readme/README.md` explains the session, the seed and the settling waits the captures share.
 
 ### Cloudflare Pages free plan
 
