@@ -307,7 +307,7 @@ describe("the notifications", () => {
     expect(some).toMatchObject({
       type: NotificationType.BANK_SYNC_IMPORTED,
       severity: NotificationSeverity.SUCCESS,
-      target: "/settings/bank-sync",
+      target: "/transactions",
       dedupeKey: `bsc:imp:${CONNECTION}:2027-03-31`,
       data: { imported: 3, skipped: 1, accounts: 2 },
     });

@@ -134,7 +134,8 @@ Written by the daily cron after each user's run, once per connection:
   (unreadable or refused credentials; `unauthorized` is reported as this),
   `refused` and `unexpected`.
 
-Every row: `target = /settings/bank-sync`. `data` holds facts (dates,
+Target: `/transactions` for `BANK_SYNC_IMPORTED` (the reader reviews what
+arrived), `/settings/bank-sync` for every other row (the repair is there). `data` holds facts (dates,
 counts, codes), never "in 3 days" text, so the client renders it in the
 reader's language and on the reader's clock.
 

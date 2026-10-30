@@ -17,8 +17,8 @@ import type { BankSyncNotifySuccessMode } from "./bank-sync.constants";
  * renders it in the reader's language and the email composes it at delivery.
  * `title` and `message` are the English fallbacks for a reader with no client.
  *
- * Every row's `target` is the literal `/settings/bank-sync`, written inline in
- * each builder: the frontend's `notification-target.contract.test.ts` reads a
+ * Every row's `target` is a literal written inline in each builder:
+ * `/transactions` for an import, `/settings/bank-sync` for the rest: the frontend's `notification-target.contract.test.ts` reads a
  * producer's target out of the source and checks that it is a real page, and a
  * target held in a constant is one it cannot verify.
  */
@@ -229,7 +229,8 @@ export function buildSyncImportedNotification(
       skipped: facts.skipped,
       accounts: facts.accounts,
     },
-    target: "/settings/bank-sync",
+    // The reader reviews what was imported, not the connection's settings.
+    target: "/transactions",
     periodStart: day,
     dedupeKey: `bsc:imp:${facts.connectionId}:${day}`,
   };
