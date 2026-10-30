@@ -368,6 +368,8 @@
       "toAccount": "[XX-To Account-XX]",
       "transferAmount": "[XX-Transfer Amount-XX]",
       "amountReceivedLabel": "[XX-Amount Received-XX]",
+      "transferAmountInCurrency": "[XX-Transfer Amount ({currency})-XX]",
+      "amountReceivedInCurrency": "[XX-Amount Received ({currency})-XX]",
       "payeeOptional": "[XX-Payee (optional)-XX]",
       "categoryOptional": "[XX-Category (optional)-XX]"
     },

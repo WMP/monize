@@ -368,6 +368,8 @@
       "toAccount": "Konto docelowe",
       "transferAmount": "Kwota przelewu",
       "amountReceivedLabel": "Kwota otrzymana",
+      "transferAmountInCurrency": "Kwota przelewu ({currency})",
+      "amountReceivedInCurrency": "Kwota otrzymana ({currency})",
       "payeeOptional": "Odbiorca (opcjonalnie)",
       "categoryOptional": "Kategoria (opcjonalnie)"
     },

@@ -3632,8 +3632,8 @@ describe('TransactionForm', () => {
           <TransactionForm transaction={incoming} onSuccess={mockOnSuccess} onCancel={mockOnCancel} />,
         );
       });
-      await waitFor(() => expect(screen.getByLabelText('Transfer Amount')).toBeInTheDocument());
-      expect((screen.getByLabelText('Transfer Amount') as HTMLInputElement).value).toBe('100.00');
+      await waitFor(() => expect(screen.getByLabelText('Transfer Amount (USD)')).toBeInTheDocument());
+      expect((screen.getByLabelText('Transfer Amount (USD)') as HTMLInputElement).value).toBe('100.00');
 
       await act(async () => {
         fireEvent.click(screen.getByRole('button', { name: /Update Transfer/i }));
@@ -3652,7 +3652,7 @@ describe('TransactionForm', () => {
           <TransactionForm duplicateFrom={incoming} onSuccess={mockOnSuccess} onCancel={mockOnCancel} />,
         );
       });
-      await waitFor(() => expect(screen.getByLabelText('Transfer Amount')).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByLabelText('Transfer Amount (USD)')).toBeInTheDocument());
 
       await act(async () => {
         fireEvent.click(screen.getByRole('button', { name: /Create Transfer/i }));
@@ -3671,7 +3671,7 @@ describe('TransactionForm', () => {
           <TransactionForm transaction={incoming} onSuccess={mockOnSuccess} onCancel={mockOnCancel} />,
         );
       });
-      await waitFor(() => expect(screen.getByLabelText('Transfer Amount')).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByLabelText('Transfer Amount (USD)')).toBeInTheDocument());
 
       await act(async () => {
         fireEvent.click(screen.getByRole('button', { name: /Update Transfer/i }));
@@ -3689,10 +3689,10 @@ describe('TransactionForm', () => {
           <TransactionForm transaction={incoming} onSuccess={mockOnSuccess} onCancel={mockOnCancel} />,
         );
       });
-      await waitFor(() => expect(screen.getByLabelText('Transfer Amount')).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByLabelText('Transfer Amount (USD)')).toBeInTheDocument());
 
       // 135 is the received figure; as a SOURCE amount it is an edit of 100.
-      const source = screen.getByLabelText('Transfer Amount');
+      const source = screen.getByLabelText('Transfer Amount (USD)');
       fireEvent.focus(source);
       fireEvent.change(source, { target: { value: '135.00' } });
       fireEvent.blur(source);
@@ -5078,6 +5078,80 @@ describe('TransactionForm', () => {
       expect(payload.toCurrencyCode).toBe('CAD');
       // No cross-currency target amount for a same-currency transfer
       expect(payload.toAmount).toBeUndefined();
+    });
+
+    it('fills the received amount of a cross-currency transfer from the day\'s rate', async () => {
+      mockGetRateForDate.mockResolvedValue(0.73);
+      render(<TransactionForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} defaultAccountId="acc-1" />);
+      await waitFor(() => expect(screen.getByText('Transfer')).toBeInTheDocument());
+      fireEvent.click(screen.getByText('Transfer'));
+      await waitFor(() => expect(screen.getByText('To Account')).toBeInTheDocument());
+
+      // CAD acc-1 -> USD acc-3.
+      const selects = document.querySelectorAll('select');
+      const toAccountSelect = Array.from(selects).find((s) =>
+        Array.from(s.options).some((o) => o.value === 'acc-3') && s.name !== 'accountId',
+      );
+      await act(async () => {
+        if (toAccountSelect) fireEvent.change(toAccountSelect, { target: { value: 'acc-3' } });
+      });
+      await waitFor(() => expect(screen.getByLabelText('Amount Received (USD)')).toBeInTheDocument());
+      await waitFor(() =>
+        expect(mockGetRateForDate).toHaveBeenCalledWith('CAD', 'USD', expect.any(String)),
+      );
+      // Let the rate response land before typing.
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText('Transfer Amount (CAD)'), { target: { value: '100' } });
+      });
+      await waitFor(() =>
+        expect((screen.getByLabelText('Amount Received (USD)') as HTMLInputElement).value).toBe('73.00'),
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Create Transfer/i }));
+      });
+      await waitFor(() => expect(mockCreateTransfer).toHaveBeenCalled());
+      expect(mockCreateTransfer.mock.calls[0][0]).toEqual(
+        expect.objectContaining({ fromAccountId: 'acc-1', toAccountId: 'acc-3', amount: 100, toAmount: 73 }),
+      );
+    });
+
+    it('takes the sending account\'s FX fee out of the filled received amount', async () => {
+      mockAccountsGetAll.mockResolvedValue([
+        { ...mockAccounts[0], fxFeePercent: 2.5 },
+        ...mockAccounts.slice(1),
+      ]);
+      mockGetRateForDate.mockResolvedValue(0.73);
+      render(<TransactionForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} defaultAccountId="acc-1" />);
+      await waitFor(() => expect(screen.getByText('Transfer')).toBeInTheDocument());
+      fireEvent.click(screen.getByText('Transfer'));
+      await waitFor(() => expect(screen.getByText('To Account')).toBeInTheDocument());
+
+      const selects = document.querySelectorAll('select');
+      const toAccountSelect = Array.from(selects).find((s) =>
+        Array.from(s.options).some((o) => o.value === 'acc-3') && s.name !== 'accountId',
+      );
+      await act(async () => {
+        if (toAccountSelect) fireEvent.change(toAccountSelect, { target: { value: 'acc-3' } });
+      });
+      await waitFor(() =>
+        expect(mockGetRateForDate).toHaveBeenCalledWith('CAD', 'USD', expect.any(String)),
+      );
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText('Transfer Amount (CAD)'), { target: { value: '100' } });
+      });
+      // 73.00 at the market rate, less the 2.5% fee of 1.83.
+      await waitFor(() =>
+        expect((screen.getByLabelText('Amount Received (USD)') as HTMLInputElement).value).toBe('71.17'),
+      );
     });
 
     it('keeps the amount positive when an expense category is chosen on a transfer', async () => {

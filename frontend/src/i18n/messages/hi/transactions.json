@@ -368,6 +368,8 @@
       "toAccount": "गंतव्य खाता",
       "transferAmount": "ट्रांसफर राशि",
       "amountReceivedLabel": "प्राप्त राशि",
+      "transferAmountInCurrency": "ट्रांसफर राशि ({currency})",
+      "amountReceivedInCurrency": "प्राप्त राशि ({currency})",
       "payeeOptional": "भुगतानकर्ता (वैकल्पिक)",
       "categoryOptional": "श्रेणी (वैकल्पिक)"
     },

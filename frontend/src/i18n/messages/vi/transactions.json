@@ -368,6 +368,8 @@
       "toAccount": "Đến tài khoản",
       "transferAmount": "Số tiền chuyển",
       "amountReceivedLabel": "Số tiền nhận",
+      "transferAmountInCurrency": "Số tiền chuyển ({currency})",
+      "amountReceivedInCurrency": "Số tiền nhận ({currency})",
       "payeeOptional": "Người nhận (tùy chọn)",
       "categoryOptional": "Danh mục (Tùy chọn)"
     },

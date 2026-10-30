@@ -368,6 +368,8 @@
       "toAccount": "입금 계정",
       "transferAmount": "이체 금액",
       "amountReceivedLabel": "수령 금액",
+      "transferAmountInCurrency": "이체 금액 ({currency})",
+      "amountReceivedInCurrency": "수령 금액 ({currency})",
       "payeeOptional": "수취인 (선택 사항)",
       "categoryOptional": "카테고리(선택사항)"
     },

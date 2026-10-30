@@ -368,6 +368,8 @@
       "toAccount": "Cuenta destino",
       "transferAmount": "Cantidad de transferencia",
       "amountReceivedLabel": "Cantidad recibida",
+      "transferAmountInCurrency": "Cantidad de transferencia ({currency})",
+      "amountReceivedInCurrency": "Cantidad recibida ({currency})",
       "payeeOptional": "Beneficiario (opcional)",
       "categoryOptional": "Categoría (opcional)"
     },

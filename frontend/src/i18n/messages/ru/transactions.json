@@ -368,6 +368,8 @@
       "toAccount": "На счёт",
       "transferAmount": "Сумма перевода",
       "amountReceivedLabel": "Полученная сумма",
+      "transferAmountInCurrency": "Сумма перевода ({currency})",
+      "amountReceivedInCurrency": "Полученная сумма ({currency})",
       "payeeOptional": "Получатель (необязательно)",
       "categoryOptional": "Категория (необязательно)"
     },

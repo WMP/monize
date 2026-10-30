@@ -368,6 +368,8 @@
       "toAccount": "Compte destination",
       "transferAmount": "Montant du virement",
       "amountReceivedLabel": "Montant reçu",
+      "transferAmountInCurrency": "Montant du virement ({currency})",
+      "amountReceivedInCurrency": "Montant reçu ({currency})",
       "payeeOptional": "Bénéficiaire (facultatif)",
       "categoryOptional": "Catégorie (facultatif)"
     },

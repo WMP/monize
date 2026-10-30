@@ -368,6 +368,8 @@
       "toAccount": "Conta de Destino",
       "transferAmount": "Montante da Transferência",
       "amountReceivedLabel": "Montante Recebido",
+      "transferAmountInCurrency": "Montante da Transferência ({currency})",
+      "amountReceivedInCurrency": "Montante Recebido ({currency})",
       "payeeOptional": "Beneficiário (Opcional)",
       "categoryOptional": "Categoria (opcional)"
     },

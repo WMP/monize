@@ -368,6 +368,8 @@
       "toAccount": "目标账户",
       "transferAmount": "转账金额",
       "amountReceivedLabel": "收到金额",
+      "transferAmountInCurrency": "转账金额 ({currency})",
+      "amountReceivedInCurrency": "收到金额 ({currency})",
       "payeeOptional": "收款人（可选）",
       "categoryOptional": "类别（可选）"
     },

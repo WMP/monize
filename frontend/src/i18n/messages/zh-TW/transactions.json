@@ -368,6 +368,8 @@
       "toAccount": "目的科目",
       "transferAmount": "轉帳金額",
       "amountReceivedLabel": "收到金額",
+      "transferAmountInCurrency": "轉帳金額 ({currency})",
+      "amountReceivedInCurrency": "收到金額 ({currency})",
       "payeeOptional": "收款人（選填）",
       "categoryOptional": "類別（選填）"
     },
