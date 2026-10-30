@@ -303,6 +303,54 @@ describe("TransactionConversionService", () => {
       expect(result.toTransaction.id).toBe(ROW);
     });
 
+    it("keeps the row's own status when the body names none, and takes the body's when it does", async () => {
+      arrangeRow({ status: TransactionStatus.CLEARED });
+
+      await service.convertToTransfer(USER, ROW, transferDto);
+
+      expect(updateOf(ROW)[0]).toEqual(
+        expect.objectContaining({ status: TransactionStatus.CLEARED }),
+      );
+      expect(manager.create).toHaveBeenCalledWith(
+        Transaction,
+        expect.objectContaining({ status: TransactionStatus.CLEARED }),
+      );
+
+      jest.clearAllMocks();
+      arrangeRow({ status: TransactionStatus.CLEARED });
+      const reconciled = {
+        ...transferDto,
+        status: TransactionStatus.RECONCILED,
+      };
+      transferService.prepareTransfer.mockResolvedValue(
+        prepared({ dto: reconciled } as Partial<PreparedTransfer>),
+      );
+      await service.convertToTransfer(USER, ROW, reconciled);
+      expect(updateOf(ROW)[0]).toEqual(
+        expect.objectContaining({ status: TransactionStatus.RECONCILED }),
+      );
+    });
+
+    it("drops the externalId only when the row moves to another account", async () => {
+      arrangeRow();
+      await service.convertToTransfer(USER, ROW, transferDto);
+      expect(updateOf(ROW)[0]).not.toHaveProperty("externalId");
+
+      jest.clearAllMocks();
+      // The row sits in a third account; the transfer is chequing -> savings,
+      // so the row becomes the source leg and moves into chequing.
+      arrangeRow({ accountId: "acc-other" });
+      await service.convertToTransfer(USER, ROW, transferDto);
+      expect(updateOf(ROW)[0]).toEqual(
+        expect.objectContaining({ accountId: CHEQUING, externalId: null }),
+      );
+      expect(accountsService.updateBalance.mock.calls).toEqual([
+        ["acc-other", 50],
+        [CHEQUING, -50],
+        [SAVINGS, 50],
+      ]);
+    });
+
     it("removes a split parent's lines and side effects first and invalidates their accounts", async () => {
       arrangeRow({ isSplit: true, categoryId: null });
       splitService.deleteSplitSideEffects.mockResolvedValue(
@@ -490,12 +538,22 @@ describe("TransactionConversionService", () => {
         userId: USER,
       });
       expect(accountsService.updateBalance).toHaveBeenCalledWith(SAVINGS, -50);
+      // Detached with the pair's rate gone: a plain row has no rate of its own.
       expect(updateOf(ROW)).toEqual([
-        { isTransfer: false, linkedTransactionId: null },
+        { isTransfer: false, linkedTransactionId: null, exchangeRate: 1 },
       ]);
-      expect(transactionsService.update).toHaveBeenCalledWith(USER, ROW, body, {
-        recordHistory: false,
-      });
+      expect(transactionsService.update).toHaveBeenCalledWith(
+        USER,
+        ROW,
+        body,
+        expect.objectContaining({
+          recordHistory: false,
+          deferDerivedRecompute: expect.objectContaining({
+            accountIds: expect.any(Set),
+            securityIds: expect.any(Set),
+          }),
+        }),
+      );
       expect(dataSource.transaction).toHaveBeenCalledTimes(2); // the split lookup, then the write
       expect(netWorthService.triggerDebouncedRecalc).toHaveBeenCalledWith(
         SAVINGS,
@@ -509,6 +567,46 @@ describe("TransactionConversionService", () => {
         }),
       );
       expect(result.isTransfer).toBe(false);
+    });
+
+    it("dispatches what the nested update moved only after its own transaction", async () => {
+      arrangeLeg();
+      let dispatchedInsideTransaction = false;
+      transactionsService.update.mockImplementation(
+        async (
+          _userId: string,
+          _id: string,
+          _dto: unknown,
+          options: {
+            deferDerivedRecompute: {
+              accountIds: Set<string>;
+              securityIds: Set<string>;
+            };
+          },
+        ) => {
+          // Inside the conversion's transaction: nothing may be queued yet.
+          dispatchedInsideTransaction =
+            netWorthService.triggerDebouncedRecalc.mock.calls.length > 0 ||
+            splitService.recomputeBondPricesAfterWrite.mock.calls.length > 0;
+          options.deferDerivedRecompute.accountIds.add(CHEQUING);
+          options.deferDerivedRecompute.securityIds.add("sec-1");
+          return row({ isTransfer: false, linkedTransactionId: null });
+        },
+      );
+
+      await service.convertToTransaction(USER, ROW, body);
+
+      expect(dispatchedInsideTransaction).toBe(false);
+      expect(netWorthService.triggerDebouncedRecalc.mock.calls).toEqual(
+        expect.arrayContaining([
+          [SAVINGS, USER],
+          [CHEQUING, USER],
+        ]),
+      );
+      expect(splitService.recomputeBondPricesAfterWrite).toHaveBeenCalledWith(
+        USER,
+        new Set(["sec-1"]),
+      );
     });
 
     it("prewarms split-line rates before the locks and passes the splits through", async () => {
@@ -530,7 +628,7 @@ describe("TransactionConversionService", () => {
         USER,
         ROW,
         withSplits,
-        { recordHistory: false },
+        expect.objectContaining({ recordHistory: false }),
       );
     });
 

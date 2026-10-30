@@ -139,8 +139,22 @@ export class TransactionConversionService {
       const reversal = deletionBalanceEffect(locked);
 
       // 2. Rewrite the row as its leg and create the other leg, from the
-      //    create's own column set.
-      const legs = transferLegColumns(prepared);
+      //    create's own column set. A body that names no status keeps the
+      //    row's own (read under the lock), so an API caller converting a
+      //    CLEARED row does not silently un-clear it; the create's
+      //    UNRECONCILED default is for a row that did not exist yet.
+      const legs = transferLegColumns(
+        dto.status === undefined
+          ? {
+              ...prepared,
+              dto: {
+                ...prepared.dto,
+                status: (locked.status ?? undefined) as
+                  TransactionStatus | undefined,
+              },
+            }
+          : prepared,
+      );
       const own = side === "to" ? legs.to : legs.from;
       const other = side === "to" ? legs.from : legs.to;
       await m.update(
@@ -154,6 +168,13 @@ export class TransactionConversionService {
           // foreign-currency entry of its own.
           originalAmount: null,
           originalCurrencyCode: null,
+          // `externalId` names the row in the account the create wrote it to
+          // and is unique there. A row that moves to another account drops
+          // it: a retry of that create looks in the old account and would not
+          // find the row anyway, and the key could collide with one already
+          // held in the new account (the partial unique index would answer
+          // with a bare 500 at commit).
+          ...(own.accountId !== locked.accountId ? { externalId: null } : {}),
         },
       );
       const counterpart = await m.save(m.create(Transaction, other));
@@ -299,7 +320,10 @@ export class TransactionConversionService {
 
     const beforeSnapshot =
       this.transactionsService.snapshotTransaction(transaction);
+    // Every account and security the conversion and the nested update moved,
+    // invalidated after the commit.
     const counterpartAccountIds = new Set<string>();
+    const touchedSecurityIds = new Set<string>();
 
     const updated = await withScopedDb(this.dataSource, async (m) => {
       // Both legs, ascending id, the order every transfer writer takes.
@@ -347,24 +371,37 @@ export class TransactionConversionService {
           this.accountsService,
         );
       }
+      // The destination leg stores the pair's rate (source -> destination
+      // currency); a plain row's rate belongs to a foreign-currency entry it
+      // does not have, so it goes back to 1 with the flag.
       await m.update(
         Transaction,
         { id: transactionId, userId },
-        { isTransfer: false, linkedTransactionId: null },
+        { isTransfer: false, linkedTransactionId: null, exchangeRate: 1 },
       );
 
       // The generic update, on the detached row, in this same transaction
       // (its withScopedDb joins the ambient one): category, amount, account,
       // splits, status and tags follow its rules and balance arithmetic. The
-      // history entry is this method's, so the update records none.
+      // history entry is this method's, so the update records none, and the
+      // accounts and securities it moves are collected here and dispatched
+      // after THIS commit (INV-CACHE-001), never inside it.
       return this.transactionsService.update(userId, transactionId, dto, {
         recordHistory: false,
+        deferDerivedRecompute: {
+          accountIds: counterpartAccountIds,
+          securityIds: touchedSecurityIds,
+        },
       });
     });
 
     for (const accountId of counterpartAccountIds) {
       this.netWorthService.triggerDebouncedRecalc(accountId, userId);
     }
+    await this.splitService.recomputeBondPricesAfterWrite(
+      userId,
+      touchedSecurityIds,
+    );
     this.recordConversion(
       userId,
       beforeSnapshot,

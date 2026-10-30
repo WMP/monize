@@ -134,13 +134,25 @@ function reconciledEditAffectsReconciliation(
 /**
  * A transfer leg whose pairing the form cannot change: a split-transfer leg
  * (its link names the split parent, which owns the pairing) or a leg whose
- * counterpart is another owner's row (the owner-scoped read misses it). The
- * server refuses converting either, so the form offers them no other mode.
+ * counterpart is another owner's row. The server refuses converting either,
+ * so the form offers them no other mode.
+ *
+ * Judged only on what was loaded: a row whose `linkedTransaction` relation was
+ * never fetched (`undefined`) says nothing and is not locked; one fetched and
+ * missing (`null`) is the owner-scoped read missing a foreign row; one fetched
+ * in an account the user cannot see (not in `accounts`, once they are loaded)
+ * is another owner's as well, as `TransferTransactionFields` judges it.
  */
-function conversionLocked(transaction: Transaction | undefined): boolean {
-  if (!transaction?.isTransfer) return false;
-  if (transaction.linkedTransaction?.isSplit) return true;
-  return !!transaction.linkedTransactionId && !transaction.linkedTransaction;
+function conversionLocked(
+  transaction: Transaction | undefined,
+  accounts: readonly Account[],
+): boolean {
+  if (!transaction?.isTransfer || !transaction.linkedTransactionId) return false;
+  const linked = transaction.linkedTransaction;
+  if (linked === undefined) return false;
+  if (linked === null) return true;
+  if (linked.isSplit) return true;
+  return accounts.length > 0 && !accounts.some((account) => account.id === linked.accountId);
 }
 
 /**
@@ -305,7 +317,7 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
 
   // Transaction mode state (normal, split, or transfer)
   const [mode, setMode] = useState<TransactionMode>(getInitialMode());
-  const isConversionLocked = conversionLocked(transaction);
+  const isConversionLocked = conversionLocked(transaction, accounts);
   // A tour can grey out Split; false whenever no such tour is running.
   const splitDisabled = useDisableTransactionSplit();
 

@@ -2947,6 +2947,20 @@ describe('TransactionForm', () => {
       expect(screen.getByRole('button', { name: /Update Transfer/i })).toBeInTheDocument();
     });
 
+    it('offers no other mode for a leg whose counterpart sits in an account the user cannot see', async () => {
+      const leg: any = createTransferTransaction();
+      leg.linkedTransaction.accountId = 'acc-foreign';
+
+      await act(async () => {
+        render(<TransactionForm transaction={leg} onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('This is a linked transfer transaction')).toBeInTheDocument();
+      });
+      expect(screen.queryByRole('button', { name: /^Transaction$/ })).not.toBeInTheDocument();
+    });
+
     it('offers no other mode for a leg whose counterpart is another owner\'s', async () => {
       const leg = createExistingTransaction({
         amount: -200,

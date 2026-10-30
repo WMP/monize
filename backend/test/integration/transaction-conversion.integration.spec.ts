@@ -46,6 +46,7 @@ describe("Transaction <-> transfer conversion (integration)", () => {
   beforeEach(async () => {
     await settlePendingHistoryWrites();
     await cleanTables(dataSource, [
+      "exchange_rates",
       "action_history",
       "transaction_tags",
       "transaction_splits",
@@ -120,7 +121,8 @@ describe("Transaction <-> transfer conversion (integration)", () => {
     const [row] = await dataSource.query(
       `SELECT id, account_id, amount::float8 AS amount, category_id,
               is_transfer, is_split, linked_transaction_id, status,
-              original_amount, original_currency_code
+              original_amount, original_currency_code, external_id,
+              exchange_rate::float8 AS exchange_rate, currency_code
          FROM transactions WHERE id = $1`,
       [id],
     );
@@ -513,6 +515,169 @@ describe("Transaction <-> transfer conversion (integration)", () => {
           } as never),
         ),
       ).rejects.toBeInstanceOf(BadRequestException);
+    });
+  });
+
+  describe("across currencies, statuses and accounts", () => {
+    let euroId: string;
+
+    beforeEach(async () => {
+      euroId = (
+        await createTestAccount(dataSource, userId, {
+          name: "Euro",
+          currencyCode: "EUR",
+          openingBalance: 500,
+          currentBalance: 500,
+        })
+      ).id;
+      // The synchronize-built schema seeds no currencies, and the rate table
+      // references them. Canonical orientation (from < to): 1 EUR = 1.25 USD.
+      await dataSource.query(
+        `INSERT INTO currencies (code, name, symbol, decimal_places, is_active)
+         VALUES ('USD', 'US Dollar', '$', 2, true),
+                ('EUR', 'Euro', 'E', 2, true)
+         ON CONFLICT (code) DO NOTHING`,
+      );
+      await dataSource.query(
+        `INSERT INTO exchange_rates (from_currency, to_currency, rate_date, rate, source)
+         VALUES ('EUR', 'USD', '2026-01-15'::DATE, 1.25, 'test')`,
+      );
+    });
+
+    async function euroLedgerMatches(): Promise<void> {
+      expect(await balanceOf(euroId)).toBe(await ledgerOf(euroId));
+    }
+
+    it("converting the destination leg of a cross-currency transfer resets its rate to 1", async () => {
+      const transfer = await asUser(() =>
+        service.createTransfer(userId, {
+          fromAccountId: euroId,
+          toAccountId: chequingId,
+          transactionDate: "2026-01-15",
+          amount: 100,
+          toAmount: 125,
+        } as never),
+      );
+      expect(await rowOf(transfer.toTransaction.id)).toMatchObject({
+        amount: 125,
+        currency_code: "USD",
+        exchange_rate: 1.25,
+      });
+      expect(await balanceOf(euroId)).toBe(400);
+      expect(await balanceOf(chequingId)).toBe(1125);
+
+      await asUser(() =>
+        conversion.convertToTransaction(userId, transfer.toTransaction.id, {
+          accountId: chequingId,
+          transactionDate: "2026-01-15",
+          amount: 125,
+          categoryId,
+        } as never),
+      );
+
+      expect(await rowOf(transfer.toTransaction.id)).toMatchObject({
+        amount: 125,
+        currency_code: "USD",
+        exchange_rate: 1,
+        is_transfer: false,
+        linked_transaction_id: null,
+      });
+      expect(await countRows()).toBe(1);
+      expect(await balanceOf(euroId)).toBe(500);
+      expect(await balanceOf(chequingId)).toBe(1125);
+      await expectStoredEqualsLedger();
+      await euroLedgerMatches();
+    });
+
+    it("converting an expense into a cross-currency transfer posts the destination at the pair's rate", async () => {
+      const expense = await createExpense();
+
+      const result = await asUser(() =>
+        conversion.convertToTransfer(userId, expense.id, {
+          fromAccountId: chequingId,
+          toAccountId: euroId,
+          transactionDate: "2026-01-15",
+          amount: 50,
+          toAmount: 40,
+        } as never),
+      );
+
+      expect(await rowOf(expense.id)).toMatchObject({
+        amount: -50,
+        currency_code: "USD",
+        exchange_rate: 1,
+        is_transfer: true,
+      });
+      expect(await rowOf(result.toTransaction.id)).toMatchObject({
+        account_id: euroId,
+        amount: 40,
+        currency_code: "EUR",
+        exchange_rate: 0.8,
+      });
+      expect(await balanceOf(chequingId)).toBe(950);
+      expect(await balanceOf(euroId)).toBe(540);
+      await expectStoredEqualsLedger();
+      await euroLedgerMatches();
+    });
+
+    it("keeps a CLEARED row's status on both legs when the body names none", async () => {
+      const expense = await createExpense({
+        status: TransactionStatus.CLEARED,
+      });
+
+      const result = await asUser(() =>
+        conversion.convertToTransfer(userId, expense.id, {
+          fromAccountId: chequingId,
+          toAccountId: savingsId,
+          transactionDate: "2026-01-15",
+          amount: 50,
+        } as never),
+      );
+
+      expect(result.fromTransaction.status).toBe(TransactionStatus.CLEARED);
+      expect(result.toTransaction.status).toBe(TransactionStatus.CLEARED);
+    });
+
+    it("drops the externalId only when the conversion moves the row to another account", async () => {
+      const staying = await createExpense({ externalId: "stays" });
+      await asUser(() =>
+        conversion.convertToTransfer(userId, staying.id, {
+          fromAccountId: chequingId,
+          toAccountId: savingsId,
+          transactionDate: "2026-01-15",
+          amount: 50,
+        } as never),
+      );
+      expect(await rowOf(staying.id)).toMatchObject({ external_id: "stays" });
+
+      // Savings already holds a row with this key; the moved row would collide.
+      await asUser(() =>
+        service.create(userId, {
+          accountId: savingsId,
+          transactionDate: "2026-01-15",
+          amount: -1,
+          currencyCode: "USD",
+          categoryId,
+          externalId: "moves",
+        } as never),
+      );
+      const moving = await createExpense({ externalId: "moves" });
+      await asUser(() =>
+        conversion.convertToTransfer(userId, moving.id, {
+          fromAccountId: savingsId,
+          toAccountId: euroId,
+          transactionDate: "2026-01-15",
+          amount: 50,
+          toAmount: 40,
+        } as never),
+      );
+      expect(await rowOf(moving.id)).toMatchObject({
+        account_id: savingsId,
+        amount: -50,
+        external_id: null,
+      });
+      await expectStoredEqualsLedger();
+      await euroLedgerMatches();
     });
   });
 

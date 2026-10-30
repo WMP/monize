@@ -55,10 +55,13 @@ toAccountId, amount, ...}` the Transfer tab sends.
 | either account another owner's | any | refused: `errors.transactions.convertTransferCrossOwner` |
 
 The row's foreign-currency entry (`originalAmount`, `originalCurrencyCode`) is
-cleared: a leg's currency is its account's. Its `externalId` stays, so a retry
-of the create that wrote it still finds it. Tags: the body's `tagIds` replace
-both legs' set when present; otherwise the row's tags are mirrored onto the
-counterpart, as a plain transfer shares one set.
+cleared: a leg's currency is its account's. Its `externalId` stays while the
+row stays in its account, so a retry of the create that wrote it still finds
+it; a row that moves to another account drops the key, which is unique per
+account and would otherwise collide at commit. A body naming no `status`
+keeps the locked row's own status on both legs. Tags: the body's `tagIds`
+replace both legs' set when present; otherwise the row's tags are mirrored
+onto the counterpart, as a plain transfer shares one set.
 
 ## 3. Truth table: transfer -> transaction
 
@@ -75,10 +78,13 @@ included) the Transaction or Split tab sends.
 | plain transfer leg | another owner's row | refused: `errors.transactions.convertTransferCrossOwner` |
 | not a transfer | | refused: `errors.transactions.notATransfer` |
 
-The body is applied by `TransactionsService.update` inside the conversion's
-transaction (nested `withScopedDb` joins it), so category, amount, account,
-splits, status and tags follow the generic update's rules and balance
-arithmetic on the detached row.
+The detached row's `exchangeRate` goes back to 1 (the destination leg held the
+pair's rate). The body is then applied by `TransactionsService.update` inside
+the conversion's transaction (nested `withScopedDb` joins it), so category,
+amount, account, splits, status and tags follow the generic update's rules and
+balance arithmetic on the detached row; the update collects the accounts and
+securities it moved (`deferDerivedRecompute`) and the conversion dispatches
+them after its commit.
 
 ## 4. Numerical examples
 
@@ -95,6 +101,11 @@ Chequing 1,000.00 CAD holds `R = -50.00` (Groceries). Savings 2,000.00 CAD.
 - Convert the Chequing leg of a 100.00 CAD -> 135.00 CAD transfer back to a
   Groceries expense of `-100.00`: Savings `-135.00` (counterpart removed);
   Chequing unchanged.
+- Euro 500.00 EUR -> Chequing 100.00 EUR at 1.25 posts `+125.00 USD` with
+  `exchangeRate 1.25` on the Chequing leg. Converting that leg to an expense
+  keeps `125.00 USD`, resets its rate to 1, and returns Euro to 500.00.
+- Convert the `-50.00 USD` expense to Chequing -> Euro with `toAmount 40`:
+  the row stays `-50.00 USD` at rate 1, the Euro leg is `+40.00 EUR` at 0.8.
 
 ## 5. Missing-data policy
 
@@ -110,6 +121,9 @@ Nothing posts at 1:1 by default.
 |---|---|
 | balances after each conversion equal the ledger; the counterpart is created or removed; the row keeps its id | `backend/test/integration/transaction-conversion.integration.spec.ts` |
 | a reconciled counterpart under the lock refuses with nothing written | same |
+| cross-currency in each direction: the destination leg's rate is stored on the way in and reset to 1 on the way back | same |
+| a body without `status` keeps the row's; a moved row drops its `externalId`, a staying row keeps it | same, and `transaction-conversion.service.spec.ts` |
+| the nested update's recomputes are dispatched after the conversion's commit | `transaction-conversion.service.spec.ts` |
 | a split-transfer leg and a cross-owner pair are refused | same, and `backend/src/transactions/transaction-conversion.service.spec.ts` |
 | the write path's column set is the create's | `transaction-conversion.service.spec.ts` |
 | the undo of a conversion is refused | `backend/src/action-history/action-history.service.spec.ts` |
