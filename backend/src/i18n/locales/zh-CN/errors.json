@@ -100,7 +100,8 @@
     "unsupportedInvestmentAction": "不支持的投资操作：{{ action }}",
     "unsupportedBulkAction": "不支持的批量操作：{{ action }}",
     "unsupportedSimpleAction": "不支持的操作：{{ action }}",
-    "unsupportedTableForReinsert": "不支持重新插入的表：{{ tableName }}"
+    "unsupportedTableForReinsert": "不支持重新插入的表：{{ tableName }}",
+    "undoConversion": "此更改将交易转换为转账或从转账转换回交易，因此无法自动撤销。请将其转换回原状。"
   },
   "admin": {
     "passwordOrInviteNotBoth": "请提供密码或邮件邀请之一，不能同时提供。",
@@ -797,7 +798,11 @@
     "transferRateUnavailable": "无法确定 {{ from }} -> {{ to }} 的汇率。请提供 exchangeRate 或目标金额，以便正确记录该转账。",
     "transferAmountsMustAgreeOnZero": "转账必须在两侧移动非零金额，或两侧均为零",
     "transferImpliedRateInvalid": "目标金额相对于源金额意味着无法使用的汇率",
-    "externalIdNotThisTransfer": "此 externalId 已被来源账户中一笔并非转账至此目标账户的交易使用"
+    "externalIdNotThisTransfer": "此 externalId 已被来源账户中一笔并非转账至此目标账户的交易使用",
+    "alreadyATransfer": "此交易已经是一笔转账。请直接编辑该转账。",
+    "convertTransferCrossOwner": "无法转换涉及其他所有者账户的转账。请删除它并新建所需的条目。",
+    "splitTransferLegConvertLocked": "此转账属于一笔拆分交易。请在源交易中编辑拆分来移除它。",
+    "transferCounterpartChanged": "编辑期间此转账的另一方已更改。请重新加载后重试。"
   },
   "users": {
     "userNotFound": "未找到用户",

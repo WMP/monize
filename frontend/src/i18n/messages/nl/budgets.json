@@ -34,7 +34,8 @@
       "WANT": "Wens",
       "SAVING": "Sparen"
     },
-    "saving": "Opslaan..."
+    "saving": "Opslaan...",
+    "remove": "Uit budget verwijderen"
   },
   "categoryList": {
     "title": "Categoriebudgetten",
@@ -521,12 +522,19 @@
       "percentUsed": "{percent}% gebruikt",
       "rolloverType": "Overdracht: {type}",
       "editCategoryTitle": "{name} bewerken",
+      "remove": {
+        "title": "Categorie verwijderen",
+        "message": "\"{name}\" uit dit budget verwijderen? De toewijzing van {amount} wordt niet langer gebudgetteerd en de geschiedenis in eerdere budgetperiodes wordt verwijderd. Je transacties worden niet beïnvloed. Deze actie kan niet ongedaan worden gemaakt.",
+        "confirm": "Verwijderen"
+      },
       "toasts": {
         "updated": "Budget bijgewerkt",
         "updateFailed": "Bijwerken van budget mislukt",
         "categoryUpdated": "Categorie bijgewerkt",
         "categoryFailed": "Bijwerken van categorie mislukt",
-        "loadFailed": "Laden van budget mislukt"
+        "loadFailed": "Laden van budget mislukt",
+        "categoryRemoved": "Categorie uit budget verwijderd",
+        "categoryRemoveFailed": "Categorie verwijderen mislukt"
       }
     }
   },

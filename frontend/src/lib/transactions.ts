@@ -495,6 +495,36 @@ export const transactionsApi = {
     return response.data;
   },
 
+  // ==================== Conversion Methods ====================
+
+  // Convert an existing transaction (plain or split) into one leg of the
+  // transfer described, in place: the row keeps its id; the other leg is created.
+  convertToTransfer: async (
+    transactionId: string,
+    data: CreateTransferData,
+  ): Promise<TransferResult> => {
+    const response = await apiClient.post<TransferResult>(
+      `/transactions/${transactionId}/convert-to-transfer`,
+      data,
+    );
+    invalidateBalanceCaches();
+    return response.data;
+  },
+
+  // Convert a transfer leg back into a transaction (plain or split), in place:
+  // the counterpart is removed and the body applied to the kept row.
+  convertToTransaction: async (
+    transactionId: string,
+    data: UpdateTransactionData,
+  ): Promise<Transaction> => {
+    const response = await apiClient.post<Transaction>(
+      `/transactions/${transactionId}/convert-to-transaction`,
+      data,
+    );
+    invalidateBalanceCaches();
+    return response.data;
+  },
+
   // ==================== Reconciliation Methods ====================
 
   // Get reconciliation data for an account

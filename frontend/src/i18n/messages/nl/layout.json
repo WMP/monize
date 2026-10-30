@@ -123,6 +123,8 @@
       "createdTransaction": "Transactie {payee} {amount} aangemaakt",
       "updatedTransaction": "Transactie {payee} {amount} bijgewerkt",
       "deletedTransaction": "Transactie {payee} {amount} verwijderd",
+      "convertedToTransfer": "Transactie {payee} {amount} omgezet naar een overboeking",
+      "convertedToTransaction": "Overboeking {payee} {amount} omgezet naar een transactie",
       "bulkUpdatedTransactions": "{count, plural, one {# transactie} other {# transacties}} in bulk bijgewerkt",
       "createdTransfer": "Overboeking {amount} van {from} naar {to} aangemaakt",
       "createdInvestmentTransaction": "{action}-transactie aangemaakt",

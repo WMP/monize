@@ -100,7 +100,8 @@
     "unsupportedInvestmentAction": "サポートされていない投資アクション：{{ action }}",
     "unsupportedBulkAction": "サポートされていない一括アクション：{{ action }}",
     "unsupportedSimpleAction": "サポートされていないアクション：{{ action }}",
-    "unsupportedTableForReinsert": "再挿入のためのサポートされていないテーブル：{{ tableName }}"
+    "unsupportedTableForReinsert": "再挿入のためのサポートされていないテーブル：{{ tableName }}",
+    "undoConversion": "この変更は取引を振替に、または振替から変換したため、自動的に元に戻せません。代わりに元の形に変換し直してください。"
   },
   "admin": {
     "passwordOrInviteNotBoth": "パスワードまたはメール招待のどちらかを指定してください。両方は指定できません。",
@@ -797,7 +798,11 @@
     "transferRateUnavailable": "{{ from }} -> {{ to }} の為替レートを判定できませんでした。振替が正しく記録されるように exchangeRate または送金先金額を指定してください。",
     "transferAmountsMustAgreeOnZero": "送金は両側でゼロ以外の金額を動かすか、両側ともゼロである必要があります",
     "transferImpliedRateInvalid": "送金先の金額は、送金元の金額に対して使用できない為替レートを意味します",
-    "externalIdNotThisTransfer": "この externalId は、この振替先口座への振替ではない取引によって、すでにソース口座で使用されています"
+    "externalIdNotThisTransfer": "この externalId は、この振替先口座への振替ではない取引によって、すでにソース口座で使用されています",
+    "alreadyATransfer": "この取引はすでに振替です。代わりに振替自体を編集してください。",
+    "convertTransferCrossOwner": "他の所有者の口座を含む振替は変換できません。削除してから、必要な項目を作成してください。",
+    "splitTransferLegConvertLocked": "この振替は分割取引の一部です。元の取引の分割を編集して削除してください。",
+    "transferCounterpartChanged": "編集中にこの振替の相手側が変更されました。再読み込みしてもう一度お試しください。"
   },
   "users": {
     "userNotFound": "ユーザーが見つかりません",

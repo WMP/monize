@@ -34,7 +34,8 @@
       "WANT": "想要",
       "SAVING": "儲蓄"
     },
-    "saving": "儲存中..."
+    "saving": "儲存中...",
+    "remove": "從預算中移除"
   },
   "categoryList": {
     "title": "類別預算",
@@ -521,12 +522,19 @@
       "percentUsed": "已使用 {percent}%",
       "rolloverType": "結轉：{type}",
       "editCategoryTitle": "編輯 {name}",
+      "remove": {
+        "title": "移除類別",
+        "message": "要從此預算中移除「{name}」嗎？其 {amount} 的分配將不再計入預算，且其在過去預算期間的歷史記錄將被刪除。您的交易不受影響。此操作無法復原。",
+        "confirm": "移除"
+      },
       "toasts": {
         "updated": "預算已更新",
         "updateFailed": "更新預算失敗",
         "categoryUpdated": "類別已更新",
         "categoryFailed": "更新類別失敗",
-        "loadFailed": "載入預算失敗"
+        "loadFailed": "載入預算失敗",
+        "categoryRemoved": "已從預算中移除類別",
+        "categoryRemoveFailed": "移除類別失敗"
       }
     }
   },

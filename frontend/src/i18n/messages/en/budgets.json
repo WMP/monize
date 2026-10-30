@@ -34,7 +34,8 @@
       "WANT": "Want",
       "SAVING": "Saving"
     },
-    "saving": "Saving..."
+    "saving": "Saving...",
+    "remove": "Remove from budget"
   },
   "categoryList": {
     "title": "Category Budgets",
@@ -521,12 +522,19 @@
       "percentUsed": "{percent}% used",
       "rolloverType": "Rollover: {type}",
       "editCategoryTitle": "Edit {name}",
+      "remove": {
+        "title": "Remove Category",
+        "message": "Remove \"{name}\" from this budget? Its {amount} allocation will no longer be budgeted, and its history in past budget periods will be deleted. Your transactions are not affected. This action cannot be undone.",
+        "confirm": "Remove"
+      },
       "toasts": {
         "updated": "Budget updated",
         "updateFailed": "Failed to update budget",
         "categoryUpdated": "Category updated",
         "categoryFailed": "Failed to update category",
-        "loadFailed": "Failed to load budget"
+        "loadFailed": "Failed to load budget",
+        "categoryRemoved": "Category removed from budget",
+        "categoryRemoveFailed": "Failed to remove category"
       }
     }
   },

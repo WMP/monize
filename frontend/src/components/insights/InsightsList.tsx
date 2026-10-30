@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
 import { SummaryCard, SummaryIcons } from '@/components/ui/SummaryCard';
 import { summaryGridClass } from '@/components/accounts/shared/SummaryCardGrid';
-import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
+import { SEGMENTED_TOOLBAR_GROUP_CLASS, toolbarSegmentClass } from '@/components/ui/segmented-control';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 const logger = createLogger('InsightsList');
@@ -278,14 +278,14 @@ export function InsightsList() {
           ]}
           className="w-full sm:w-auto"
         />
-        <div role="group" aria-label={t('list.severityFilterLabel')} className={SEGMENTED_GROUP_CLASS}>
+        <div role="group" aria-label={t('list.severityFilterLabel')} className={SEGMENTED_TOOLBAR_GROUP_CLASS}>
           {SEVERITY_FILTERS.map((severity) => (
             <button
               key={severity || 'all'}
               type="button"
               onClick={() => setFilterSeverity(severity)}
               aria-pressed={filterSeverity === severity}
-              className={segmentClass(filterSeverity === severity)}
+              className={toolbarSegmentClass(filterSeverity === severity)}
             >
               {t(`list.severityFilter.${severity || 'all'}`, { count: severityCount(severity) })}
             </button>

@@ -368,6 +368,8 @@
       "toAccount": "Alıcı Hesap",
       "transferAmount": "Transfer Tutarı",
       "amountReceivedLabel": "Alınan Tutar",
+      "transferAmountInCurrency": "Transfer Tutarı ({currency})",
+      "amountReceivedInCurrency": "Alınan Tutar ({currency})",
       "payeeOptional": "Alacaklı (İsteğe Bağlı)",
       "categoryOptional": "Kategori (İsteğe bağlı)"
     },
@@ -397,10 +399,16 @@
     "submitCreateAndNewDescription": "Kaydet ve aynı hesap ve tarihle yenisine başla.",
     "submitOptions": "Oluşturduktan sonra ne olacağını seçin",
     "submitUpdate": "{mode} Güncelle",
+    "submitConvert": "{mode} olarak dönüştür",
     "reconciledConfirm": {
       "title": "Mutabakatlı işlem düzenlensin mi?",
       "message": "Bu işlemde mutabakat sağlandı. Değiştirmek, tamamlanmış bir mutabakatı etkiler. Yine de değişiklikleri kaydetmek istiyor musunuz?",
       "confirm": "Değişiklikleri kaydet"
+    },
+    "counterpartConfirm": {
+      "title": "Bu transfer dönüştürülsün mü?",
+      "message": "Bu transferin diğer tarafı zaten onaylanmış veya mutabakatı yapılmış. İşleme dönüştürmek bu kaydı diğer hesaptan kaldırır ve bir ekstreyle karşılaştırılmış bir bakiyeyi değiştirir. Devam etmek istiyor musunuz?",
+      "confirm": "Yine de dönüştür"
     },
     "modeLabel": {
       "transfer": "Transfer",
@@ -430,7 +438,8 @@
       "destinationRequired": "Lütfen hedef hesap seçin",
       "sameAccount": "Kaynak ve hedef hesaplar farklı olmalıdır",
       "negativeTransfer": "Transfer tutarı negatif olamaz",
-      "convertToTransferUnsupported": "Mevcut bir işlem burada transfere dönüştürülemez. İşlemi silin ve bunun yerine transferi oluşturun.",
+      "convertedToTransfer": "Transfere dönüştürüldü",
+      "convertedToTransaction": "İşleme dönüştürüldü",
       "payeeCreated": "\"{name}\" alacaklısı oluşturuldu",
       "payeeCreateFailed": "Alacaklı oluşturulamadı",
       "payeeReactivated": "\"{name}\" alacaklısı yeniden etkinleştirildi",
@@ -473,7 +482,8 @@
       "loading": "Garantiler yükleniyor",
       "loadError": "Bu işlemin garantileri yüklenemedi.",
       "empty": "Henüz garanti yok"
-    }
+    },
+    "conversionLockedNote": "Bu transfer bölünmüş bir işleme veya başka bir sahibin hesabına ait olduğundan burada yalnızca transfer olarak kalabilir. Bölmeden değiştirin veya silip istediğiniz kaydı oluşturun."
   },
   "splitEditor": {
     "header": "Bölüm Ayrıntıları",

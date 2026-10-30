@@ -368,6 +368,8 @@
       "toAccount": "입금 계정",
       "transferAmount": "이체 금액",
       "amountReceivedLabel": "수령 금액",
+      "transferAmountInCurrency": "이체 금액 ({currency})",
+      "amountReceivedInCurrency": "수령 금액 ({currency})",
       "payeeOptional": "수취인 (선택 사항)",
       "categoryOptional": "카테고리(선택사항)"
     },
@@ -397,10 +399,16 @@
     "submitCreateAndNewDescription": "저장하고 같은 계좌와 날짜로 새로 입력합니다.",
     "submitOptions": "만든 후 동작 선택",
     "submitUpdate": "{mode} 업데이트",
+    "submitConvert": "{mode}(으)로 변환",
     "reconciledConfirm": {
       "title": "조정된 거래를 편집하시겠습니까?",
       "message": "이 거래는 조정되었습니다. 변경하면 완료된 조정에 영향을 줍니다. 그래도 변경 사항을 저장하시겠습니까?",
       "confirm": "변경 사항 저장"
+    },
+    "counterpartConfirm": {
+      "title": "이 이체를 변환할까요?",
+      "message": "이 이체의 상대편은 이미 청산 또는 조정되었습니다. 거래로 변환하면 해당 항목이 상대 계좌에서 제거되고 명세서와 대조된 잔액이 변경됩니다. 계속할까요?",
+      "confirm": "그래도 변환"
     },
     "modeLabel": {
       "transfer": "이체",
@@ -430,7 +438,8 @@
       "destinationRequired": "목적 계정을 선택해 주세요",
       "sameAccount": "출금 계정과 입금 계정은 달라야 합니다",
       "negativeTransfer": "이체 금액은 음수일 수 없습니다",
-      "convertToTransferUnsupported": "기존 거래는 여기에서 이체로 바꿀 수 없습니다. 거래를 삭제한 후 이체를 새로 만드세요.",
+      "convertedToTransfer": "이체로 변환됨",
+      "convertedToTransaction": "거래로 변환됨",
       "payeeCreated": "수취인 \"{name}\"이(가) 생성되었습니다",
       "payeeCreateFailed": "수취인 생성에 실패했습니다",
       "payeeReactivated": "수취인 \"{name}\"이(가) 다시 활성화되었습니다",
@@ -473,7 +482,8 @@
       "loading": "보증을 불러오는 중",
       "loadError": "이 거래의 보증을 불러올 수 없습니다.",
       "empty": "아직 보증이 없습니다"
-    }
+    },
+    "conversionLockedNote": "이 이체는 분할 거래 또는 다른 소유자의 계좌에 속하므로 여기서는 이체로만 유지할 수 있습니다. 분할에서 변경하거나 삭제한 뒤 원하는 항목을 새로 만드세요."
   },
   "splitEditor": {
     "header": "분할 세부 정보",

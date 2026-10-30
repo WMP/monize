@@ -1093,6 +1093,8 @@ The same holds for a leg's figures. `TransactionsService.update` (the generic ro
 
 A refusal is only worth as much as its least-guarded entry point: the same state was reachable through `bulkUpdate`. When you refuse something on one path, grep for the bulk, AI-action and MCP routes to the same write in the same commit.
 
+Changing a row's family is not a leg edit either: `TransactionConversionService` converts an income, expense or split into one leg of a transfer, or a plain leg back into a transaction, by rewriting the row and creating or removing its counterpart in one transaction, with the reversal and the posting taken from the deletion and creation paths (`docs/specs/transaction-transfer-conversion.md`). A split-transfer leg and a cross-owner pair are refused; a reconciled counterpart refuses under the strict lock.
+
 ### A deletion reverses only what the row actually contributed
 
 A `VOID` row moved no balance, and neither did a future-dated one, so deleting either must move none. Nine hand-written reversal sites got this wrong four times (including checking VOID but forgetting the date). Call `deletionBalanceEffect` (`backend/src/common/deletion-balance.util.ts`); `deletion-balance.guard.spec.ts` fails on a new hand-rolled `-Number(row.amount)` reaching a balance update.

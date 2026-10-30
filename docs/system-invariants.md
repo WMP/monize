@@ -939,6 +939,13 @@ Enforcement         The balance decision is made once per pair, keyed on VOID.
                     is refused rather than cascaded away, leaving the other leg
                     one-sided (A26-M19):
                     backend/test/integration/account-delete-race.integration.spec.ts.
+                    A conversion between a transaction and a transfer leg
+                    (TransactionConversionService) creates or removes the
+                    counterpart in the same transaction as the row's rewrite,
+                    posting the pair from the create's column set and reversing
+                    the removed leg through removeLockedTransactionLeg; a VOID
+                    row moves nothing in either direction:
+                    backend/test/integration/transaction-conversion.integration.spec.ts.
 Concurrency scope   per transfer pair
 Failure response    consistent balances across the pair on every VOID transition.
 Required tests      Per status-changing path, both legs' balances stay consistent

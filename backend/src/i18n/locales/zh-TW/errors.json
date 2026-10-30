@@ -100,7 +100,8 @@
     "unsupportedInvestmentAction": "不支援的投資操作：{{ action }}",
     "unsupportedBulkAction": "不支援的批次操作：{{ action }}",
     "unsupportedSimpleAction": "不支援的操作：{{ action }}",
-    "unsupportedTableForReinsert": "不支援重新插入的資料表：{{ tableName }}"
+    "unsupportedTableForReinsert": "不支援重新插入的資料表：{{ tableName }}",
+    "undoConversion": "此變更將交易轉換為轉帳或從轉帳轉換回交易，因此無法自動復原。請將其轉換回原狀。"
   },
   "admin": {
     "passwordOrInviteNotBoth": "請提供密碼或電子郵件邀請，不能兩者同時提供。",
@@ -797,7 +798,11 @@
     "transferRateUnavailable": "無法確定 {{ from }} -> {{ to }} 的匯率。請提供 exchangeRate 或目標金額，以便正確記錄該轉帳。",
     "transferAmountsMustAgreeOnZero": "轉帳必須在兩側移動非零金額，或兩側皆為零",
     "transferImpliedRateInvalid": "目標金額相對於來源金額意味著無法使用的匯率",
-    "externalIdNotThisTransfer": "此 externalId 已被來源科目中一筆並非轉帳至此目的科目的交易使用"
+    "externalIdNotThisTransfer": "此 externalId 已被來源科目中一筆並非轉帳至此目的科目的交易使用",
+    "alreadyATransfer": "此交易已經是一筆轉帳。請直接編輯該轉帳。",
+    "convertTransferCrossOwner": "無法轉換涉及其他擁有者帳戶的轉帳。請刪除它並新建所需的項目。",
+    "splitTransferLegConvertLocked": "此轉帳屬於一筆拆分交易。請在來源交易中編輯拆分來移除它。",
+    "transferCounterpartChanged": "編輯期間此轉帳的另一方已變更。請重新載入後再試一次。"
   },
   "users": {
     "userNotFound": "找不到使用者",

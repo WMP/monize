@@ -123,6 +123,8 @@
       "createdTransaction": "{payee} {amount} işlemi oluşturuldu",
       "updatedTransaction": "{payee} {amount} işlemi güncellendi",
       "deletedTransaction": "{payee} {amount} işlemi silindi",
+      "convertedToTransfer": "{payee} {amount} işlemi transfere dönüştürüldü",
+      "convertedToTransaction": "{payee} {amount} transferi işleme dönüştürüldü",
       "bulkUpdatedTransactions": "{count, plural, one {# işlem} other {# işlem}} toplu olarak güncellendi",
       "createdTransfer": "{from}'dan {to}'ya {amount} transfer oluşturuldu",
       "createdInvestmentTransaction": "{action} işlemi oluşturuldu",

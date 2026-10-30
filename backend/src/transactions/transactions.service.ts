@@ -2665,6 +2665,24 @@ export class TransactionsService {
        * `tagIds`, which replaces the whole set.
        */
       addTagNames?: readonly string[];
+      /**
+       * `false` when the caller records the history entry itself: the
+       * conversion of a transfer leg applies its body through this method
+       * inside its own transaction, and one user action is one entry.
+       */
+      recordHistory?: boolean;
+      /**
+       * Set when the caller's own transaction wraps this update (the
+       * conversion of a transfer leg): the accounts and securities this edit
+       * moved are added to these sets instead of being dispatched here, and the
+       * caller dispatches them after ITS commit (INV-CACHE-001). Without it a
+       * recompute would be queued inside the ambient transaction, before the
+       * commit that makes the state it reads real.
+       */
+      deferDerivedRecompute?: {
+        accountIds: Set<string>;
+        securityIds: Set<string>;
+      };
     },
   ): Promise<Transaction> {
     const transaction = await this.findOne(userId, id);
@@ -3123,29 +3141,43 @@ export class TransactionsService {
 
     const finalTransaction = await this.findOne(userId, id);
 
-    this.netWorthService.triggerDebouncedRecalc(
-      finalTransaction.accountId,
-      userId,
-    );
-    if (oldAccountId !== finalTransaction.accountId) {
-      this.netWorthService.triggerDebouncedRecalc(oldAccountId, userId);
-    }
-    // Accounts moved by split-transfer counterpart propagation, which this method
-    // knows nothing about until the helper reports them. After the commit, so a
-    // rollback leaves nothing queued.
-    for (const affected of counterpartAccountIds) {
-      if (
-        affected !== finalTransaction.accountId &&
-        affected !== oldAccountId
-      ) {
-        this.netWorthService.triggerDebouncedRecalc(affected, userId);
+    const deferred = options?.deferDerivedRecompute;
+    if (deferred) {
+      // The caller's transaction is still open: hand it what to invalidate.
+      deferred.accountIds.add(finalTransaction.accountId);
+      deferred.accountIds.add(oldAccountId);
+      for (const affected of counterpartAccountIds) {
+        deferred.accountIds.add(affected);
       }
+      for (const securityId of touchedSecurityIds) {
+        deferred.securityIds.add(securityId);
+      }
+    } else {
+      this.netWorthService.triggerDebouncedRecalc(
+        finalTransaction.accountId,
+        userId,
+      );
+      if (oldAccountId !== finalTransaction.accountId) {
+        this.netWorthService.triggerDebouncedRecalc(oldAccountId, userId);
+      }
+      // Accounts moved by split-transfer counterpart propagation, which this
+      // method knows nothing about until the helper reports them. After the
+      // commit, so a rollback leaves nothing queued.
+      for (const affected of counterpartAccountIds) {
+        if (
+          affected !== finalTransaction.accountId &&
+          affected !== oldAccountId
+        ) {
+          this.netWorthService.triggerDebouncedRecalc(affected, userId);
+        }
+      }
+      await this.splitService.recomputeBondPricesAfterWrite(
+        userId,
+        touchedSecurityIds,
+      );
     }
-    await this.splitService.recomputeBondPricesAfterWrite(
-      userId,
-      touchedSecurityIds,
-    );
 
+    if (options?.recordHistory === false) return finalTransaction;
     this.actionHistoryService.record(userId, {
       entityType: "transaction",
       entityId: id,
@@ -3926,7 +3958,11 @@ export class TransactionsService {
     return this.bulkUpdateService.bulkDelete(userId, bulkDeleteDto);
   }
 
-  private snapshotTransaction(tx: Transaction): Record<string, any> {
+  /**
+   * The fields a history entry records for a transaction. Public for the
+   * conversion service, whose entry spans a shape the generic update's cannot.
+   */
+  snapshotTransaction(tx: Transaction): Record<string, any> {
     return {
       id: tx.id,
       accountId: tx.accountId,

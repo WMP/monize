@@ -34,7 +34,8 @@
       "WANT": "İstek",
       "SAVING": "Tasarruf"
     },
-    "saving": "Kaydediliyor..."
+    "saving": "Kaydediliyor...",
+    "remove": "Bütçeden kaldır"
   },
   "categoryList": {
     "title": "Kategori Bütçeleri",
@@ -521,12 +522,19 @@
       "percentUsed": "%{percent} kullanıldı",
       "rolloverType": "Devir: {type}",
       "editCategoryTitle": "{name} Düzenle",
+      "remove": {
+        "title": "Kategoriyi Kaldır",
+        "message": "\"{name}\" bu bütçeden kaldırılsın mı? {amount} tutarındaki tahsisi artık bütçelenmeyecek ve geçmiş bütçe dönemlerindeki geçmişi silinecek. İşlemleriniz etkilenmez. Bu işlem geri alınamaz.",
+        "confirm": "Kaldır"
+      },
       "toasts": {
         "updated": "Bütçe güncellendi",
         "updateFailed": "Bütçe güncellenemedi",
         "categoryUpdated": "Kategori güncellendi",
         "categoryFailed": "Kategori güncellenemedi",
-        "loadFailed": "Bütçe yüklenemedi"
+        "loadFailed": "Bütçe yüklenemedi",
+        "categoryRemoved": "Kategori bütçeden kaldırıldı",
+        "categoryRemoveFailed": "Kategori kaldırılamadı"
       }
     }
   },

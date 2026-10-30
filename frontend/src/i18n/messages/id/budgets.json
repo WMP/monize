@@ -34,7 +34,8 @@
       "WANT": "Keinginan",
       "SAVING": "Tabungan"
     },
-    "saving": "Menyimpan..."
+    "saving": "Menyimpan...",
+    "remove": "Hapus dari anggaran"
   },
   "categoryList": {
     "title": "Anggaran Kategori",
@@ -521,12 +522,19 @@
       "percentUsed": "{percent}% terpakai",
       "rolloverType": "Rollover: {type}",
       "editCategoryTitle": "Edit {name}",
+      "remove": {
+        "title": "Hapus Kategori",
+        "message": "Hapus \"{name}\" dari anggaran ini? Alokasi {amount} miliknya tidak akan dianggarkan lagi, dan riwayatnya di periode anggaran sebelumnya akan dihapus. Transaksi Anda tidak terpengaruh. Tindakan ini tidak dapat dibatalkan.",
+        "confirm": "Hapus"
+      },
       "toasts": {
         "updated": "Anggaran diperbarui",
         "updateFailed": "Gagal memperbarui anggaran",
         "categoryUpdated": "Kategori diperbarui",
         "categoryFailed": "Gagal memperbarui kategori",
-        "loadFailed": "Gagal memuat anggaran"
+        "loadFailed": "Gagal memuat anggaran",
+        "categoryRemoved": "Kategori dihapus dari anggaran",
+        "categoryRemoveFailed": "Gagal menghapus kategori"
       }
     }
   },

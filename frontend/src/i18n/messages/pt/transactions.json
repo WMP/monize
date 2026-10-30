@@ -368,6 +368,8 @@
       "toAccount": "Conta de Destino",
       "transferAmount": "Montante da Transferência",
       "amountReceivedLabel": "Montante Recebido",
+      "transferAmountInCurrency": "Montante da Transferência ({currency})",
+      "amountReceivedInCurrency": "Montante Recebido ({currency})",
       "payeeOptional": "Beneficiário (Opcional)",
       "categoryOptional": "Categoria (opcional)"
     },
@@ -397,10 +399,16 @@
     "submitCreateAndNewDescription": "Guardar e começar outra, mantendo a conta e a data.",
     "submitOptions": "Escolher o que acontece depois de criar",
     "submitUpdate": "Atualizar {mode}",
+    "submitConvert": "Converter em {mode}",
     "reconciledConfirm": {
       "title": "Editar transação reconciliada?",
       "message": "Esta transação está reconciliada. Alterá-la afetará uma reconciliação concluída. Pretende guardar as alterações mesmo assim?",
       "confirm": "Guardar alterações"
+    },
+    "counterpartConfirm": {
+      "title": "Converter esta transferência?",
+      "message": "O outro lado desta transferência já foi compensado ou reconciliado. Convertê-la numa transação remove essa entrada da outra conta e altera um saldo verificado com um extrato. Pretende continuar?",
+      "confirm": "Converter mesmo assim"
     },
     "modeLabel": {
       "transfer": "Transferência",
@@ -430,7 +438,8 @@
       "destinationRequired": "Selecione uma conta de destino",
       "sameAccount": "A conta de origem e a conta de destino devem ser diferentes",
       "negativeTransfer": "O montante da transferência não pode ser negativo",
-      "convertToTransferUnsupported": "Uma transação existente não pode ser convertida aqui numa transferência. Elimine-a e crie a transferência em vez disso.",
+      "convertedToTransfer": "Convertida em transferência",
+      "convertedToTransaction": "Convertida em transação",
       "payeeCreated": "Beneficiário \"{name}\" criado",
       "payeeCreateFailed": "Falha ao criar beneficiário",
       "payeeReactivated": "Beneficiário \"{name}\" reativado",
@@ -473,7 +482,8 @@
       "loading": "A carregar garantias",
       "loadError": "Não foi possível carregar as garantias desta transação.",
       "empty": "Ainda não há garantias"
-    }
+    },
+    "conversionLockedNote": "Esta transferência pertence a uma transação dividida ou à conta de outro proprietário, por isso aqui só pode continuar a ser uma transferência. Altere-a a partir da divisão ou elimine-a e crie a entrada pretendida."
   },
   "splitEditor": {
     "header": "Detalhes das Parcelas",

@@ -238,6 +238,27 @@ function assertVoidChangeUndoable(
   });
 }
 
+/**
+ * A conversion between a transaction and a transfer leg
+ * (`TransactionConversionService`) created or removed the counterpart row, which
+ * the snapshot cannot replay: restoring the fields alone would leave a transfer
+ * flag without its other leg, or a plain row whose counterpart still posts to
+ * another account. Refused before any write; the user converts it back instead.
+ */
+function assertConversionUndoable(
+  before: Record<string, any>,
+  after: Record<string, any>,
+): void {
+  if ((before.isTransfer === true) === (after.isTransfer === true)) return;
+  throw new ConflictException({
+    message: tr(
+      "errors.actionHistory.undoConversion",
+      "This change converted a transaction to or from a transfer, so it cannot be undone automatically. Convert it back instead.",
+    ),
+    errorCode: "UNDO_CONVERSION",
+  });
+}
+
 export interface RecordActionParams {
   entityType: string;
   entityId: string | null;
@@ -988,6 +1009,7 @@ export class ActionHistoryService {
     await assertReconciledRowsMutable(manager, action.userId, [transaction]);
 
     const before = action.beforeData;
+    assertConversionUndoable(before, action.afterData ?? {});
     assertVoidChangeUndoable(before, action.afterData ?? {});
 
     // A change is a value difference: a form resends every split, so equal

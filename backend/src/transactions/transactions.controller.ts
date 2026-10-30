@@ -55,6 +55,8 @@ import { BulkReconcileDto } from "./dto/bulk-reconcile.dto";
 import { BulkUpdateDto, BulkDeleteDto } from "./dto/bulk-update.dto";
 import { BulkCreateTransactionsDto } from "./dto/bulk-create.dto";
 import { TransactionBulkCreateService } from "./transaction-bulk-create.service";
+import { TransactionConversionService } from "./transaction-conversion.service";
+import { ConvertToTransferDto } from "./dto/convert-to-transfer.dto";
 import { MarkClearedDto } from "./dto/mark-cleared.dto";
 import { UpdateTransactionStatusDto } from "./dto/update-transaction-status.dto";
 import {
@@ -207,6 +209,7 @@ export class TransactionsController {
     private readonly crossOwnerAccess: CrossOwnerAccessService,
     private readonly jointRegister: JointRegisterService,
     private readonly bulkCreateService: TransactionBulkCreateService,
+    private readonly conversionService: TransactionConversionService,
   ) {}
 
   /**
@@ -1801,5 +1804,61 @@ export class TransactionsController {
       updateTransferDto,
       transferActorFrom(req),
     );
+  }
+
+  // ==================== Conversion Endpoints ====================
+  // Owner-only, like the bulk routes: a conversion rewrites a row and creates
+  // or removes its counterpart in one transaction, and neither the acting
+  // delegate nor the joint register has a path for that pair of writes.
+
+  @Post(":id/convert-to-transfer")
+  @ApiOperation({
+    summary:
+      "Convert a transaction (plain or split) into one leg of a transfer, keeping its id",
+  })
+  @ApiParam({ name: "id", description: "Transaction UUID" })
+  @ApiResponse({
+    status: 201,
+    description: "Both legs of the transfer the row now belongs to",
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      "The row is already a transfer, or the transfer names another owner's account, or invalid data",
+  })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  @ApiResponse({ status: 404, description: "Transaction or account not found" })
+  convertToTransfer(
+    @Request() req,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: ConvertToTransferDto,
+  ) {
+    return this.conversionService.convertToTransfer(req.user.id, id, dto);
+  }
+
+  @Post(":id/convert-to-transaction")
+  @ApiOperation({
+    summary:
+      "Convert a transfer leg into a transaction (plain or split), removing its counterpart",
+  })
+  @ApiParam({ name: "id", description: "Transaction UUID" })
+  @ApiResponse({ status: 201, description: "The converted transaction" })
+  @ApiResponse({
+    status: 400,
+    description:
+      "Not a transfer, a split-transfer leg, a cross-owner pair, or invalid data",
+  })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  @ApiResponse({ status: 404, description: "Transaction not found" })
+  @ApiResponse({
+    status: 409,
+    description: "The other leg changed or vanished while editing",
+  })
+  convertToTransaction(
+    @Request() req,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: UpdateTransactionDto,
+  ) {
+    return this.conversionService.convertToTransaction(req.user.id, id, dto);
   }
 }

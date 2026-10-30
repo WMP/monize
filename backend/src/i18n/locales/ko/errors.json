@@ -100,7 +100,8 @@
     "unsupportedInvestmentAction": "지원되지 않는 투자 작업입니다: {{ action }}",
     "unsupportedBulkAction": "지원되지 않는 일괄 작업입니다: {{ action }}",
     "unsupportedSimpleAction": "지원되지 않는 작업입니다: {{ action }}",
-    "unsupportedTableForReinsert": "다시 삽입할 수 없는 테이블입니다: {{ tableName }}"
+    "unsupportedTableForReinsert": "다시 삽입할 수 없는 테이블입니다: {{ tableName }}",
+    "undoConversion": "이 변경은 거래를 이체로 또는 이체에서 거래로 변환했으므로 자동으로 실행 취소할 수 없습니다. 대신 다시 변환하세요."
   },
   "admin": {
     "passwordOrInviteNotBoth": "비밀번호 또는 이메일 초대 중 하나만 제공하세요. 둘 다는 안 됩니다.",
@@ -797,7 +798,11 @@
     "transferRateUnavailable": "{{ from }} -> {{ to }}의 환율을 확인할 수 없습니다. 이체가 올바르게 기록되도록 exchangeRate 또는 대상 금액을 입력하세요.",
     "transferAmountsMustAgreeOnZero": "이체는 양쪽 모두에서 0이 아닌 금액을 이동해야 하거나 양쪽 모두 0이어야 합니다",
     "transferImpliedRateInvalid": "대상 금액이 출금 금액에 대해 사용할 수 없는 환율을 의미합니다",
-    "externalIdNotThisTransfer": "이 externalId는 출금 계정에서 이 입금 계정으로의 이체가 아닌 거래가 이미 사용하고 있습니다"
+    "externalIdNotThisTransfer": "이 externalId는 출금 계정에서 이 입금 계정으로의 이체가 아닌 거래가 이미 사용하고 있습니다",
+    "alreadyATransfer": "이 거래는 이미 이체입니다. 대신 이체 자체를 편집하세요.",
+    "convertTransferCrossOwner": "다른 소유자의 계좌가 포함된 이체는 변환할 수 없습니다. 삭제한 뒤 원하는 항목을 새로 만드세요.",
+    "splitTransferLegConvertLocked": "이 이체는 분할 거래의 일부입니다. 원본 거래의 분할을 편집하여 제거하세요.",
+    "transferCounterpartChanged": "편집 중에 이 이체의 상대편이 변경되었습니다. 새로 고친 뒤 다시 시도하세요."
   },
   "users": {
     "userNotFound": "사용자를 찾을 수 없습니다",
