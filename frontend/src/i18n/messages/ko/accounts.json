@@ -50,6 +50,7 @@
       "accountName": "계정명",
       "type": "유형",
       "status": "상태",
+      "lastReconciled": "마지막 조정",
       "balance": "잔액",
       "actions": "작업"
     },
@@ -92,7 +93,10 @@
     "jointSharedBy": "{owner} 님이 공유",
     "jointSharedWith": "{count, plural, other {#명}}과 공유됨",
     "includeInNetWorth": "내 순자산에 포함",
-    "excludeFromNetWorth": "내 순자산에서 제외"
+    "excludeFromNetWorth": "내 순자산에서 제외",
+    "neverReconciled": "없음",
+    "lastReconciledOn": "{date} 조정됨",
+    "neverReconciledCard": "조정한 적 없음"
   },
   "contextMenu": {
     "subtypeBrokerage": "증권사",

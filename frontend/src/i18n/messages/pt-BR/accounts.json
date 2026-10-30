@@ -50,6 +50,7 @@
       "accountName": "Nome da Conta",
       "type": "Tipo",
       "status": "Status",
+      "lastReconciled": "Última reconciliação",
       "balance": "Saldo",
       "actions": "Ações"
     },
@@ -92,7 +93,10 @@
     "jointSharedBy": "Compartilhada por {owner}",
     "jointSharedWith": "Compartilhada com {count, plural, one {# pessoa} other {# pessoas}}",
     "includeInNetWorth": "Incluir no meu patrimônio líquido",
-    "excludeFromNetWorth": "Excluir do meu patrimônio líquido"
+    "excludeFromNetWorth": "Excluir do meu patrimônio líquido",
+    "neverReconciled": "Nunca",
+    "lastReconciledOn": "Reconciliada em {date}",
+    "neverReconciledCard": "Nunca reconciliada"
   },
   "contextMenu": {
     "subtypeBrokerage": "Corretagem",

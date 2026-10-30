@@ -50,6 +50,7 @@
       "accountName": "Назва рахунку",
       "type": "Тип",
       "status": "Статус",
+      "lastReconciled": "Остання звірка",
       "balance": "Баланс",
       "actions": "Дії"
     },
@@ -92,7 +93,10 @@
     "jointSharedBy": "Доступ надано: {owner}",
     "jointSharedWith": "Доступ мають {count, plural, one {# особа} few {# особи} many {# осіб} other {# особи}}",
     "includeInNetWorth": "Включити в мої чисті активи",
-    "excludeFromNetWorth": "Виключити з моїх чистих активів"
+    "excludeFromNetWorth": "Виключити з моїх чистих активів",
+    "neverReconciled": "Ніколи",
+    "lastReconciledOn": "Звірено {date}",
+    "neverReconciledCard": "Жодного разу не звірено"
   },
   "contextMenu": {
     "subtypeBrokerage": "Брокерський",

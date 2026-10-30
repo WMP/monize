@@ -50,6 +50,7 @@
       "accountName": "科目名稱",
       "type": "類型",
       "status": "狀態",
+      "lastReconciled": "上次對帳",
       "balance": "結餘",
       "actions": "操作"
     },
@@ -92,7 +93,10 @@
     "jointSharedBy": "由 {owner} 共享",
     "jointSharedWith": "已與 {count, plural, other {# 人}}共享",
     "includeInNetWorth": "計入我的淨資產",
-    "excludeFromNetWorth": "從我的淨資產中排除"
+    "excludeFromNetWorth": "從我的淨資產中排除",
+    "neverReconciled": "從未",
+    "lastReconciledOn": "已對帳至 {date}",
+    "neverReconciledCard": "從未對帳"
   },
   "contextMenu": {
     "subtypeBrokerage": "券商",

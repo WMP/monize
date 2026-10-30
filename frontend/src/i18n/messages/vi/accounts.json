@@ -50,6 +50,7 @@
       "accountName": "Tên tài khoản",
       "type": "Loại",
       "status": "Trạng thái",
+      "lastReconciled": "Lần đối soát gần nhất",
       "balance": "Số dư",
       "actions": "Thao tác"
     },
@@ -92,7 +93,10 @@
     "jointSharedBy": "Được chia sẻ bởi {owner}",
     "jointSharedWith": "Được chia sẻ với {count, plural, other {# người}}",
     "includeInNetWorth": "Tính vào giá trị tài sản ròng của tôi",
-    "excludeFromNetWorth": "Loại khỏi giá trị tài sản ròng của tôi"
+    "excludeFromNetWorth": "Loại khỏi giá trị tài sản ròng của tôi",
+    "neverReconciled": "Chưa bao giờ",
+    "lastReconciledOn": "Đã đối soát ngày {date}",
+    "neverReconciledCard": "Chưa từng đối soát"
   },
   "contextMenu": {
     "subtypeBrokerage": "Môi giới",

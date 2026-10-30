@@ -50,6 +50,7 @@
       "accountName": "Nama Akun",
       "type": "Jenis",
       "status": "Status",
+      "lastReconciled": "Terakhir Direkonsiliasi",
       "balance": "Saldo",
       "actions": "Tindakan"
     },
@@ -92,7 +93,10 @@
     "jointSharedBy": "Dibagikan oleh {owner}",
     "jointSharedWith": "Dibagikan dengan {count, plural, other {# orang}}",
     "includeInNetWorth": "Sertakan dalam kekayaan bersih saya",
-    "excludeFromNetWorth": "Kecualikan dari kekayaan bersih saya"
+    "excludeFromNetWorth": "Kecualikan dari kekayaan bersih saya",
+    "neverReconciled": "Belum pernah",
+    "lastReconciledOn": "Direkonsiliasi {date}",
+    "neverReconciledCard": "Belum pernah direkonsiliasi"
   },
   "contextMenu": {
     "subtypeBrokerage": "Perantara",

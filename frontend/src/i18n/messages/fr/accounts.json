@@ -50,6 +50,7 @@
       "accountName": "Nom du compte",
       "type": "Type",
       "status": "Statut",
+      "lastReconciled": "Dernier rapprochement",
       "balance": "Solde",
       "actions": "Actions"
     },
@@ -92,7 +93,10 @@
     "jointSharedBy": "Partagé par {owner}",
     "jointSharedWith": "Partagé avec {count, plural, one {# personne} other {# personnes}}",
     "includeInNetWorth": "Inclure dans ma valeur nette",
-    "excludeFromNetWorth": "Exclure de ma valeur nette"
+    "excludeFromNetWorth": "Exclure de ma valeur nette",
+    "neverReconciled": "Jamais",
+    "lastReconciledOn": "Rapproché le {date}",
+    "neverReconciledCard": "Jamais rapproché"
   },
   "contextMenu": {
     "subtypeBrokerage": "Courtage",
