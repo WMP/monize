@@ -298,6 +298,13 @@ describe('UpcomingBills', () => {
 
     render(<UpcomingBills accounts={[]} scheduledTransactions={transactions} isLoading={false} maxItems={defaultMaxItems} />);
 
+    // The grid opens on the current month. Two days ahead crosses into the
+    // next one at a month's end, where this used to fail on the 30th and 31st;
+    // the chip is then on the next page of the grid.
+    if (dueDate.slice(0, 7) !== todayStr().slice(0, 7)) {
+      fireEvent.click(screen.getByRole('button', { name: 'Next month' }));
+    }
+
     // The chip carries the schedule and posts it, the same as a list row.
     const chip = screen.getAllByRole('button', { name: 'Rent' })[0];
     fireEvent.click(chip);

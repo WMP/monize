@@ -123,6 +123,8 @@
       "createdTransaction": "Đã tạo giao dịch {payee} {amount}",
       "updatedTransaction": "Đã cập nhật giao dịch {payee} {amount}",
       "deletedTransaction": "Đã xóa giao dịch {payee} {amount}",
+      "convertedToTransfer": "Đã chuyển đổi giao dịch {payee} {amount} thành chuyển khoản",
+      "convertedToTransaction": "Đã chuyển đổi chuyển khoản {payee} {amount} thành giao dịch",
       "bulkUpdatedTransactions": "Đã cập nhật hàng loạt {count, plural, one {# giao dịch} other {# giao dịch}}",
       "createdTransfer": "Đã tạo chuyển khoản {amount} từ {from} đến {to}",
       "createdInvestmentTransaction": "Đã tạo giao dịch {action}",

@@ -397,10 +397,16 @@
     "submitCreateAndNewDescription": "Save it and start another, keeping the account and date.",
     "submitOptions": "Choose what happens after creating",
     "submitUpdate": "Update {mode}",
+    "submitConvert": "Convert to {mode}",
     "reconciledConfirm": {
       "title": "Edit reconciled transaction?",
       "message": "This transaction is reconciled. Changing its date or amount will affect a completed reconciliation. Do you want to save your changes anyway?",
       "confirm": "Save changes"
+    },
+    "counterpartConfirm": {
+      "title": "Convert this transfer?",
+      "message": "The other side of this transfer has already been cleared or reconciled. Converting it to a transaction removes that entry from the other account and changes a balance that was checked against a statement. Do you want to continue?",
+      "confirm": "Convert anyway"
     },
     "modeLabel": {
       "transfer": "Transfer",
@@ -430,7 +436,8 @@
       "destinationRequired": "Please select a destination account",
       "sameAccount": "Source and destination accounts must be different",
       "negativeTransfer": "Transfer amount must not be negative",
-      "convertToTransferUnsupported": "An existing transaction can't be turned into a transfer here. Delete it and create the transfer instead.",
+      "convertedToTransfer": "Converted to a transfer",
+      "convertedToTransaction": "Converted to a transaction",
       "payeeCreated": "Payee \"{name}\" created",
       "payeeCreateFailed": "Failed to create payee",
       "payeeReactivated": "Payee \"{name}\" reactivated",
@@ -473,7 +480,8 @@
       "loading": "Loading warranties",
       "loadError": "The warranties for this transaction could not be loaded.",
       "empty": "No warranties yet"
-    }
+    },
+    "conversionLockedNote": "This transfer belongs to a split transaction or to another owner's account, so it can only stay a transfer here. Change it from the split or delete it and create the entry you want."
   },
   "splitEditor": {
     "header": "Split Details",

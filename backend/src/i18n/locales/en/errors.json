@@ -100,7 +100,8 @@
     "unsupportedInvestmentAction": "Unsupported investment action: {{ action }}",
     "unsupportedBulkAction": "Unsupported bulk action: {{ action }}",
     "unsupportedSimpleAction": "Unsupported action: {{ action }}",
-    "unsupportedTableForReinsert": "Unsupported table for re-insert: {{ tableName }}"
+    "unsupportedTableForReinsert": "Unsupported table for re-insert: {{ tableName }}",
+    "undoConversion": "This change converted a transaction to or from a transfer, so it cannot be undone automatically. Convert it back instead."
   },
   "admin": {
     "passwordOrInviteNotBoth": "Provide either a password or an email invite, not both.",
@@ -792,7 +793,11 @@
     "transferRateUnavailable": "Could not determine an exchange rate for {{ from }} -> {{ to }}. Supply an exchangeRate or a destination amount so the transfer posts correctly.",
     "transferAmountsMustAgreeOnZero": "A transfer must move a non-zero amount on both sides, or zero on both",
     "transferImpliedRateInvalid": "The destination amount implies an unusable exchange rate against the source amount",
-    "externalIdNotThisTransfer": "This externalId is already used in the source account by a transaction that is not a transfer to this destination account"
+    "externalIdNotThisTransfer": "This externalId is already used in the source account by a transaction that is not a transfer to this destination account",
+    "alreadyATransfer": "This transaction is already a transfer. Edit the transfer itself instead.",
+    "convertTransferCrossOwner": "A transfer with another owner's account can't be converted. Delete it and create the entry you want instead.",
+    "splitTransferLegConvertLocked": "This transfer is part of a split transaction. Remove it by editing the split on the source transaction instead.",
+    "transferCounterpartChanged": "The other side of this transfer changed while you were editing. Reload and try again."
   },
   "users": {
     "userNotFound": "User not found",
