@@ -100,7 +100,8 @@
     "unsupportedInvestmentAction": "Nicht unterstützte Investmentaktion: {{ action }}",
     "unsupportedBulkAction": "Nicht unterstützte Sammelaktion: {{ action }}",
     "unsupportedSimpleAction": "Nicht unterstützte Aktion: {{ action }}",
-    "unsupportedTableForReinsert": "Nicht unterstützte Tabelle für Wiedereinfügung: {{ tableName }}"
+    "unsupportedTableForReinsert": "Nicht unterstützte Tabelle für Wiedereinfügung: {{ tableName }}",
+    "undoConversion": "Diese Änderung hat eine Transaktion in eine Überweisung oder zurück umgewandelt und kann daher nicht automatisch rückgängig gemacht werden. Wandeln Sie sie stattdessen zurück."
   },
   "admin": {
     "passwordOrInviteNotBoth": "Geben Sie entweder ein Passwort oder eine E-Mail-Einladung an, nicht beides.",
@@ -792,7 +793,11 @@
     "transferRateUnavailable": "Für {{ from }} -> {{ to }} konnte kein Wechselkurs ermittelt werden. Geben Sie einen exchangeRate oder einen Zielbetrag an, damit die Übertragung korrekt gebucht wird.",
     "transferAmountsMustAgreeOnZero": "Eine Übertragung muss auf beiden Seiten einen Betrag ungleich null bewegen oder auf beiden Seiten null",
     "transferImpliedRateInvalid": "Der Zielbetrag ergibt im Verhältnis zum Ausgangsbetrag einen unbrauchbaren Wechselkurs",
-    "externalIdNotThisTransfer": "Diese externalId wird im Quellkonto bereits von einer Buchung verwendet, die keine Überweisung auf dieses Zielkonto ist"
+    "externalIdNotThisTransfer": "Diese externalId wird im Quellkonto bereits von einer Buchung verwendet, die keine Überweisung auf dieses Zielkonto ist",
+    "alreadyATransfer": "Diese Transaktion ist bereits eine Überweisung. Bearbeiten Sie stattdessen die Überweisung selbst.",
+    "convertTransferCrossOwner": "Eine Überweisung mit dem Konto eines anderen Eigentümers kann nicht umgewandelt werden. Löschen Sie sie und erstellen Sie stattdessen den gewünschten Eintrag.",
+    "splitTransferLegConvertLocked": "Diese Überweisung ist Teil einer aufgeteilten Transaktion. Entfernen Sie sie, indem Sie die Aufteilung in der Quelltransaktion bearbeiten.",
+    "transferCounterpartChanged": "Die Gegenseite dieser Überweisung hat sich während der Bearbeitung geändert. Laden Sie neu und versuchen Sie es erneut."
   },
   "users": {
     "userNotFound": "Benutzer nicht gefunden",

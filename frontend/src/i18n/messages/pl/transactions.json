@@ -397,10 +397,16 @@
     "submitCreateAndNewDescription": "Zapisz i zacznij kolejną, zachowując konto i datę.",
     "submitOptions": "Wybierz, co dzieje się po utworzeniu",
     "submitUpdate": "Zaktualizuj: {mode}",
+    "submitConvert": "Przekonwertuj na {mode}",
     "reconciledConfirm": {
       "title": "Edytować uzgodnioną transakcję?",
       "message": "Ta transakcja jest uzgodniona. Jej zmiana wpłynie na zakończone uzgodnienie. Czy mimo to chcesz zapisać zmiany?",
       "confirm": "Zapisz zmiany"
+    },
+    "counterpartConfirm": {
+      "title": "Przekonwertować ten przelew?",
+      "message": "Druga strona tego przelewu została już rozliczona lub uzgodniona. Przekonwertowanie go na transakcję usunie ten wpis z drugiego konta i zmieni saldo sprawdzone z wyciągiem. Czy chcesz kontynuować?",
+      "confirm": "Przekonwertuj mimo to"
     },
     "modeLabel": {
       "transfer": "Przelew",
@@ -430,7 +436,8 @@
       "destinationRequired": "Wybierz konto docelowe",
       "sameAccount": "Konto źródłowe i docelowe muszą być różne",
       "negativeTransfer": "Kwota przelewu nie może być ujemna",
-      "convertToTransferUnsupported": "Istniejącej transakcji nie można tutaj zmienić w przelew. Usuń ją i utwórz przelew.",
+      "convertedToTransfer": "Przekonwertowano na przelew",
+      "convertedToTransaction": "Przekonwertowano na transakcję",
       "payeeCreated": "Utworzono odbiorcę \"{name}\"",
       "payeeCreateFailed": "Nie udało się utworzyć odbiorcy",
       "payeeReactivated": "Odbiorca \"{name}\" został przywrócony",
@@ -473,7 +480,8 @@
       "loading": "Wczytywanie gwarancji",
       "loadError": "Nie udało się wczytać gwarancji tej transakcji.",
       "empty": "Nie ma jeszcze gwarancji"
-    }
+    },
+    "conversionLockedNote": "Ten przelew należy do transakcji podzielonej lub do konta innego właściciela, więc tutaj może pozostać tylko przelewem. Zmień go w podziale albo usuń i utwórz żądany wpis."
   },
   "splitEditor": {
     "header": "Szczegóły podziału",

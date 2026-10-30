@@ -100,7 +100,8 @@
     "unsupportedInvestmentAction": "Action d'investissement non prise en charge : {{ action }}",
     "unsupportedBulkAction": "Action en masse non prise en charge : {{ action }}",
     "unsupportedSimpleAction": "Action non prise en charge : {{ action }}",
-    "unsupportedTableForReinsert": "Table non prise en charge pour la réinsertion : {{ tableName }}"
+    "unsupportedTableForReinsert": "Table non prise en charge pour la réinsertion : {{ tableName }}",
+    "undoConversion": "Cette modification a converti une transaction en virement ou inversement ; elle ne peut donc pas être annulée automatiquement. Reconvertissez-la plutôt."
   },
   "admin": {
     "passwordOrInviteNotBoth": "Fournissez soit un mot de passe, soit une invitation par e-mail, mais pas les deux.",
@@ -792,7 +793,11 @@
     "transferRateUnavailable": "Impossible de déterminer un taux de change pour {{ from }} -> {{ to }}. Fournissez un exchangeRate ou un montant de destination pour que le transfert soit enregistré correctement.",
     "transferAmountsMustAgreeOnZero": "Un transfert doit déplacer un montant non nul des deux côtés, ou zéro des deux côtés",
     "transferImpliedRateInvalid": "Le montant de destination implique un taux de change inutilisable par rapport au montant source",
-    "externalIdNotThisTransfer": "Cet externalId est déjà utilisé dans le compte source par une opération qui n'est pas un virement vers ce compte de destination"
+    "externalIdNotThisTransfer": "Cet externalId est déjà utilisé dans le compte source par une opération qui n'est pas un virement vers ce compte de destination",
+    "alreadyATransfer": "Cette transaction est déjà un virement. Modifiez plutôt le virement lui-même.",
+    "convertTransferCrossOwner": "Un virement impliquant le compte d'un autre propriétaire ne peut pas être converti. Supprimez-le et créez plutôt l'entrée souhaitée.",
+    "splitTransferLegConvertLocked": "Ce virement fait partie d'une transaction fractionnée. Retirez-le en modifiant la répartition sur la transaction source.",
+    "transferCounterpartChanged": "L'autre côté de ce virement a changé pendant votre modification. Rechargez et réessayez."
   },
   "users": {
     "userNotFound": "Utilisateur introuvable",

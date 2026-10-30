@@ -100,7 +100,8 @@
     "unsupportedInvestmentAction": "Hành động đầu tư không được hỗ trợ: {{ action }}",
     "unsupportedBulkAction": "Hành động hàng loạt không được hỗ trợ: {{ action }}",
     "unsupportedSimpleAction": "Hành động không được hỗ trợ: {{ action }}",
-    "unsupportedTableForReinsert": "Bảng không được hỗ trợ để chèn lại: {{ tableName }}"
+    "unsupportedTableForReinsert": "Bảng không được hỗ trợ để chèn lại: {{ tableName }}",
+    "undoConversion": "Thay đổi này đã chuyển đổi một giao dịch thành chuyển khoản hoặc ngược lại, nên không thể hoàn tác tự động. Hãy chuyển đổi lại."
   },
   "admin": {
     "passwordOrInviteNotBoth": "Chỉ cung cấp mật khẩu hoặc lời mời qua email, không cả hai.",
@@ -792,7 +793,11 @@
     "transferRateUnavailable": "Không thể xác định tỷ giá cho {{ from }} -> {{ to }}. Hãy cung cấp exchangeRate hoặc số tiền đích để giao dịch chuyển khoản được ghi nhận chính xác.",
     "transferAmountsMustAgreeOnZero": "Giao dịch chuyển tiền phải di chuyển một số tiền khác không ở cả hai bên, hoặc bằng không ở cả hai bên",
     "transferImpliedRateInvalid": "Số tiền đích ngụ ý một tỷ giá không thể sử dụng so với số tiền nguồn",
-    "externalIdNotThisTransfer": "externalId này đã được dùng trong tài khoản nguồn bởi một giao dịch không phải là chuyển khoản đến tài khoản đích này"
+    "externalIdNotThisTransfer": "externalId này đã được dùng trong tài khoản nguồn bởi một giao dịch không phải là chuyển khoản đến tài khoản đích này",
+    "alreadyATransfer": "Giao dịch này đã là một giao dịch chuyển khoản. Hãy chỉnh sửa chính giao dịch chuyển khoản đó.",
+    "convertTransferCrossOwner": "Không thể chuyển đổi giao dịch chuyển khoản có tài khoản của chủ sở hữu khác. Hãy xóa và tạo mục bạn muốn.",
+    "splitTransferLegConvertLocked": "Giao dịch chuyển khoản này là một phần của giao dịch tách. Hãy xóa bằng cách chỉnh sửa phần tách trên giao dịch nguồn.",
+    "transferCounterpartChanged": "Phía bên kia của giao dịch chuyển khoản này đã thay đổi trong khi bạn chỉnh sửa. Hãy tải lại và thử lại."
   },
   "users": {
     "userNotFound": "Không tìm thấy người dùng",

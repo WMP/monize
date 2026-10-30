@@ -100,7 +100,8 @@
     "unsupportedInvestmentAction": "Ação de investimento não suportada: {{ action }}",
     "unsupportedBulkAction": "Ação em massa não suportada: {{ action }}",
     "unsupportedSimpleAction": "Ação não suportada: {{ action }}",
-    "unsupportedTableForReinsert": "Tabela não suportada para reinserção: {{ tableName }}"
+    "unsupportedTableForReinsert": "Tabela não suportada para reinserção: {{ tableName }}",
+    "undoConversion": "Esta alteração converteu uma transação em transferência ou vice-versa, por isso não pode ser anulada automaticamente. Converta-a de volta."
   },
   "admin": {
     "passwordOrInviteNotBoth": "Forneça uma palavra-passe ou um convite por e-mail, não ambos.",
@@ -792,7 +793,11 @@
     "transferRateUnavailable": "Não foi possível determinar uma taxa de câmbio para {{ from }} -> {{ to }}. Forneça um exchangeRate ou um valor de destino para que a transferência seja registada corretamente.",
     "transferAmountsMustAgreeOnZero": "Uma transferência tem de mover um valor diferente de zero em ambos os lados, ou zero em ambos",
     "transferImpliedRateInvalid": "O valor de destino implica uma taxa de câmbio inutilizável face ao valor de origem",
-    "externalIdNotThisTransfer": "Este externalId já é usado na conta de origem por uma transação que não é uma transferência para esta conta de destino"
+    "externalIdNotThisTransfer": "Este externalId já é usado na conta de origem por uma transação que não é uma transferência para esta conta de destino",
+    "alreadyATransfer": "Esta transação já é uma transferência. Edite a própria transferência.",
+    "convertTransferCrossOwner": "Uma transferência com a conta de outro proprietário não pode ser convertida. Elimine-a e crie a entrada pretendida.",
+    "splitTransferLegConvertLocked": "Esta transferência faz parte de uma transação dividida. Remova-a editando a divisão na transação de origem.",
+    "transferCounterpartChanged": "O outro lado desta transferência mudou enquanto editava. Recarregue e tente novamente."
   },
   "users": {
     "userNotFound": "Utilizador não encontrado",

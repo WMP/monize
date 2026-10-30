@@ -100,7 +100,8 @@
     "unsupportedInvestmentAction": "Nieobsługiwana operacja inwestycyjna: {{ action }}",
     "unsupportedBulkAction": "Nieobsługiwana operacja zbiorcza: {{ action }}",
     "unsupportedSimpleAction": "Nieobsługiwana operacja: {{ action }}",
-    "unsupportedTableForReinsert": "Nieobsługiwana tabela do ponownego wstawienia: {{ tableName }}"
+    "unsupportedTableForReinsert": "Nieobsługiwana tabela do ponownego wstawienia: {{ tableName }}",
+    "undoConversion": "Ta zmiana przekonwertowała transakcję na przelew lub z przelewu, więc nie można jej automatycznie cofnąć. Zamiast tego przekonwertuj ją z powrotem."
   },
   "admin": {
     "passwordOrInviteNotBoth": "Podaj hasło albo zaproszenie e-mail, ale nie oba naraz.",
@@ -792,7 +793,11 @@
     "transferRateUnavailable": "Nie udało się ustalić kursu wymiany dla {{ from }} -> {{ to }}. Podaj exchangeRate lub kwotę docelową, aby przelew został zaksięgowany poprawnie.",
     "transferAmountsMustAgreeOnZero": "Przelew musi przenosić kwotę różną od zera po obu stronach albo zero po obu stronach",
     "transferImpliedRateInvalid": "Kwota docelowa daje nieprawidłowy kurs wymiany w stosunku do kwoty źródłowej",
-    "externalIdNotThisTransfer": "Ten externalId jest już używany na koncie źródłowym przez transakcję, która nie jest przelewem na to konto docelowe"
+    "externalIdNotThisTransfer": "Ten externalId jest już używany na koncie źródłowym przez transakcję, która nie jest przelewem na to konto docelowe",
+    "alreadyATransfer": "Ta transakcja jest już przelewem. Zamiast tego edytuj sam przelew.",
+    "convertTransferCrossOwner": "Przelewu z kontem innego właściciela nie można przekonwertować. Usuń go i zamiast tego utwórz żądany wpis.",
+    "splitTransferLegConvertLocked": "Ten przelew jest częścią transakcji podzielonej. Usuń go, edytując podział w transakcji źródłowej.",
+    "transferCounterpartChanged": "Druga strona tego przelewu zmieniła się podczas edycji. Odśwież i spróbuj ponownie."
   },
   "users": {
     "userNotFound": "Nie znaleziono użytkownika",
