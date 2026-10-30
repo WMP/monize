@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@/test/render';
 import { UpcomingBills } from './UpcomingBills';
 import dashboardMessages from '@/i18n/messages/en/dashboard.json';
@@ -64,6 +64,10 @@ describe('UpcomingBills', () => {
     mockPush.mockClear();
     mockUpdateConfig.mockClear();
     widgetConfig.current = { scope: 'dueSoon', view: 'list' };
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('renders loading state with title and pulse skeleton', () => {
@@ -290,6 +294,11 @@ describe('UpcomingBills', () => {
   });
 
   it('lays the same occurrences out on a month grid in the calendar view', () => {
+    // The grid shows the current month only, so the due date must not fall
+    // past its end: pin mid-month (an unpinned run on the 30th put "today + 2"
+    // in the next month and found no chip).
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 5, 10, 12));
     widgetConfig.current = { scope: 'all', view: 'calendar' };
     const dueDate = futureDateStr(2);
     const transactions = [
