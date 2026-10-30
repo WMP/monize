@@ -208,8 +208,8 @@ describe('the accounts list on a phone', () => {
     const labels = Array.from(head!.querySelectorAll('button')).map(
       (button) => button.textContent?.replace(/[^A-Za-z ]/g, '').trim(),
     );
-    expect(labels).toEqual(['Account Name', 'Type', 'Status', 'Balance']);
-    // No column label of its own: the one card cell below carries all four.
+    expect(labels).toEqual(['Account Name', 'Type', 'Status', 'Last Reconciled', 'Balance']);
+    // No column label of its own: the one card cell below carries all five.
     expect(head!.textContent).not.toContain('Actions');
   });
 

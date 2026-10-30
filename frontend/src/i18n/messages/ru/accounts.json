@@ -50,6 +50,7 @@
       "accountName": "Название счёта",
       "type": "Тип",
       "status": "Статус",
+      "lastReconciled": "Последняя сверка",
       "balance": "Остаток",
       "actions": "Действия"
     },
@@ -92,7 +93,10 @@
     "jointSharedBy": "Доступ предоставил(а) {owner}",
     "jointSharedWith": "Открыт доступ для {count, plural, one {# человека} few {# человек} many {# человек} other {# человека}}",
     "includeInNetWorth": "Включить в мои чистые активы",
-    "excludeFromNetWorth": "Исключить из моих чистых активов"
+    "excludeFromNetWorth": "Исключить из моих чистых активов",
+    "neverReconciled": "Никогда",
+    "lastReconciledOn": "Согласовано {date}",
+    "neverReconciledCard": "Ни разу не согласовано"
   },
   "contextMenu": {
     "subtypeBrokerage": "Брокерский",
