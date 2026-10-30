@@ -213,10 +213,11 @@ The generator is `frontend/scripts/build-website-docs.mjs`. It renders with the 
 - **Links between pages** are written `[text](accounts.md#financial-institutions)` so they also
   work when the Markdown is read on GitHub; the build turns them into `/docs/accounts#...`. A link
   to a page or heading that does not exist fails the build.
-- **Heading anchors** use GitHub's slug rules, so the app's help links (for example
-  `/docs/accounts#financial-institutions`) keep working only while the heading text does. Renaming
-  a heading means grepping `frontend/src` for its old anchor. Where a heading's slug is taken, put
-  `<a id="name"></a>` on the line above it; that is the only HTML the pages render.
+- **Heading anchors** use GitHub's slug rules, and the app's help links land on them: every one
+  is an entry in `frontend/src/lib/docs-links.ts`, and `docs-links.test.ts` fails when a page or
+  heading it names no longer exists. Renaming a heading means updating that entry. Where a
+  heading's slug is taken, put `<a id="name"></a>` on the line above it; that is the only HTML the
+  pages render.
 - **The table of contents is generated** from the `##` and `###` headings; do not write one by hand.
 - **Callouts** are GitHub's syntax: a blockquote starting `> [!NOTE]`, `[!TIP]`, `[!IMPORTANT]`,
   `[!WARNING]` or `[!CAUTION]`.
