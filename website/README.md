@@ -1,7 +1,9 @@
 # monize-site
 
-The marketing / "what is Monize" site. One page, no framework, no build step, no dependencies.
-Three files do the work: `index.html`, `assets/css/styles.css`, `assets/js/app.js`.
+The marketing / "what is Monize" site and the user documentation at `/docs`. No framework, no
+build step on Cloudflare, no dependencies. The marketing page is three files: `index.html`,
+`assets/css/styles.css`, `assets/js/app.js`. The documentation is described in
+[Documentation](#documentation-docs) below.
 
 * Live app demo: https://demo.monize.net
 * Source: https://github.com/kenlasko/monize
@@ -55,10 +57,17 @@ There is nothing to compile, so builds finish instantly and stay inside the free
 index.html                     the whole page
 404.html                       friendly not-found page
 _headers                       security headers + revalidate-always caching
-_redirects                     /demo /github /docs /wiki /issues short links
+_redirects                     /demo /github /wiki /issues short links
 robots.txt, sitemap.xml        change the domain if it is not monize.net
 assets/css/styles.css          all styling, light + dark themes
 assets/js/app.js               all interactivity and page data
+assets/css/docs.css            documentation layout, on top of styles.css
+assets/js/docs.js              documentation search, page list, on-this-page, copy, zoom
+assets/js/theme-boot.js        documentation theme before first paint (blocking, in <head>)
+docs/*.md                      documentation source, one file per page
+docs/nav.json                  documentation page order and groups
+docs/images/                   documentation screenshots
+docs/*.html, search-index.json, sitemap.xml   GENERATED from docs/*.md -- never edit by hand
 assets/img/monize-logo.svg     favicon + header mark
 assets/img/screenshots/        optional local copies of the wiki screenshots
 scripts/fetch-screenshots.sh   downloads them (macOS/Linux)
@@ -174,6 +183,52 @@ focusable, so the strip takes a `tabindex` and that name while it can scroll --
 asked of the element (`scrollWidth > clientWidth`) rather than by repeating the
 breakpoint in JavaScript, so the two files cannot disagree after a breakpoint
 moves.
+
+## Documentation (`/docs`)
+
+The user guide lives in `docs/` as Markdown, one file per page, and is served at
+`https://monize.net/docs/<page>` (`docs/accounts.md` is `/docs/accounts`, `docs/index.md` is
+`/docs/`). It replaced the GitHub wiki so that a change to a feature and the change to its
+documentation land in the same pull request.
+
+Cloudflare Pages has no build step here, so the pages are generated locally and committed:
+
+```bash
+cd frontend
+npm run docs:build     # regenerate docs/*.html, docs/search-index.json, docs/sitemap.xml
+npm run docs:check     # what CI runs (via frontend/src/test/website-docs.test.ts)
+```
+
+The generator is `frontend/scripts/build-website-docs.mjs`. It renders with the frontend's own
+`react-markdown` + `remark-gfm`, so it needs `npm ci` in `frontend/` and nothing else.
+
+### Changing the documentation
+
+- **Edit the `.md` file, then run `npm run docs:build`** and commit both. A generated page that
+  does not match its Markdown fails `website-docs.test.ts`.
+- **A new page** is a new `docs/<slug>.md` (lower-case, hyphenated) starting with one `# Title`,
+  plus an entry in `docs/nav.json` with a one-sentence `summary` (used on the landing page and as
+  the page's description). A page missing from `nav.json`, or listed there without a file, fails
+  the build.
+- **Links between pages** are written `[text](accounts.md#financial-institutions)` so they also
+  work when the Markdown is read on GitHub; the build turns them into `/docs/accounts#...`. A link
+  to a page or heading that does not exist fails the build.
+- **Heading anchors** use GitHub's slug rules, so the app's help links (for example
+  `/docs/accounts#financial-institutions`) keep working only while the heading text does. Renaming
+  a heading means grepping `frontend/src` for its old anchor. Where a heading's slug is taken, put
+  `<a id="name"></a>` on the line above it; that is the only HTML the pages render.
+- **The table of contents is generated** from the `##` and `###` headings; do not write one by hand.
+- **Callouts** are GitHub's syntax: a blockquote starting `> [!NOTE]`, `[!TIP]`, `[!IMPORTANT]`,
+  `[!WARNING]` or `[!CAUTION]`.
+- **Screenshots** go in `docs/images/` as `.png` and are referenced as `images/<name>.png`. A
+  picture alone in its paragraph becomes a figure with its alt text as the caption. A screenshot
+  that is referenced but not there renders as "Screenshot pending" and the build lists it.
+
+### Cloudflare Pages free plan
+
+`website-docs.test.ts` also holds the whole folder to the free plan's per-deployment limits:
+20,000 files, 25 MiB per file, 100 `_headers` rules, 2,000 static and 100 dynamic `_redirects`.
+The documentation adds about 160 files.
 
 ## Licence
 
