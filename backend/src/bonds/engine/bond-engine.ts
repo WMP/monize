@@ -233,9 +233,10 @@ function saleWindowRefusal(input: LotInput): BondValuationRefusal | null {
   const { purchaseDate } = input.lot;
   if (
     window === null ||
-    // An assumed purchase date (an unpaired transfer in) is held to the window
-    // like a stated one: a date outside it values nothing rather than a lot
-    // bought on the transfer day.
+    // An assumed purchase date (an unpaired transfer in) restarts the lot at
+    // the transfer by design (docs/specs/polish-retail-bonds.md 12.2); the
+    // window refuses only a stated purchase (2.6).
+    input.lot.purchaseDateAssumed === true ||
     (compareYMD(purchaseDate, window.from) >= 0 &&
       compareYMD(purchaseDate, window.to) <= 0)
   ) {
