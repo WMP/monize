@@ -2665,6 +2665,12 @@ export class TransactionsService {
        * `tagIds`, which replaces the whole set.
        */
       addTagNames?: readonly string[];
+      /**
+       * `false` when the caller records the history entry itself: the
+       * conversion of a transfer leg applies its body through this method
+       * inside its own transaction, and one user action is one entry.
+       */
+      recordHistory?: boolean;
     },
   ): Promise<Transaction> {
     const transaction = await this.findOne(userId, id);
@@ -3146,6 +3152,7 @@ export class TransactionsService {
       touchedSecurityIds,
     );
 
+    if (options?.recordHistory === false) return finalTransaction;
     this.actionHistoryService.record(userId, {
       entityType: "transaction",
       entityId: id,
@@ -3926,7 +3933,11 @@ export class TransactionsService {
     return this.bulkUpdateService.bulkDelete(userId, bulkDeleteDto);
   }
 
-  private snapshotTransaction(tx: Transaction): Record<string, any> {
+  /**
+   * The fields a history entry records for a transaction. Public for the
+   * conversion service, whose entry spans a shape the generic update's cannot.
+   */
+  snapshotTransaction(tx: Transaction): Record<string, any> {
     return {
       id: tx.id,
       accountId: tx.accountId,

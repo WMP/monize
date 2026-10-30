@@ -6,6 +6,7 @@ import { TransactionsService } from "./transactions.service";
 import { DelegateTransferMaskInterceptor } from "../delegation/interceptors/delegate-transfer-mask.interceptor";
 import { DelegationService } from "../delegation/delegation.service";
 import { TransactionBulkCreateService } from "./transaction-bulk-create.service";
+import { TransactionConversionService } from "./transaction-conversion.service";
 
 describe("TransactionsController", () => {
   let controller: TransactionsController;
@@ -15,6 +16,7 @@ describe("TransactionsController", () => {
   let mockCrossOwnerAccess: Record<string, jest.Mock>;
   let mockDelegationService: Record<string, jest.Mock>;
   let mockBulkCreate: Record<string, jest.Mock>;
+  let mockConversion: Record<string, jest.Mock>;
   const mockReq = { user: { id: "user-1" } };
   /** The passthrough response a create handler may set a status on. */
   const mockRes = () =>
@@ -88,6 +90,11 @@ describe("TransactionsController", () => {
       createMany: jest.fn(),
     };
 
+    mockConversion = {
+      convertToTransfer: jest.fn(),
+      convertToTransaction: jest.fn(),
+    };
+
     mockCrossOwnerAccess = {
       readableAccountIdSetFor: jest.fn().mockResolvedValue(new Set()),
       // Own accounts by default, matching mockJointRegister.ownsRow above.
@@ -124,10 +131,50 @@ describe("TransactionsController", () => {
           useValue: mockJointRegister,
         },
         { provide: TransactionBulkCreateService, useValue: mockBulkCreate },
+        { provide: TransactionConversionService, useValue: mockConversion },
       ],
     }).compile();
 
     controller = module.get<TransactionsController>(TransactionsController);
+  });
+
+  describe("conversion routes", () => {
+    it("convertToTransfer() hands the row id and the transfer body to the conversion service", async () => {
+      const dto = { fromAccountId: uuid1, toAccountId: uuid2, amount: 50 };
+      const legs = { fromTransaction: { id: uuid3 }, toTransaction: {} };
+      mockConversion.convertToTransfer.mockResolvedValue(legs);
+
+      const result = await controller.convertToTransfer(
+        mockReq,
+        uuid3,
+        dto as never,
+      );
+
+      expect(mockConversion.convertToTransfer).toHaveBeenCalledWith(
+        "user-1",
+        uuid3,
+        dto,
+      );
+      expect(result).toBe(legs);
+    });
+
+    it("convertToTransaction() hands the row id and the transaction body to the conversion service", async () => {
+      const dto = { accountId: uuid1, amount: -50 };
+      mockConversion.convertToTransaction.mockResolvedValue({ id: uuid3 });
+
+      const result = await controller.convertToTransaction(
+        mockReq,
+        uuid3,
+        dto as never,
+      );
+
+      expect(mockConversion.convertToTransaction).toHaveBeenCalledWith(
+        "user-1",
+        uuid3,
+        dto,
+      );
+      expect(result).toEqual({ id: uuid3 });
+    });
   });
 
   describe("create()", () => {

@@ -123,6 +123,8 @@
       "createdTransaction": "[XX-Created transaction {payee} {amount}-XX]",
       "updatedTransaction": "[XX-Updated transaction {payee} {amount}-XX]",
       "deletedTransaction": "[XX-Deleted transaction {payee} {amount}-XX]",
+      "convertedToTransfer": "[XX-Converted transaction {payee} {amount} to a transfer-XX]",
+      "convertedToTransaction": "[XX-Converted transfer {payee} {amount} to a transaction-XX]",
       "bulkUpdatedTransactions": "[XX-Bulk updated {count, plural, one {# transaction} other {# transactions}}-XX]",
       "createdTransfer": "[XX-Created transfer {amount} from {from} to {to}-XX]",
       "createdInvestmentTransaction": "[XX-Created {action} transaction-XX]",
