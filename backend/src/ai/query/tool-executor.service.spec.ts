@@ -370,6 +370,9 @@ describe("ToolExecutorService", () => {
           realizedGain: 120,
           realizedGainComplete: true,
           realizedGainKnownSubtotal: null,
+          currency: "CAD",
+          fxComplete: true,
+          missingRatePairs: [],
           unrealizedGain: 80,
           totalCapitalGain: 200,
         },
@@ -1442,6 +1445,9 @@ describe("ToolExecutorService", () => {
           realizedGain: null,
           realizedGainComplete: false,
           realizedGainKnownSubtotal: 15,
+          currency: "CAD",
+          fxComplete: false,
+          missingRatePairs: ["USD->CAD"],
           unrealizedGain: null,
           totalCapitalGain: null,
         },
@@ -1457,6 +1463,8 @@ describe("ToolExecutorService", () => {
       });
 
       expect(result.summary).toContain("realized unknown (known part 15.00");
+      expect(result.summary).toContain("capital gains unknown CAD");
+      expect(result.summary).toContain("no exchange rate for USD->CAD");
     });
 
     it("list_capital_gains resolves account names and defaults groupBy to 'month'", async () => {

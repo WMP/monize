@@ -42,7 +42,7 @@ import {
 import { parseLocalDate } from '@/lib/utils';
 import { buildScheduledCalendarDays } from '@/lib/scheduled-calendar';
 import { occurrenceKind } from '@/lib/scheduled-kind';
-import { scheduleEffectiveAmount } from '@/lib/scheduled-effective-amount';
+import { scheduleEffectiveAmount, nextOccurrenceDueDate } from '@/lib/scheduled-effective-amount';
 import { monthlyEquivalent } from '@/lib/frequency';
 import { projectPayrollOccurrence, type FutureTransaction } from '@/lib/forecast';
 import { loadFutureTransactions } from '@/lib/future-transactions';
@@ -608,7 +608,7 @@ function BillsContent() {
 
       if (t.isActive && t.nextDueDate) {
         try {
-          const dueDate = parseLocalDate(t.nextDueDate);
+          const dueDate = parseLocalDate(nextOccurrenceDueDate(t));
           if (dueDate && !isNaN(dueDate.getTime()) && dueDate <= today) {
             dueCount++;
           }
