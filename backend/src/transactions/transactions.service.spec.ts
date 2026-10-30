@@ -5827,7 +5827,7 @@ describe("TransactionsService", () => {
       );
     });
 
-    it("filters transactions up to statement date", async () => {
+    it("lists rows dated after the statement date, but sums cleared rows only up to it", async () => {
       accountsService.findOne.mockResolvedValue(mockAccount);
 
       const txQb = createMockQueryBuilder();
@@ -5848,7 +5848,16 @@ describe("TransactionsService", () => {
         0,
       );
 
-      expect(txQb.andWhere).toHaveBeenCalledWith(
+      // The statement date decides which rows start ticked (client side),
+      // never which rows are listed.
+      const listingClauses: string[] = txQb.andWhere.mock.calls.map(
+        ([clause]) => clause,
+      );
+      expect(listingClauses).toContain("transaction.status IN (:...statuses)");
+      expect(
+        listingClauses.filter((clause) => clause.includes("transactionDate")),
+      ).toEqual([]);
+      expect(clearedQb.andWhere).toHaveBeenCalledWith(
         "transaction.transactionDate <= :statementDate",
         { statementDate: "2026-02-15" },
       );
