@@ -1864,7 +1864,7 @@ describe("AccountsService", () => {
       expect(sql).toContain(
         "MAX(COALESCE(t.reconciled_date, t.transaction_date))",
       );
-      expect(sql).toContain("t.parent_transaction_id IS NULL");
+      expect(sql).toContain(ledgerMovementPredicate());
       expect(params).toEqual([
         [mockAccount.id, "account-2"],
         TransactionStatus.RECONCILED,

@@ -567,7 +567,7 @@ export class AccountsService {
          FROM transactions t
          WHERE t.account_id = ANY($1)
            AND t.status = $2
-           AND t.parent_transaction_id IS NULL
+           AND ${LEDGER_MOVEMENT_PREDICATE}
          GROUP BY t.account_id`,
         [accountIds, TransactionStatus.RECONCILED],
       );
