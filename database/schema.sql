@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     email VARCHAR(255) UNIQUE, -- NULL allowed for OIDC users without email
-    password_hash VARCHAR(255), -- NULL for OIDC users (an SSO link clears it)
+    password_hash VARCHAR(255), -- kept on an SSO link; usable only with OIDC_ALLOW_PASSWORD_LOGIN
     first_name VARCHAR(100),
     last_name VARCHAR(100),
     auth_provider VARCHAR(50) DEFAULT 'local', -- 'local', 'oidc'

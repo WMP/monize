@@ -7,6 +7,10 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import {
+  localAuthEnabled,
+  oidcPasswordLoginAllowed,
+} from "../auth/oidc/oidc-password-login";
 import { DataSource, EntityManager, FindOptionsWhere } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
 import { withSystemContext } from "../common/db/with-context";
@@ -46,6 +50,7 @@ import {
   AutoBackupService,
   StoredBackupUsage,
 } from "../backup/auto-backup.service";
+import { CLEARED_BACKUP_KEY } from "../backup/backup-encryption.service";
 
 /**
  * Who the admin screens manage: everybody except the owner-managed delegate
@@ -590,6 +595,30 @@ export class AdminService {
       );
     }
 
+    if (
+      targetUser.authProvider === "oidc" &&
+      !localAuthEnabled(this.configService)
+    ) {
+      throw new BadRequestException(
+        tr(
+          "errors.admin.localAuthDisabled",
+          "Password sign-in is turned off on this server",
+        ),
+      );
+    }
+
+    if (
+      targetUser.authProvider === "oidc" &&
+      !oidcPasswordLoginAllowed(this.configService)
+    ) {
+      throw new BadRequestException(
+        tr(
+          "errors.admin.ssoPasswordLoginDisabled",
+          "Password sign-in is turned off for SSO accounts. Use Unlink SSO instead.",
+        ),
+      );
+    }
+
     if (!targetUser.passwordHash) {
       throw new BadRequestException(
         tr(
@@ -599,15 +628,9 @@ export class AdminService {
       );
     }
 
-    const temporaryPassword = generateReadablePassword();
-    const saltRounds = 12;
-    targetUser.passwordHash = await bcrypt.hash(temporaryPassword, saltRounds);
-    targetUser.mustChangePassword = true;
-    targetUser.resetToken = null;
-    targetUser.resetTokenExpiry = null;
-    // An admin reset is a recovery action: the temporary password must work.
-    targetUser.failedLoginAttempts = 0;
-    targetUser.lockedUntil = null;
+    const { temporaryPassword, passwordHash } =
+      await this.generateTemporaryPassword();
+    this.applyTemporaryPassword(targetUser, passwordHash);
     // The new password, its PATs and its trusted devices are one commit: a
     // reset whose revocation fails leaves the old password in place rather than
     // a new password with the old credentials still live (INV-AUTH-005).
@@ -618,6 +641,118 @@ export class AdminService {
 
     // SECURITY: then every refresh session and OIDC artifact, so the forced
     // password change applies everywhere — web, CLI/API, and MCP.
+    await this.endSessionsAfterCommit(targetUserId);
+
+    return { temporaryPassword };
+  }
+
+  /** A fresh readable password and its hash; hashed outside any transaction. */
+  private async generateTemporaryPassword(): Promise<{
+    temporaryPassword: string;
+    passwordHash: string;
+  }> {
+    const temporaryPassword = generateReadablePassword();
+    const saltRounds = 12;
+    return {
+      temporaryPassword,
+      passwordHash: await bcrypt.hash(temporaryPassword, saltRounds),
+    };
+  }
+
+  /** Give `user` the hashed temporary password, forced change, and no reset token or lockout. */
+  private applyTemporaryPassword(user: User, passwordHash: string): void {
+    user.passwordHash = passwordHash;
+    user.mustChangePassword = true;
+    user.resetToken = null;
+    user.resetTokenExpiry = null;
+    // An admin reset is a recovery action: the temporary password must work.
+    user.failedLoginAttempts = 0;
+    user.lockedUntil = null;
+  }
+
+  /**
+   * Convert an SSO account back to a local one with a temporary password, so
+   * the person can sign in while the IdP is down or SSO is not wanted for them.
+   * TOTP fields stay as they are (`resetUserTwoFactor` is the recovery for a
+   * lost device). A backup key an SSO account holds may sit under a dedicated
+   * backup password (no login-password ref), which a local account does not
+   * use, so the key is cleared here; the next password login wraps a new one
+   * under the new password.
+   */
+  async unlinkUserSso(
+    adminId: string,
+    targetUserId: string,
+  ): Promise<{ temporaryPassword: string }> {
+    return withSystemContext(() =>
+      this.unlinkUserSsoWithinContext(adminId, targetUserId),
+    );
+  }
+
+  private async unlinkUserSsoWithinContext(
+    adminId: string,
+    targetUserId: string,
+  ): Promise<{ temporaryPassword: string }> {
+    if (adminId === targetUserId) {
+      throw new ForbiddenException(
+        tr(
+          "errors.admin.cannotUnlinkOwnSso",
+          "You cannot unlink your own SSO account through the admin panel",
+        ),
+      );
+    }
+
+    if (!localAuthEnabled(this.configService)) {
+      throw new BadRequestException(
+        tr(
+          "errors.admin.localAuthDisabled",
+          "Password sign-in is turned off on this server",
+        ),
+      );
+    }
+
+    // Hash before the transaction: bcrypt must not hold the row lock.
+    const { temporaryPassword, passwordHash } =
+      await this.generateTemporaryPassword();
+    await withScopedDb(this.dataSource, async (manager) => {
+      const repo = manager.getRepository(User);
+      const targetUser = await repo.findOne({
+        where: { id: targetUserId },
+        lock: { mode: "pessimistic_write" },
+      });
+      if (!targetUser) {
+        throw new NotFoundException(
+          tr("errors.admin.userNotFound", "User not found"),
+        );
+      }
+      if (targetUser.authProvider !== "oidc") {
+        throw new BadRequestException(
+          tr(
+            "errors.admin.notSsoAccount",
+            "This account is not an SSO account",
+          ),
+        );
+      }
+      if (!targetUser.email) {
+        throw new BadRequestException(
+          tr(
+            "errors.admin.unlinkSsoNeedsEmail",
+            "This account has no email address, so it cannot sign in with a password",
+          ),
+        );
+      }
+      targetUser.authProvider = "local";
+      targetUser.oidcSubject = null;
+      targetUser.pendingOidcSubject = null;
+      targetUser.oidcLinkPending = false;
+      targetUser.oidcLinkToken = null;
+      targetUser.oidcLinkExpiresAt = null;
+      this.applyTemporaryPassword(targetUser, passwordHash);
+      if (targetUser.backupKeyWrap) {
+        Object.assign(targetUser, CLEARED_BACKUP_KEY);
+      }
+      await repo.save(targetUser);
+      await this.revokeStandingAccess(manager, targetUserId);
+    });
     await this.endSessionsAfterCommit(targetUserId);
 
     return { temporaryPassword };

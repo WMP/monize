@@ -63,6 +63,7 @@
     "clickToEnable": "Klik untuk mengaktifkan",
     "resetPassword": "Reset Kata Sandi",
     "resetTwoFactor": "Reset 2FA",
+    "unlinkSso": "Putuskan SSO",
     "noUsers": "Tidak ada pengguna ditemukan.",
     "storageLoading": "Memuat…",
     "storageUnavailable": "Tidak tersedia",
@@ -99,7 +100,8 @@
       "disableFailed": "Gagal menonaktifkan pengguna",
       "resetFailed": "Gagal mereset kata sandi",
       "twoFactorReset": "Autentikasi dua faktor untuk {name} telah direset. Mereka telah dikeluarkan dari semua sesi.",
-      "resetTwoFactorFailed": "Gagal mereset autentikasi dua faktor"
+      "resetTwoFactorFailed": "Gagal mereset autentikasi dua faktor",
+      "unlinkSsoFailed": "Gagal memutuskan SSO"
     },
     "dialogs": {
       "promoteTitle": "Promosikan Pengguna?",
@@ -114,6 +116,11 @@
       "resetTitle": "Reset Kata Sandi?",
       "resetMessage": "Ini akan membuat kata sandi sementara baru untuk {name}. Mereka akan diminta untuk menggantinya saat login berikutnya.",
       "resetConfirm": "Reset Kata Sandi",
+      "unlinkSsoTitle": "Putuskan SSO?",
+      "unlinkSsoMessage": "Ini mengubah akun {name} menjadi akun lokal. Login SSO berikutnya dengan alamat email yang sama dapat menautkannya kembali. Sistem membuat kata sandi sementara, dan {name} harus menggantinya saat login berikutnya.",
+      "unlinkSsoConfirm": "Putuskan SSO",
+      "unlinkSsoResultTitle": "SSO Diputuskan",
+      "unlinkSsoResultDesc": "Akun {name} sekarang adalah akun lokal. Bagikan kata sandi sementara ini kepada mereka agar bisa login.",
       "resetTwoFactorTitle": "Reset Autentikasi Dua Faktor?",
       "resetTwoFactorMessage": "Ini akan menonaktifkan autentikasi dua faktor untuk {name}, menghapus kode cadangan dan perangkat tepercaya mereka, serta mengeluarkan mereka dari semua sesi. Setelah itu mereka dapat masuk dengan kata sandi dan menyiapkan ulang 2FA. Gunakan ini jika mereka kehilangan aplikasi autentikator dan kode cadangan, atau setelah JWT_SECRET diubah.",
       "resetTwoFactorConfirm": "Reset 2FA",

@@ -63,6 +63,7 @@
     "clickToEnable": "Clique para ativar",
     "resetPassword": "Repor Palavra-passe",
     "resetTwoFactor": "Repor 2FA",
+    "unlinkSso": "Desassociar SSO",
     "noUsers": "Nenhum utilizador encontrado.",
     "storageLoading": "A carregar…",
     "storageUnavailable": "Indisponível",
@@ -99,7 +100,8 @@
       "disableFailed": "Falha ao desativar utilizador",
       "resetFailed": "Falha ao repor palavra-passe",
       "twoFactorReset": "A autenticação de dois fatores de {name} foi reposta. As suas sessões foram terminadas.",
-      "resetTwoFactorFailed": "Falha ao repor a autenticação de dois fatores"
+      "resetTwoFactorFailed": "Falha ao repor a autenticação de dois fatores",
+      "unlinkSsoFailed": "Falha ao desassociar o SSO"
     },
     "dialogs": {
       "promoteTitle": "Promover Utilizador?",
@@ -114,6 +116,11 @@
       "resetTitle": "Repor Palavra-passe?",
       "resetMessage": "Isto irá gerar uma nova palavra-passe temporária para {name}. Será obrigado a alterá-la no próximo início de sessão.",
       "resetConfirm": "Repor Palavra-passe",
+      "unlinkSsoTitle": "Desassociar SSO?",
+      "unlinkSsoMessage": "Isto converte a conta de {name} numa conta local. Um início de sessão SSO posterior com o mesmo endereço de email pode associá-la novamente. O sistema gera uma palavra-passe temporária e {name} será obrigado a alterá-la no próximo início de sessão.",
+      "unlinkSsoConfirm": "Desassociar SSO",
+      "unlinkSsoResultTitle": "SSO desassociado",
+      "unlinkSsoResultDesc": "A conta de {name} é agora uma conta local. Partilhe esta palavra-passe temporária com o utilizador para que possa iniciar sessão.",
       "resetTwoFactorTitle": "Repor a Autenticação de Dois Fatores?",
       "resetTwoFactorMessage": "Isto desativa a autenticação de dois fatores de {name}, elimina os seus códigos de recuperação e dispositivos de confiança e termina todas as suas sessões. Depois poderá iniciar sessão com a palavra-passe e voltar a configurar o 2FA. Utilize esta opção quando tiver perdido a aplicação autenticadora e os códigos de recuperação, ou depois de alterar o JWT_SECRET.",
       "resetTwoFactorConfirm": "Repor 2FA",

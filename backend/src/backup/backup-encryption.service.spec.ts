@@ -195,6 +195,20 @@ describe("BackupEncryptionService", () => {
       });
     });
 
+    it("reports an SSO account whose key is wrapped under the login password as login-password", async () => {
+      usersRepo.findOne.mockResolvedValue(
+        makeUser({
+          authProvider: "oidc",
+          backupEncryptionEnabled: true,
+          backupKeyPasswordRef: loginPasswordRef(hash),
+        }),
+      );
+      expect(await service.getStatus(userId)).toMatchObject({
+        manageable: true,
+        method: "login-password",
+      });
+    });
+
     it("throws when user not found", async () => {
       usersRepo.findOne.mockResolvedValue(null);
       await expect(service.getStatus(userId)).rejects.toThrow(
@@ -330,6 +344,31 @@ describe("BackupEncryptionService", () => {
       await expectNoRecoverablePassword(stored, "hunter2hunter2");
     });
 
+    it("re-wraps an SSO account's key after it changes the password it kept", async () => {
+      const { user } = await keyedUser("old-p4ssw0rd", "old-hash", {
+        authProvider: "oidc",
+        passwordHash: "new-hash",
+      });
+      usersRepo.findOne.mockResolvedValue(user);
+
+      await service.rewrapBackupKey(userId, "new-password", "new-hash");
+
+      const [criteria, stored] = onlyUpdate();
+      expect(criteria).toEqual({ id: userId, passwordHash: "new-hash" });
+      expect(stored.backupKeyPasswordRef).toBe(loginPasswordRef("new-hash"));
+    });
+
+    it("leaves an SSO account's dedicated-password wrap alone", async () => {
+      const { user } = await keyedUser("dedicated-p4ss", null, {
+        authProvider: "oidc",
+      });
+      usersRepo.findOne.mockResolvedValue(user);
+
+      await service.rewrapBackupKey(userId, "login-password", hash);
+
+      expect(usersRepo.update).not.toHaveBeenCalled();
+    });
+
     it("re-wraps under a fresh key after a password change", async () => {
       const { user, key } = await keyedUser("old-p4ssw0rd", "old-hash", {
         passwordHash: "new-hash",
@@ -371,6 +410,31 @@ describe("BackupEncryptionService", () => {
       await service.rewrapBackupKey(userId, "hunter2hunter2", hash);
 
       expect(usersRepo.save).not.toHaveBeenCalled();
+      expect(usersRepo.update).not.toHaveBeenCalled();
+    });
+
+    it("stores nothing for an SSO account that kept its password but has no wrap", async () => {
+      usersRepo.findOne.mockResolvedValue(
+        makeUser({ authProvider: "oidc", passwordHash: hash }),
+      );
+
+      await service.rewrapBackupKey(userId, "hunter2hunter2", hash);
+
+      expect(usersRepo.update).not.toHaveBeenCalled();
+    });
+
+    it("leaves an SSO account's legacy dedicated backupPasswordEnc alone", async () => {
+      usersRepo.findOne.mockResolvedValue(
+        makeUser({
+          authProvider: "oidc",
+          passwordHash: hash,
+          backupEncryptionEnabled: true,
+          backupPasswordEnc: "enc:dedicated",
+        }),
+      );
+
+      await service.rewrapBackupKey(userId, "hunter2hunter2", hash);
+
       expect(usersRepo.update).not.toHaveBeenCalled();
     });
 

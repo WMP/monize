@@ -31,15 +31,11 @@ server stores three things on `users`, and nothing that decrypts to a password:
 | `backup_key_wrap` | the data key wrapped under `scrypt(password, salt)` (AES-256-GCM): `salt(16) \|\| iv(12) \|\| tag(16) \|\| wrapped(32)`, base64 | whoever knows the password |
 | `backup_key_password_ref` | SHA-256 of the `password_hash` the wrap was made for (local accounts); `NULL` for an OIDC dedicated backup password | nobody; a staleness check |
 
-**An SSO link keeps the key.** Linking a local account to SSO clears its
-`password_hash` (kenlasko/monize#1858) and, with it, `backup_key_password_ref`
-(`adoptOidcIdentity`, `backend/src/auth/auth.service.ts`): a wrap made for the
-current hash becomes the account's dedicated backup key, still opened by the
-login password the person last used, until they set a backup password. A ref
-left pointing at the cleared hash would read as stale, and the cron would drop
-the key and write plaintext. A wrap made for an older hash (a reset that did
-not re-wrap) is dropped instead: only a password the person may have forgotten
-opens it.
+**An SSO link keeps the key.** Linking a local account to SSO keeps its
+`password_hash` and `backup_key_password_ref` (`adoptOidcIdentity`,
+`backend/src/auth/auth.service.ts`), so the wrap stays tied to the hash it was
+made for. Whether that password may sign in is `OIDC_ALLOW_PASSWORD_LOGIN`'s
+decision, not the link's.
 
 The scrypt parameters are the envelope's existing ones (`deriveKey` in
 `backup-envelope.ts`, N=32768, r=8, p=1), so opening a file costs what it

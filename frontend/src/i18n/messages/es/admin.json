@@ -63,6 +63,7 @@
     "clickToEnable": "Clic para activar",
     "resetPassword": "Restablecer contraseña",
     "resetTwoFactor": "Restablecer 2FA",
+    "unlinkSso": "Desvincular SSO",
     "noUsers": "No se encontraron usuarios.",
     "storageLoading": "Cargando…",
     "storageUnavailable": "No disponible",
@@ -99,7 +100,8 @@
       "disableFailed": "Error al desactivar el usuario",
       "resetFailed": "Error al restablecer la contraseña",
       "twoFactorReset": "Se restableció la autenticación de dos factores de {name}. Se han cerrado sus sesiones.",
-      "resetTwoFactorFailed": "Error al restablecer la autenticación de dos factores"
+      "resetTwoFactorFailed": "Error al restablecer la autenticación de dos factores",
+      "unlinkSsoFailed": "No se pudo desvincular el SSO"
     },
     "dialogs": {
       "promoteTitle": "¿Promover usuario?",
@@ -114,6 +116,11 @@
       "resetTitle": "¿Restablecer contraseña?",
       "resetMessage": "Esto generará una nueva contraseña temporal para {name}. Deberá cambiarla en el próximo inicio de sesión.",
       "resetConfirm": "Restablecer contraseña",
+      "unlinkSsoTitle": "¿Desvincular SSO?",
+      "unlinkSsoMessage": "Esto convierte la cuenta de {name} en una cuenta local. Un inicio de sesión posterior con SSO con la misma dirección de correo electrónico puede volver a vincularla. El sistema genera una contraseña temporal y {name} deberá cambiarla en el próximo inicio de sesión.",
+      "unlinkSsoConfirm": "Desvincular SSO",
+      "unlinkSsoResultTitle": "SSO desvinculado",
+      "unlinkSsoResultDesc": "La cuenta de {name} ahora es una cuenta local. Comparte esta contraseña temporal con el usuario para que pueda iniciar sesión.",
       "resetTwoFactorTitle": "¿Restablecer la autenticación de dos factores?",
       "resetTwoFactorMessage": "Esto desactiva la autenticación de dos factores de {name}, elimina sus códigos de respaldo y dispositivos de confianza y cierra todas sus sesiones. Después podrá iniciar sesión con su contraseña y volver a configurar la 2FA. Úsalo cuando haya perdido su aplicación de autenticación y sus códigos de respaldo, o después de cambiar JWT_SECRET.",
       "resetTwoFactorConfirm": "Restablecer 2FA",

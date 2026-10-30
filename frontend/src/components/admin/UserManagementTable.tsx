@@ -59,22 +59,26 @@ interface UserManagementTableProps {
   users: AdminUser[];
   storage: AdminStorageState;
   currentUserId: string;
+  /** OIDC_ALLOW_PASSWORD_LOGIN: an SSO row's password resets only while it can sign in. */
+  oidcPasswordLogin?: boolean;
   onChangeRole: (user: AdminUser, role: 'admin' | 'user') => void;
   onToggleStatus: (user: AdminUser) => void;
   onResetPassword: (user: AdminUser) => void;
+  onUnlinkSso: (user: AdminUser) => void;
   onResetTwoFactor: (user: AdminUser) => void;
   onDeleteUser: (user: AdminUser) => void;
 }
 
 type UserRowActions = Pick<
   UserManagementTableProps,
-  'onChangeRole' | 'onToggleStatus' | 'onResetPassword' | 'onResetTwoFactor' | 'onDeleteUser'
+  'onChangeRole' | 'onToggleStatus' | 'onResetPassword' | 'onUnlinkSso' | 'onResetTwoFactor' | 'onDeleteUser'
 >;
 
 export function UserManagementTable({
   users,
   storage,
   currentUserId,
+  oidcPasswordLogin = false,
   ...handlers
 }: UserManagementTableProps) {
   const t = useTranslations('admin');
@@ -254,7 +258,7 @@ export function UserManagementTable({
                         </div>
                         {!isSelf && (
                           <div className="mt-3 flex flex-wrap gap-2">
-                            <UserActionButtons user={user} {...handlers} />
+                            <UserActionButtons user={user} oidcPasswordLogin={oidcPasswordLogin} {...handlers} />
                           </div>
                         )}
                       </div>
@@ -289,7 +293,7 @@ export function UserManagementTable({
                     <AttachmentUsageCell state={storage} userId={user.id} />
                   </td>
                   <td className={`${cellPadding} whitespace-nowrap text-right text-sm space-x-2 sticky right-0 ${rowBg} group-hover:bg-gray-100 dark:group-hover:bg-gray-800`}>
-                    {!isSelf && <UserActionButtons user={user} {...handlers} />}
+                    {!isSelf && <UserActionButtons user={user} oidcPasswordLogin={oidcPasswordLogin} {...handlers} />}
                   </td>
                 </tr>
               );
@@ -393,17 +397,24 @@ function StatusControl({
 /** Reset Password, Reset 2FA and Delete for any user but the admin themself. */
 function UserActionButtons({
   user,
+  oidcPasswordLogin,
   onResetPassword,
+  onUnlinkSso,
   onResetTwoFactor,
   onDeleteUser,
-}: { user: AdminUser } & UserRowActions) {
+}: { user: AdminUser; oidcPasswordLogin: boolean } & UserRowActions) {
   const t = useTranslations('admin');
   const tc = useTranslations('common');
   return (
     <>
-      {user.hasPassword && (
+      {user.hasPassword && (user.authProvider !== 'oidc' || oidcPasswordLogin) && (
         <Button variant="outline" size="sm" onClick={() => onResetPassword(user)}>
           {t('userTable.resetPassword')}
+        </Button>
+      )}
+      {user.authProvider === 'oidc' && (
+        <Button variant="outline" size="sm" onClick={() => onUnlinkSso(user)}>
+          {t('userTable.unlinkSso')}
         </Button>
       )}
       {/* Offered for every other user: the list does not carry 2FA state, and

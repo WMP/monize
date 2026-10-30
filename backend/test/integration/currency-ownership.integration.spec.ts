@@ -58,6 +58,7 @@ describe("currency ownership (integration)", () => {
       {} as never,
       {} as never,
       {} as never,
+      { get: (_key: string, fallback?: unknown) => fallback } as never,
     );
 
     await dataSource.query(

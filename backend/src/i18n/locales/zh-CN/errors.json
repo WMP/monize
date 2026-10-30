@@ -115,6 +115,11 @@
     "deleteLastAdmin": "无法删除最后一个管理员账户。",
     "cannotResetOwnPassword": "您无法通过管理员面板重置自己的密码",
     "noLocalPassword": "无法重置没有本地密码的账户密码",
+    "cannotUnlinkOwnSso": "您无法通过管理员面板解除自己的 SSO 账户绑定",
+    "notSsoAccount": "此账户不是 SSO 账户",
+    "unlinkSsoNeedsEmail": "此账户没有电子邮件地址，因此无法使用密码登录",
+    "localAuthDisabled": "此服务器已关闭密码登录",
+    "ssoPasswordLoginDisabled": "SSO 账户的密码登录已关闭。请改用“解除 SSO 绑定”。",
     "cannotResetOwnTwoFactor": "您无法通过管理员面板重置自己的双重身份验证",
     "twoFactorNotEnabled": "该用户尚未设置双重身份验证。"
   },

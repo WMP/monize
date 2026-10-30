@@ -19,6 +19,7 @@ import { CreateUserModal } from '@/components/admin/CreateUserModal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useAuthStore } from '@/store/authStore';
 import { adminApi, CreateUserResponse } from '@/lib/admin';
+import { authApi } from '@/lib/auth';
 import { userSettingsApi } from '@/lib/user-settings';
 import { AdminUser } from '@/types/auth';
 import { createLogger } from '@/lib/logger';
@@ -33,6 +34,7 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [smtpConfigured, setSmtpConfigured] = useState(false);
+  const [oidcPasswordLogin, setOidcPasswordLogin] = useState(false);
   // Its own request and its own state: it enumerates the backup store once per
   // user, so the rows must not wait on it, and a store that is slow or refusing
   // has to read as two unfilled columns rather than as a page that failed.
@@ -121,6 +123,13 @@ export default function AdminUsersPage() {
       .getSmtpStatus()
       .then((status) => setSmtpConfigured(status.configured))
       .catch(() => setSmtpConfigured(false));
+  }, []);
+
+  useEffect(() => {
+    authApi
+      .getAuthMethods()
+      .then((methods) => setOidcPasswordLogin(methods.oidcPasswordLogin === true))
+      .catch(() => setOidcPasswordLogin(false));
   }, []);
 
   const handleUserCreated = (result: CreateUserResponse) => {
@@ -245,6 +254,35 @@ export default function AdminUsersPage() {
     });
   };
 
+  const handleUnlinkSso = (user: AdminUser) => {
+    const userName = user.firstName || user.email || 'this user';
+
+    setConfirmDialog({
+      isOpen: true,
+      title: t('usersPage.dialogs.unlinkSsoTitle'),
+      message: t('usersPage.dialogs.unlinkSsoMessage', { name: userName }),
+      variant: 'warning',
+      confirmLabel: t('usersPage.dialogs.unlinkSsoConfirm'),
+      onConfirm: async () => {
+        try {
+          const result = await adminApi.unlinkSso(user.id);
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+          setResetPasswordModal({
+            isOpen: true,
+            temporaryPassword: result.temporaryPassword,
+            userName,
+            title: t('usersPage.dialogs.unlinkSsoResultTitle'),
+            description: t('usersPage.dialogs.unlinkSsoResultDesc', { name: userName }),
+          });
+          loadUsers();
+        } catch (error) {
+          toast.error(getErrorMessage(error, t('usersPage.toasts.unlinkSsoFailed')));
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+        }
+      },
+    });
+  };
+
   const handleResetTwoFactor = (user: AdminUser) => {
     const userName = user.firstName || user.email || 'this user';
 
@@ -318,9 +356,11 @@ export default function AdminUsersPage() {
               users={users}
               storage={storage}
               currentUserId={currentUser.id}
+              oidcPasswordLogin={oidcPasswordLogin}
               onChangeRole={handleChangeRole}
               onToggleStatus={handleToggleStatus}
               onResetPassword={handleResetPassword}
+              onUnlinkSso={handleUnlinkSso}
               onResetTwoFactor={handleResetTwoFactor}
               onDeleteUser={handleDeleteUser}
             />

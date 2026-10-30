@@ -37,7 +37,8 @@
   },
   "security": {
     "heading": "Sécurité",
-    "ssoNotice": "Votre compte utilise l'authentification unique (SSO). Le mot de passe ci-dessous n'est pas utilisé pour la connexion, mais peut être conservé comme solution de secours si le SSO est désactivé.",
+    "ssoPasswordFallbackNotice": "Votre compte utilise l'authentification unique (SSO). Vous pouvez aussi vous connecter avec le mot de passe ci-dessous quand le SSO n'est pas disponible. Activez l'authentification à deux facteurs pour protéger cette connexion de secours.",
+    "ssoNotice": "Votre compte utilise l'authentification unique (SSO). La connexion par mot de passe est désactivée pour les comptes SSO sur ce serveur.",
     "currentPasswordLabel": "Mot de passe actuel",
     "currentPasswordPlaceholder": "Saisissez le mot de passe actuel",
     "newPasswordLabel": "Nouveau mot de passe",

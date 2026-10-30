@@ -7,6 +7,8 @@ export interface AuthMethods {
   registration: boolean;
   smtp: boolean;
   force2fa: boolean;
+  /** SSO accounts with a local password may sign in with it and enroll app TOTP. */
+  oidcPasswordLogin?: boolean;
   demo: boolean;
 }
 

@@ -20,7 +20,7 @@ import { AboutSection } from '@/components/settings/AboutSection';
 import { SettingsNav, SettingsSection } from '@/components/settings/SettingsNav';
 import { useScrollSpy } from '@/hooks/useScrollSpy';
 import { userSettingsApi } from '@/lib/user-settings';
-import { authApi } from '@/lib/auth';
+import { authApi, type AuthMethods } from '@/lib/auth';
 import { User, UserPreferences } from '@/types/auth';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useDemoStore } from '@/store/demoStore';
@@ -75,6 +75,7 @@ function DelegateSecurityView() {
   const [user, setUser] = useState<User | null>(null);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [force2fa, setForce2fa] = useState(false);
+  const [oidcPasswordLogin, setOidcPasswordLogin] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,13 +84,14 @@ function DelegateSecurityView() {
       authApi.get2FAStatus(),
       authApi
         .getAuthMethods()
-        .catch(() => ({ force2fa: false } as { force2fa: boolean })),
+        .catch(() => ({ force2fa: false } as { force2fa: boolean; oidcPasswordLogin?: boolean })),
     ])
       .then(([self, status, methods]) => {
         if (cancelled) return;
         setUser(self);
         setTwoFactorEnabled(!!status.enabled);
         setForce2fa(!!methods.force2fa);
+        setOidcPasswordLogin(methods.oidcPasswordLogin === true);
       })
       .catch((error) => {
         toast.error(getErrorMessage(error, t('toasts.securityLoadFailed')));
@@ -144,6 +146,7 @@ function DelegateSecurityView() {
             user={user}
             preferences={preferencesStub}
             force2fa={force2fa}
+            oidcPasswordLogin={oidcPasswordLogin}
             onPreferencesUpdated={(next) => {
               if (typeof next.twoFactorEnabled === 'boolean') {
                 setTwoFactorEnabled(next.twoFactorEnabled);
@@ -169,6 +172,7 @@ function OwnerSettingsView() {
   const [preferences, setPreferences] = useState<UserPreferences | null>(null);
   const [smtpConfigured, setSmtpConfigured] = useState(false);
   const [force2fa, setForce2fa] = useState(false);
+  const [oidcPasswordLogin, setOidcPasswordLogin] = useState(false);
   const isDemoMode = useDemoStore((s) => s.isDemoMode);
 
   const allSettingsSections = useMemo<
@@ -208,12 +212,13 @@ function OwnerSettingsView() {
           userSettingsApi.getProfile(),
           userSettingsApi.getPreferences(),
           userSettingsApi.getSmtpStatus().catch(() => ({ configured: false })),
-          authApi.getAuthMethods().catch(() => ({ local: true, oidc: false, registration: true, smtp: false, force2fa: false, demo: false })),
+          authApi.getAuthMethods().catch((): AuthMethods => ({ local: true, oidc: false, registration: true, smtp: false, force2fa: false, demo: false })),
         ]);
         setUser(userData);
         setPreferences(prefsData);
         setSmtpConfigured(smtpStatus.configured);
         setForce2fa(authMethods.force2fa);
+        setOidcPasswordLogin(authMethods.oidcPasswordLogin === true);
         useDemoStore.getState().setDemoMode(authMethods.demo ?? false);
       } catch (error) {
         toast.error(getErrorMessage(error, t('toasts.loadFailed')));
@@ -325,6 +330,7 @@ function OwnerSettingsView() {
                   user={user}
                   preferences={preferences}
                   force2fa={force2fa}
+                  oidcPasswordLogin={oidcPasswordLogin}
                   onPreferencesUpdated={setPreferences}
                 />
               </div>

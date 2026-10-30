@@ -63,6 +63,7 @@
     "clickToEnable": "クリックして有効化",
     "resetPassword": "パスワードをリセット",
     "resetTwoFactor": "2FA をリセット",
+    "unlinkSso": "SSOを解除",
     "noUsers": "ユーザーが見つかりません。",
     "storageLoading": "読み込み中…",
     "storageUnavailable": "取得できません",
@@ -99,7 +100,8 @@
       "disableFailed": "ユーザーの無効化に失敗しました",
       "resetFailed": "パスワードのリセットに失敗しました",
       "twoFactorReset": "{name} の二要素認証をリセットしました。ユーザーはサインアウトされました。",
-      "resetTwoFactorFailed": "二要素認証のリセットに失敗しました"
+      "resetTwoFactorFailed": "二要素認証のリセットに失敗しました",
+      "unlinkSsoFailed": "SSOの解除に失敗しました"
     },
     "dialogs": {
       "promoteTitle": "ユーザーを昇格しますか？",
@@ -114,6 +116,11 @@
       "resetTitle": "パスワードをリセットしますか？",
       "resetMessage": "{name} の新しい一時パスワードが生成されます。ユーザーは次回ログイン時にパスワードの変更が求められます。",
       "resetConfirm": "パスワードをリセット",
+      "unlinkSsoTitle": "SSOを解除しますか？",
+      "unlinkSsoMessage": "{name} のアカウントがローカルアカウントに変換されます。同じメールアドレスで後からSSOサインインすると、再びリンクされる場合があります。システムが一時パスワードを生成し、{name} は次回ログイン時にパスワードの変更が求められます。",
+      "unlinkSsoConfirm": "SSOを解除",
+      "unlinkSsoResultTitle": "SSOを解除しました",
+      "unlinkSsoResultDesc": "{name} のアカウントはローカルアカウントになりました。サインインできるように、この一時パスワードをユーザーに伝えてください。",
       "resetTwoFactorTitle": "二要素認証をリセットしますか？",
       "resetTwoFactorMessage": "{name} の二要素認証を無効にし、バックアップコードと信頼済みデバイスを削除して、すべてのセッションからサインアウトさせます。その後、ユーザーはパスワードでサインインして 2FA を設定し直せます。認証アプリとバックアップコードを失った場合や、JWT_SECRET を変更した後に使用してください。",
       "resetTwoFactorConfirm": "2FA をリセット",

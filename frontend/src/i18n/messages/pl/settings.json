@@ -37,7 +37,8 @@
   },
   "security": {
     "heading": "Zabezpieczenia",
-    "ssoNotice": "Twoje konto korzysta z logowania jednokrotnego (SSO). Poniższe hasło nie jest używane do logowania, ale można je zachować jako zapasowe na wypadek wyłączenia SSO.",
+    "ssoPasswordFallbackNotice": "Twoje konto korzysta z logowania jednokrotnego (SSO). Gdy SSO jest niedostępne, możesz też zalogować się poniższym hasłem. Włącz uwierzytelnianie dwuskładnikowe, aby chronić to zapasowe logowanie.",
+    "ssoNotice": "Twoje konto korzysta z logowania jednokrotnego (SSO). Logowanie hasłem jest wyłączone dla kont SSO na tym serwerze.",
     "currentPasswordLabel": "Bieżące hasło",
     "currentPasswordPlaceholder": "Wpisz bieżące hasło",
     "newPasswordLabel": "Nowe hasło",

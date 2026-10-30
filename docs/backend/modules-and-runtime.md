@@ -172,6 +172,7 @@ Key env vars (see `.env.example` for full list):
 - `DEMO_MODE=true` -- enables demo restrictions, daily reset at 4 AM UTC
 - `LOCAL_AUTH_ENABLED` / `REGISTRATION_ENABLED` -- auth toggles
 - `OIDC_*` -- OpenID Connect provider config
+- `OIDC_ALLOW_PASSWORD_LOGIN` -- `"true"` only (default off): an SSO account that has a local password may sign in with it, behind the normal lockout and the app TOTP. The password is kept on a link in either state; with the flag an OIDC login also keeps the TOTP secret and SSO accounts may enroll TOTP; off, password sign-in is refused and an OIDC login strips the TOTP. `oidcPasswordLoginAllowed` (`src/auth/oidc/oidc-password-login.ts`) is the one reader; without app 2FA the kept password is a single factor.
 
 ## Changing JWT_SECRET
 

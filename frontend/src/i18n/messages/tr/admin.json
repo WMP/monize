@@ -63,6 +63,7 @@
     "clickToEnable": "Etkinleştirmek için tıklayın",
     "resetPassword": "Şifreyi Sıfırla",
     "resetTwoFactor": "2FA'yı Sıfırla",
+    "unlinkSso": "SSO Bağlantısını Kaldır",
     "noUsers": "Kullanıcı bulunamadı.",
     "storageLoading": "Yükleniyor…",
     "storageUnavailable": "Kullanılamıyor",
@@ -99,7 +100,8 @@
       "disableFailed": "Kullanıcı devre dışı bırakılamadı",
       "resetFailed": "Şifre sıfırlanamadı",
       "twoFactorReset": "{name} için iki faktörlü kimlik doğrulama sıfırlandı. Tüm oturumları kapatıldı.",
-      "resetTwoFactorFailed": "İki faktörlü kimlik doğrulama sıfırlanamadı"
+      "resetTwoFactorFailed": "İki faktörlü kimlik doğrulama sıfırlanamadı",
+      "unlinkSsoFailed": "SSO bağlantısı kaldırılamadı"
     },
     "dialogs": {
       "promoteTitle": "Kullanıcı Yükseltilsin mi?",
@@ -114,6 +116,11 @@
       "resetTitle": "Şifre Sıfırlansın mı?",
       "resetMessage": "Bu işlem {name} için yeni bir geçici şifre oluşturacaktır. Bir sonraki girişlerinde şifrelerini değiştirmeleri gerekecektir.",
       "resetConfirm": "Şifreyi Sıfırla",
+      "unlinkSsoTitle": "SSO Bağlantısı Kaldırılsın mı?",
+      "unlinkSsoMessage": "Bu işlem {name} hesabını yerel hesaba dönüştürür. Aynı e-posta adresiyle sonradan yapılan bir SSO girişi hesabı yeniden bağlayabilir. Sistem geçici bir şifre oluşturur ve {name} bir sonraki girişte bu şifreyi değiştirmelidir.",
+      "unlinkSsoConfirm": "SSO Bağlantısını Kaldır",
+      "unlinkSsoResultTitle": "SSO Bağlantısı Kaldırıldı",
+      "unlinkSsoResultDesc": "{name} hesabı artık yerel bir hesaptır. Oturum açabilmesi için bu geçici şifreyi kendisiyle paylaşın.",
       "resetTwoFactorTitle": "İki Faktörlü Kimlik Doğrulama Sıfırlansın mı?",
       "resetTwoFactorMessage": "Bu işlem {name} için iki faktörlü kimlik doğrulamayı kapatır, yedek kodlarını ve güvenilen cihazlarını siler ve tüm oturumlarını kapatır. Ardından şifresiyle giriş yapıp 2FA'yı yeniden kurabilir. Kimlik doğrulama uygulamasını ve yedek kodlarını kaybettiğinde ya da JWT_SECRET değiştirildikten sonra kullanın.",
       "resetTwoFactorConfirm": "2FA'yı Sıfırla",

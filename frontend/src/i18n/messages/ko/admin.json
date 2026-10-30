@@ -63,6 +63,7 @@
     "clickToEnable": "클릭하여 활성화",
     "resetPassword": "비밀번호 재설정",
     "resetTwoFactor": "2FA 재설정",
+    "unlinkSso": "SSO 연결 해제",
     "noUsers": "사용자를 찾을 수 없습니다.",
     "storageLoading": "불러오는 중…",
     "storageUnavailable": "사용할 수 없음",
@@ -99,7 +100,8 @@
       "disableFailed": "사용자 비활성화에 실패했습니다",
       "resetFailed": "비밀번호 재설정에 실패했습니다",
       "twoFactorReset": "{name}의 2단계 인증이 재설정되었습니다. 해당 사용자는 로그아웃되었습니다.",
-      "resetTwoFactorFailed": "2단계 인증 재설정에 실패했습니다"
+      "resetTwoFactorFailed": "2단계 인증 재설정에 실패했습니다",
+      "unlinkSsoFailed": "SSO 연결 해제에 실패했습니다"
     },
     "dialogs": {
       "promoteTitle": "사용자를 승격하시겠습니까?",
@@ -114,6 +116,11 @@
       "resetTitle": "비밀번호를 재설정하시겠습니까?",
       "resetMessage": "{name}의 새 임시 비밀번호가 생성됩니다. 다음 로그인 시 비밀번호를 변경해야 합니다.",
       "resetConfirm": "비밀번호 재설정",
+      "unlinkSsoTitle": "SSO 연결을 해제하시겠습니까?",
+      "unlinkSsoMessage": "{name}의 계정이 로컬 계정으로 전환됩니다. 이후 같은 이메일 주소로 SSO 로그인하면 다시 연결될 수 있습니다. 시스템이 임시 비밀번호를 생성하며, {name}은(는) 다음 로그인 시 비밀번호를 변경해야 합니다.",
+      "unlinkSsoConfirm": "SSO 연결 해제",
+      "unlinkSsoResultTitle": "SSO 연결 해제됨",
+      "unlinkSsoResultDesc": "{name}의 계정이 이제 로컬 계정입니다. 로그인할 수 있도록 이 임시 비밀번호를 전달하세요.",
       "resetTwoFactorTitle": "2단계 인증을 재설정하시겠습니까?",
       "resetTwoFactorMessage": "{name}의 2단계 인증이 해제되고, 백업 코드와 신뢰할 수 있는 기기가 삭제되며, 모든 곳에서 로그아웃됩니다. 이후 비밀번호로 로그인해 2FA를 다시 설정할 수 있습니다. 인증 앱과 백업 코드를 모두 잃어버렸거나 JWT_SECRET을 변경한 후에 사용하세요.",
       "resetTwoFactorConfirm": "2FA 재설정",
