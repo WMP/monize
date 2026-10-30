@@ -29,6 +29,7 @@ function build() {
     .filter((n) => n.endsWith('.md'))
     .map((n) => n.slice(0, -3));
 
+  for (const s of sources) if (!/^[a-z0-9-]+$/.test(s)) errors.push(`${s}.md: page names are lower-case letters, digits and hyphens`);
   for (const s of sources) if (!slugs.has(s)) errors.push(`${s}.md: not listed in nav.json`);
   for (const s of slugs) if (!sources.includes(s)) errors.push(`nav.json lists "${s}", but ${s}.md does not exist`);
   if (errors.length) return { errors };

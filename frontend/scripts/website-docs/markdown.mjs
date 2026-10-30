@@ -207,22 +207,30 @@ const COMPONENTS = {
   table: ({ node: _node, ...props }) => h('div', { className: 'table-wrap' }, h('table', props)),
 };
 
-/** Render one page's Markdown. Returns the page record with `html` set. */
-export function renderPage({ slug, markdown, docsDir, slugs }) {
-  const page = {
-    slug,
-    title: '',
-    lede: '',
-    toc: [],
-    ids: new Set(),
-    links: [],
-    missingImages: [],
-    sections: [],
-    errors: [],
-  };
-  page.html = renderToStaticMarkup(
-    h(Markdown, { remarkPlugins: [remarkGfm, prepare({ page, docsDir, slugs })], components: COMPONENTS }, markdown),
+function record(slug) {
+  return { slug, title: '', lede: '', toc: [], ids: new Set(), links: [], missingImages: [], sections: [], errors: [] };
+}
+
+function markdownElement({ markdown, docsDir, slugs }, page) {
+  return h(
+    Markdown,
+    { remarkPlugins: [remarkGfm, prepare({ page, docsDir, slugs })], components: COMPONENTS },
+    markdown,
   );
+}
+
+/**
+ * Read one page's Markdown. Returns the page record (title, table of contents,
+ * links, sections) with `content`, a React element the page shell renders in
+ * place -- the body never exists as an HTML string spliced into the shell.
+ * The record is filled by a first render, because the shell needs the title and
+ * the table of contents before it can place the body; the second render, inside
+ * the shell, fills a record nobody reads.
+ */
+export function renderPage({ slug, markdown, docsDir, slugs }) {
+  const page = record(slug);
+  renderToStaticMarkup(markdownElement({ markdown, docsDir, slugs }, page));
   if (!page.title) page.errors.push('has no "# " title');
+  page.content = markdownElement({ markdown, docsDir, slugs }, record(slug));
   return page;
 }

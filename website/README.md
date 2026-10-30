@@ -63,6 +63,7 @@ assets/css/styles.css          all styling, light + dark themes
 assets/js/app.js               all interactivity and page data
 assets/css/docs.css            documentation layout, on top of styles.css
 assets/js/docs.js              documentation search, page list, on-this-page, copy, zoom
+assets/js/theme-boot.js        documentation theme before first paint (blocking, in <head>)
 docs/*.md                      documentation source, one file per page
 docs/nav.json                  documentation page order and groups
 docs/images/                   documentation screenshots
