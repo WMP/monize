@@ -115,6 +115,12 @@ async function showPreviousMonth(page: Page, aDayInIt: string) {
   await expect(dayCell(page, aDayInIt)).toBeVisible();
 }
 
+/** Step the open calendar forward one month, and wait for that month's grid. */
+async function showNextMonth(page: Page, aDayInIt: string) {
+  await page.getByRole('button', { name: 'Next month', exact: true }).click();
+  await expect(dayCell(page, aDayInIt)).toBeVisible();
+}
+
 test.describe('Transactions calendar', () => {
   test('draws the month, its balances and a projected day, and survives a reload', async ({
     authedPage: page,
@@ -153,6 +159,10 @@ test.describe('Transactions calendar', () => {
     // A row lands on the day it is dated, with its payee and its own amount.
     await expect(dayCell(page, spendDay)).toContainText(payee);
     await expect(dayCell(page, spendDay)).toContainText('-$42.50');
+    // In a month's last days the bill falls in the next month, which is not in
+    // the opening grid; step forward to it (a month's own days always are).
+    const billInNextMonth = billDay.slice(0, 7) !== today.slice(0, 7);
+    if (billInNextMonth) await showNextMonth(page, billDay);
     // An occurrence lands on its due date and links to where it is edited.
     await expect(dayCell(page, billDay)).toContainText(schedule);
     await expect(
@@ -160,12 +170,14 @@ test.describe('Transactions calendar', () => {
     ).toHaveAttribute('href', /\/bills\?highlight=/);
 
     await page.getByRole('button', { name: 'Balances', exact: true }).click();
+    if (billInNextMonth) await showPreviousMonth(page, spendDay);
 
     // Actual through today: 500.00 in, 42.50 out.
     await expect(dayCell(page, spendDay).getByTestId('calendar-balance-actual')).toHaveText(
       '$457.50',
     );
     // ...and projected after it, from the same balance and the bill due that day.
+    if (billInNextMonth) await showNextMonth(page, billDay);
     const projected = dayCell(page, billDay).getByTestId('calendar-balance-projected');
     await expect(projected).toContainText('$357.50');
     await expect(projected.getByLabel('Projected')).toBeVisible();
