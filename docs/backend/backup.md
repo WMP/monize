@@ -113,3 +113,7 @@ Backups open with the user's own password, and **the server never stores that pa
 ## A column list in the export is a claim that it is the whole table
 
 A table whose export names its columns (because one of them is `bytea`, so `SELECT *` cannot be used) stops describing the table the moment a migration adds a column: the backup omits it, and a restore -- which deletes the user's rows and reinserts from the archive -- writes NULL over it, reporting success. `payees.address`/`email`/`phone` shipped that way. `backend/src/backup/export-driver-values.spec.ts` now checks every explicit list against `database/schema.sql` as well as the bytea encoding; a column that genuinely must not be exported belongs there with its reason.
+
+The support exclusion set lives in `src/backup/support-backup/support-backup-exclusions.ts`,
+re-exported from the rules registry; keep the column rules and table exclusions
+separate so the registry stays within the module-shape ceiling.

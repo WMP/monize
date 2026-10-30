@@ -1,6 +1,5 @@
 'use client';
 
-import { SharedReviewBanner } from '@/components/shared-expenses/SharedReviewBanner';
 
 import { ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
@@ -59,7 +58,6 @@ export function SwipeShell({ children, httpsHeadersActive = false }: SwipeShellP
       <UpdateAvailableBanner />
       <WeakJwtSecretBanner />
       <PushEnableBanner />
-      <SharedReviewBanner />
       {/* Renders nothing: the stash lifetime sweep, all that is left of the
           share inbox banner that used to sit here. */}
       <ShareStashSweeper />

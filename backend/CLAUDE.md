@@ -81,7 +81,7 @@ Each module holds `{feature}.module.ts`, controller, service, their specs, `enti
 | A literal inside a regular expression | `escapeRegExp` | a hand-written character class |
 | A text filter offered to a person or a model | `ILike` or a case-insensitive comparison | `Like` |
 | A transaction search string | `applyTransactionSearch` (`src/transactions/apply-transaction-search.ts`), raw | escaping it or wrapping it in `%...%` yourself |
-| A predicate that decides which row counts | one named helper called from every site | the clauses spelled out per site |
+| Row predicates and replay hashes | a shared predicate / `tokenHashesEqual` | duplicated clauses / string comparison |
 | A folded investment action | `applyActionToQuantity` / `acquisitionCost` | a hand-rolled replay |
 | A calendar date stepped over a range | `enumerateDaysYMD` / `addDaysYMD` | a local-midnight `Date` read back with `toISOString()` |
 | Writing `holdings.quantity` / `average_cost` | `rebuildScopesFromTransactions` in the ledger write's own transaction, ordered by `INVESTMENT_REPLAY_ORDER` | an incremental delta or blended average |

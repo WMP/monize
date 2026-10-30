@@ -16,7 +16,6 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { EntitySwitcher } from "@/components/ui/EntitySwitcher";
 import { Input } from "@/components/ui/Input";
@@ -364,7 +363,7 @@ function GroupContent({ groupId }: { groupId: string }) {
               idPrefix="shared-group"
               tabKey="expenses"
               isActive={tab === "expenses"}
-              className="space-y-4"
+              className="pt-4 space-y-4"
             >
               <SharedFilters
                 onClear={() => {
@@ -496,35 +495,52 @@ function GroupContent({ groupId }: { groupId: string }) {
                   />
                 </div>
               </SharedFilters>
-              <ListTopToolbar
-                actions={
-                  <button
-                    type="button"
-                    className={LIST_TOOLBAR_BUTTON_CLASS}
-                    disabled={!fresh || exporting}
-                    onClick={download}
-                    aria-busy={exporting}
-                  >
-                    {exporting ? t("loading") : t("export")}
-                  </button>
+              <SharedEntryTable
+                group={group}
+                fresh={fresh}
+                onOpen={setDetail}
+                emptyState={
+                  fresh ? (
+                    <EmptyState
+                      icon={<UsersIcon />}
+                      title={t("emptyEntries")}
+                      description={t("emptyEntriesHelp")}
+                    />
+                  ) : undefined
+                }
+                toolbar={
+                  <fieldset disabled={!fresh} aria-busy={!fresh}>
+                    <ListTopToolbar
+                      {...(group.entryCount > 0
+                        ? {
+                            currentPage: Math.floor(offset / 100) + 1,
+                            totalPages: Math.max(
+                              1,
+                              Math.ceil(group.entryCount / 100),
+                            ),
+                            totalItems: group.entryCount,
+                            pageSize: 100,
+                            onPageChange: (page: number) => {
+                              if (fresh) setOffset((page - 1) * 100);
+                            },
+                          }
+                        : {})}
+                      itemName={t("expenses")}
+                      actions={
+                        <button
+                          type="button"
+                          className={LIST_TOOLBAR_BUTTON_CLASS}
+                          disabled={!fresh || exporting}
+                          onClick={download}
+                          aria-busy={exporting}
+                        >
+                          {exporting ? t("loading") : t("export")}
+                        </button>
+                      }
+                    />
+                  </fieldset>
                 }
               />
-              {fresh && group.entries.length === 0 && (
-                <Card>
-                  <EmptyState
-                    icon={<UsersIcon />}
-                    title={t("emptyEntries")}
-                    description={t("emptyEntriesHelp")}
-                  />
-                </Card>
-              )}
-              {group.entries.length > 0 && (
-                <SharedEntryTable
-                  group={group}
-                  fresh={fresh}
-                  onOpen={setDetail}
-                />
-              )}
               <fieldset disabled={!fresh} aria-busy={!fresh}>
                 <ListBottomPager
                   currentPage={Math.floor(offset / 100) + 1}
@@ -543,6 +559,7 @@ function GroupContent({ groupId }: { groupId: string }) {
               idPrefix="shared-group"
               tabKey="balances"
               isActive={tab === "balances"}
+              className="pt-4"
             >
               <SharedBalances
                 group={group}
@@ -555,6 +572,7 @@ function GroupContent({ groupId }: { groupId: string }) {
               idPrefix="shared-group"
               tabKey="files"
               isActive={tab === "files"}
+              className="pt-4"
             >
               <SharedDocuments
                 key={group.id}
@@ -570,6 +588,7 @@ function GroupContent({ groupId }: { groupId: string }) {
               idPrefix="shared-group"
               tabKey="myFinances"
               isActive={tab === "myFinances"}
+              className="pt-4"
             >
               <SharedFinances
                 key={group.id}
@@ -581,6 +600,7 @@ function GroupContent({ groupId }: { groupId: string }) {
               idPrefix="shared-group"
               tabKey="settings"
               isActive={tab === "settings"}
+              className="pt-4"
             >
               <SharedSettings
                 key={group.id}
@@ -592,6 +612,7 @@ function GroupContent({ groupId }: { groupId: string }) {
               idPrefix="shared-group"
               tabKey="activity"
               isActive={tab === "activity"}
+              className="pt-4"
             >
               <SharedActivity key={group.revision} group={group} />
             </TabPanel>

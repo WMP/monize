@@ -113,11 +113,13 @@ export function SharedEntryDetail({
             <p className="whitespace-pre-wrap break-words">{entry.note}</p>
           )}
           <SharedEntryPreview entry={entry} group={group} />
-          <SharedDocuments
-            group={group}
-            entryId={entry.id}
-            onPendingChange={setPendingFiles}
-          />
+          <div className="pt-4">
+            <SharedDocuments
+              group={group}
+              entryId={entry.id}
+              onPendingChange={setPendingFiles}
+            />
+          </div>
           {canEdit && (
             <div className="flex flex-wrap gap-2">
               {entry.type === "EXPENSE" && entry.state === "POSTED" && (

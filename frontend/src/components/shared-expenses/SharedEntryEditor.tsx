@@ -498,7 +498,7 @@ export function SharedEntryEditor({
             )}
             <SharedError error={preview.error} retry={preview.retry} />
           </fieldset>
-          <fieldset disabled={busy}>
+          <fieldset disabled={busy} className="pt-4">
             <AttachmentsSection
               stagedFiles={saving.files}
               onStagedFilesChange={saving.queue}

@@ -5,8 +5,8 @@ Tasks: `docs/future-plans/shared-expenses-ui-consistency-tasks.md`.
 
 The existing feature branch contains the group-only first delivery. Preserve
 published history, adopt main's approved screen rules and implement the refinement
-without reviving private booking. Common Modal chrome remains separate upstream
-work; its existing accessible title is retained.
+without reviving private booking. The common Modal chrome landed upstream and is
+included by the 30 October merge; shared dialogs retain explicit close actions.
 
 1. Refine the shared split draft/editor using the existing remainder helper and
    server preview. Add regression examples before changing the UI.

@@ -1,3 +1,4 @@
+import { tokenHashesEqual } from "../auth/crypto.util";
 import {
   validateAttachmentUpload,
   UploadedAttachmentFile,
@@ -255,7 +256,7 @@ export class AttachmentsService {
             .getRepository(TransactionAttachment)
             .findOne({ where: { userId, uploadRequestId: operationId } });
           if (prior) {
-            if (prior.uploadFingerprint !== uploadFingerprint)
+            if (!tokenHashesEqual(prior.uploadFingerprint, uploadFingerprint))
               throw new ConflictException(
                 tr(
                   "errors.attachments.uploadRequestChanged",

@@ -1,3 +1,4 @@
+import { tokenHashesEqual } from "../auth/crypto.util";
 import { Injectable } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
@@ -101,7 +102,10 @@ export class SharedEntryFinanceService {
         "SELECT payload_hash, result FROM shared_commands WHERE id = $1 AND user_id = $2 AND group_id = $3",
         [dto.operationId, userId, groupId],
       );
-      if (rows[0] && rows[0].payload_hash !== sharedFingerprint(payload))
+      if (
+        rows[0] &&
+        !tokenHashesEqual(rows[0].payload_hash, sharedFingerprint(payload))
+      )
         sharedError("retryChanged");
       return rows[0]?.result ?? null;
     });

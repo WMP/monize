@@ -11,7 +11,10 @@ import {
   Th,
   Td,
 } from "@/components/ui/Table";
-import { activateOnKey, INTERACTIVE_ROW_FOCUS_CLASS } from "@/components/ui/interactive-row";
+import {
+  activateOnKey,
+  INTERACTIVE_ROW_FOCUS_CLASS,
+} from "@/components/ui/interactive-row";
 import { useLongPress } from "@/hooks/useLongPress";
 import { useNumberFormat } from "@/hooks/useNumberFormat";
 import type { SharedGroup } from "@/types/shared-expense";
@@ -21,9 +24,11 @@ export function SharedGroupTable({
   groups,
   fresh,
   onOpen,
+  toolbar,
 }: {
   groups: SharedGroup[];
   fresh: boolean;
+  toolbar?: React.ReactNode;
   onOpen: (id: string) => void;
 }) {
   const t = useTranslations("sharedExpenses");
@@ -38,6 +43,7 @@ export function SharedGroupTable({
   });
   return (
     <Card className="overflow-hidden" aria-busy={!fresh}>
+      {toolbar}
       <table
         role="table"
         aria-label={t("groups")}
@@ -75,7 +81,9 @@ export function SharedGroupTable({
                 )}
               </Td>
               <Td role="cell" className="col-start-1 row-start-2">
-                <CellLabel className={CAPTION_CLASS}>{t("participants")}</CellLabel>
+                <CellLabel className={CAPTION_CLASS}>
+                  {t("participants")}
+                </CellLabel>
                 {formatNumber(group.participantCount, 0)}
               </Td>
               <Td role="cell" className="col-start-2 row-start-2">

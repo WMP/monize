@@ -62,11 +62,12 @@ export function SharedNavigationGuard({
   }, [when]);
   useEffect(() => {
     if (!when || !guardBack) return;
-    const token = crypto.randomUUID();
+    // A local history entry identifier, not an authentication credential.
+    const historyEntryId = crypto.randomUUID();
     const url = window.location.href;
     const push = () =>
       window.history.pushState(
-        { ...window.history.state, sharedDraftGuard: token },
+        { ...window.history.state, sharedDraftGuard: historyEntryId },
         "",
         url,
       );
@@ -80,7 +81,10 @@ export function SharedNavigationGuard({
     window.addEventListener("popstate", back, true);
     return () => {
       window.removeEventListener("popstate", back, true);
-      if (!allow.current && window.history.state?.sharedDraftGuard === token)
+      if (
+        !allow.current &&
+        window.history.state?.sharedDraftGuard === historyEntryId
+      )
         window.history.back();
     };
   }, [when, guardBack]);

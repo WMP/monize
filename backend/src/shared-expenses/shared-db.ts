@@ -1,3 +1,4 @@
+import { tokenHashesEqual } from "../auth/crypto.util";
 import { createHash } from "crypto";
 import { EntityManager } from "typeorm";
 import { getRequestContext } from "../common/request-context";
@@ -107,7 +108,8 @@ export async function sharedCommand<T>(
     [operationId, userId, groupId],
   );
   if (prior[0]) {
-    if (prior[0].payload_hash !== hash) sharedError("retryChanged");
+    if (!tokenHashesEqual(prior[0].payload_hash, hash))
+      sharedError("retryChanged");
     return prior[0].result;
   }
   await manager.query(

@@ -90,4 +90,85 @@ describe("Shared group live filters", () => {
     );
     expect(screen.getByRole("button", { name: "Export CSV" })).toBeEnabled();
   });
+  it("pages from either end and disables both pagers until the new page arrives", async () => {
+    const initial = sharedGroupFixture({
+      id: "group",
+      entries: [sharedEntryFixture({ title: "First page" })],
+      entryCount: 101,
+    });
+    let resolvePage!: (group: SharedGroupDetail) => void;
+    vi.mocked(sharedExpensesApi.groups).mockResolvedValue([initial]);
+    vi.mocked(sharedExpensesApi.group).mockImplementation((_id, offset) =>
+      offset
+        ? new Promise((resolve) => {
+            resolvePage = resolve;
+          })
+        : Promise.resolve(initial),
+    );
+    await act(async () => render(<SharedGroupPage />));
+    expect(screen.getAllByTitle("Next page")).toHaveLength(2);
+    await act(async () =>
+      fireEvent.click(screen.getAllByTitle("Next page")[0]),
+    );
+    expect(sharedExpensesApi.group).toHaveBeenLastCalledWith(
+      "group",
+      100,
+      expect.any(Object),
+    );
+    for (const button of screen.getAllByTitle("Previous page"))
+      expect(button).toBeDisabled();
+    await act(async () =>
+      resolvePage({
+        ...initial,
+        entries: [sharedEntryFixture({ title: "Last page" })],
+      }),
+    );
+    expect(screen.getByText("Last page")).toBeInTheDocument();
+    expect(
+      screen.getAllByText("Showing", { exact: false })[0],
+    ).toHaveTextContent("Showing 101 - 101 of 101 Expenses");
+    await act(async () =>
+      fireEvent.click(screen.getAllByTitle("Previous page")[1]),
+    );
+    expect(screen.getByText("First page")).toBeInTheDocument();
+  });
+  it("does not label a pending filter lookup as an empty result", async () => {
+    const empty = sharedGroupFixture({
+      id: "group",
+      entries: [],
+      entryCount: 0,
+    });
+    let resolvePage!: (group: SharedGroupDetail) => void;
+    vi.mocked(sharedExpensesApi.groups).mockResolvedValue([empty]);
+    vi.mocked(sharedExpensesApi.group).mockImplementation(
+      (_id, _offset, filters) =>
+        filters?.search
+          ? new Promise((resolve) => {
+              resolvePage = resolve;
+            })
+          : Promise.resolve(empty),
+    );
+    await act(async () => render(<SharedGroupPage />));
+    const emptyHeading = screen.getByRole("heading", {
+      name: "No expenses yet",
+    });
+    expect(emptyHeading).toBeInTheDocument();
+    await act(async () =>
+      fireEvent.change(screen.getByLabelText("Search descriptions and notes"), {
+        target: { value: "Coffee" },
+      }),
+    );
+    expect(
+      screen.queryByRole("heading", { name: "No expenses yet" }),
+    ).not.toBeInTheDocument();
+    await waitFor(() => expect(resolvePage).toBeDefined());
+    await act(async () =>
+      resolvePage({
+        ...empty,
+        entries: [sharedEntryFixture({ title: "Coffee" })],
+        entryCount: 1,
+      }),
+    );
+    expect(screen.getByRole("row", { name: /Coffee/ })).toBeInTheDocument();
+  });
 });

@@ -11,8 +11,8 @@ import { Select } from "@/components/ui/Select";
 import { CurrencyPickerButton } from "@/components/transactions/CurrencyPickerButton";
 import { CurrencyInput } from "@/components/ui/CurrencyInput";
 import {
-  SEGMENTED_GROUP_CLASS,
-  segmentClass,
+  SEGMENTED_TOOLBAR_GROUP_CLASS,
+  toolbarSegmentClass,
 } from "@/components/ui/segmented-control";
 import { useNumberFormat } from "@/hooks/useNumberFormat";
 import { useReportData } from "@/hooks/useReportData";
@@ -203,14 +203,14 @@ export function SharedTabs<T extends string>({
     <div
       role="group"
       aria-label={label}
-      className={`${SEGMENTED_GROUP_CLASS} flex-wrap gap-1 max-w-full`}
+      className={`${SEGMENTED_TOOLBAR_GROUP_CLASS} flex-wrap gap-1 max-w-full`}
     >
       {options.map((option) => (
         <button
           key={option.value}
           type="button"
           aria-pressed={value === option.value}
-          className={`${segmentClass(value === option.value)} min-h-10 focus-visible:ring-2 focus-visible:ring-blue-500`}
+          className={`${toolbarSegmentClass(value === option.value)} min-h-10 focus-visible:ring-2 focus-visible:ring-blue-500`}
           onClick={() => onChange(option.value)}
         >
           {option.label}

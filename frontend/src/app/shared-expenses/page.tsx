@@ -21,6 +21,7 @@ import { Tabs, TabPanel } from "@/components/ui/Tabs";
 import { useReportData } from "@/hooks/useReportData";
 import { SharedGroupTable } from "@/components/shared-expenses/SharedGroupTable";
 import { SharedOverviewSummary } from "@/components/shared-expenses/SharedOverviewSummary";
+import { ListTopToolbar } from "@/components/ui/ListTopToolbar";
 import { ListBottomPager } from "@/components/ui/ListBottomPager";
 import { sharedExpensesApi } from "@/lib/shared-expenses";
 import {
@@ -118,6 +119,7 @@ function GroupsContent() {
           idPrefix="shared-overview"
           tabKey="retainedFinance"
           isActive={tab === "retainedFinance"}
+          className="pt-4"
         >
           <SharedPrivateFinances />
         </TabPanel>
@@ -125,6 +127,7 @@ function GroupsContent() {
           idPrefix="shared-overview"
           tabKey="people"
           isActive={tab === "people"}
+          className="pt-4"
         >
           <SharedPeople />
         </TabPanel>
@@ -132,7 +135,7 @@ function GroupsContent() {
           idPrefix="shared-overview"
           tabKey="groups"
           isActive={tab === "groups"}
-          className="space-y-4"
+          className="pt-4 space-y-4"
         >
           <div className="flex flex-wrap items-center gap-3">
             <div className="w-full sm:w-80">
@@ -187,6 +190,16 @@ function GroupsContent() {
           ) : groups.data ? (
             <>
               <SharedGroupTable
+                toolbar={
+                  <ListTopToolbar
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={visible?.length ?? 0}
+                    pageSize={25}
+                    onPageChange={setPage}
+                    itemName={t("groups")}
+                  />
+                }
                 groups={(visible ?? []).slice(
                   (currentPage - 1) * 25,
                   currentPage * 25,

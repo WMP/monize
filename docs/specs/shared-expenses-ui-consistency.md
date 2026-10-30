@@ -102,3 +102,11 @@ Regression matrix: empty/current/changed/revoked/failed review; delegate, sign-o
 and late old-user response; filtered single-page and multi-page lists; actual tab
 and attachment geometry at 390px and desktop. Run focused tests and the frontend
 gate once, then native PostgreSQL/browser acceptance without Docker.
+
+CI follow-up: the preceding head also failed the security scan on three replay
+fingerprint comparisons and a browser-history marker named as a token. Use the
+existing timing-safe digest comparator for server receipts, and name the local
+history entry as such. Extract the support-backup table exclusions without
+changing their members to meet the existing 800-line module guard. The two
+calendar/expiry fixture failures are already fixed by the merged main. No scanner
+exception, test baseline, coverage threshold or workflow is changed.

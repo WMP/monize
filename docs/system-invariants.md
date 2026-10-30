@@ -8948,7 +8948,7 @@ Retry semantics     a new accepted preview replaces the previous booking once.
 Crash semantics     journal changes survive independently of an unaccepted review.
 Failure response    pending review count; request failures and revoked groups are
                     disclosed separately, not turned into a zero pending count.
-Required tests      shared-review-state/service tests, SharedReviewBanner tests,
+Required tests      shared-review-state/service tests, SharedReviewContent tests,
                     peer-edit and owner-isolation integration cases
 Status              enforced
 ```

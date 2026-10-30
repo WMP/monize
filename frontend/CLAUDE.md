@@ -125,3 +125,5 @@ Run the focused test for what you changed while developing, then:
 4. `node scripts/check-env-docs.mjs` from the repository root when a `process.env` read was added
 
 Deleting or renaming a control an E2E spec drives means grepping `e2e/` for its accessible name in the same commit -- `npm run test` never loads that suite.
+
+Shared expense review stays on its explicit page; activity uses Notifications, as specified in `docs/frontend/screens-and-dialogs.md`.
