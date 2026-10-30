@@ -1,3 +1,24 @@
+jest.mock("../accruals/reporting-money", () =>
+  jest
+    .requireActual("../test-helpers/reporting-read-testing")
+    .reportingMoneyMockModule(),
+);
+jest.mock("../accruals/reporting-basis", () =>
+  jest
+    .requireActual("../test-helpers/reporting-read-testing")
+    .reportingBasisMockModule(),
+);
+jest.mock("../accruals/reporting-query", () =>
+  jest
+    .requireActual("../test-helpers/reporting-read-testing")
+    .reportingQueryMockModule(),
+);
+jest.mock("../accruals/reporting-basis.interceptor", () =>
+  jest
+    .requireActual("../test-helpers/reporting-read-testing")
+    .reportingInterceptorMockModule(),
+);
+
 import {
   budgetExcludedAccountIds,
   CategorySpending,
@@ -202,6 +223,7 @@ describe("queryCategorySpending", () => {
       [],
       "2026-01-01",
       "2026-01-31",
+      "USD",
     );
 
     expect(result.spendingMap.size).toBe(0);
@@ -282,6 +304,7 @@ describe("queryCategorySpending", () => {
       [makeBudgetCategory({ categoryId: "cat-1" })],
       "2026-01-01",
       "2026-01-31",
+      "USD",
     );
 
     expect(result.spendingMap.get("cat-1")).toBe(-75);
@@ -323,6 +346,7 @@ describe("queryCategorySpending", () => {
       ],
       "2026-01-01",
       "2026-01-31",
+      "USD",
     );
 
     expect(result.transferSpendingMap.get("acc-1")).toBe(300);
@@ -370,6 +394,7 @@ describe("queryCategorySpending", () => {
       ],
       "2026-01-01",
       "2026-01-31",
+      "USD",
     );
 
     expect(result.transferSpendingMap.get("acc-1")).toBe(40);
@@ -417,6 +442,7 @@ describe("queryCategorySpending", () => {
       ],
       "2026-01-01",
       "2026-01-31",
+      "USD",
     );
 
     expect(result.transferSpendingMap.get("acc-1")).toBe(340);
@@ -542,6 +568,7 @@ describe("queryCategorySpending", () => {
       [makeBudgetCategory({ categoryId: "cat-1" })],
       "2026-01-01",
       "2026-01-31",
+      "USD",
     );
 
     expect(result.spendingMap.get("cat-1")).toBe(-200);

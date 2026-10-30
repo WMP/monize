@@ -1,5 +1,11 @@
 import { SharedReviewService } from "../../shared-expenses/shared-review.service";
 import { sharedReviewMock } from "../../shared-expenses/__fixtures__/shared-review";
+jest.mock("../../accruals/reporting-basis", () =>
+  jest
+    .requireActual("../../test-helpers/reporting-read-testing")
+    .reportingBasisMockModule(),
+);
+import { reportToolFixture } from "../../test-helpers/reporting-tool-fixture";
 import { McpReportsTools } from "./reports.tool";
 import { mcpTestCtx, McpTestContext } from "../testing/mcp-test-context";
 
@@ -27,10 +33,12 @@ describe("McpReportsTools", () => {
     };
 
     sharedReview = sharedReviewMock();
+    reportsService.getLlmReport = jest.fn(
+      reportToolFixture(reportsService, netWorthService),
+    );
     tool = new McpReportsTools(
       sharedReview as unknown as SharedReviewService,
       reportsService as any,
-      netWorthService as any,
     );
 
     server = {
@@ -56,8 +64,9 @@ describe("McpReportsTools", () => {
     "discloses shared review for %s, including array results",
     async (type) => {
       ctx.setUser({ userId: "u1", scopes: "read" });
-      for (const method of Object.values(reportsService))
-        method.mockResolvedValue([{ amount: 100 }]);
+      for (const [name, method] of Object.entries(reportsService))
+        if (name !== "getLlmReport")
+          method.mockResolvedValue([{ amount: 100 }]);
       netWorthService.getLlmHistory.mockResolvedValue([{ amount: 100 }]);
       sharedReview.annotate.mockImplementation(async (_user, data) => ({
         items: data,
@@ -113,7 +122,7 @@ describe("McpReportsTools", () => {
       expect(result.isError).toBeUndefined();
     });
 
-    it("should pass a withheld total and its gap through unchanged (INV-FX-001)", async () => {
+    it("returns partial report data with its existing completeness fields (INV-FX-001)", async () => {
       ctx.setUser({ userId: "u1", scopes: "read" });
       const report = {
         data: [],
@@ -134,7 +143,13 @@ describe("McpReportsTools", () => {
         ctx,
       );
 
-      expect(result.structuredContent).toEqual(report);
+      expect(result.isError).toBeUndefined();
+      expect(result.structuredContent).toMatchObject({
+        totalSpending: null,
+        knownSpending: 50,
+        missingCurrencies: ["JPY"],
+        excludedCount: 1,
+      });
     });
 
     it("should run spending_by_payee report", async () => {

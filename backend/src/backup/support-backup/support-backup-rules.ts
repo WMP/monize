@@ -7,7 +7,9 @@ import {
   mask,
   scale,
   scaleQty,
+  type TableRules,
 } from "./support-backup-rule-kinds";
+import { ACCRUAL_RULES } from "./support-backup-rules.accruals";
 import { PLANNING_RULES } from "./support-backup-rules.planning";
 import { WARRANTY_RULES } from "./support-backup-rules.warranties";
 
@@ -23,8 +25,6 @@ import { WARRANTY_RULES } from "./support-backup-rules.warranties";
 // can be split without either half importing the other; re-exported here so
 // existing import sites are unchanged.
 export type { ColumnRule, TableRules } from "./support-backup-rule-kinds";
-
-import type { TableRules } from "./support-backup-rule-kinds";
 
 export { ALWAYS_EXCLUDED_TABLES } from "./support-backup-exclusions";
 
@@ -67,6 +67,8 @@ export const RULES: Record<string, TableRules> = {
     updated_at: keep,
   },
   user_preferences: {
+    reporting_basis: keep,
+    accrual_enabled: keep,
     user_id: keep,
     default_currency: keep,
     date_format: keep,
@@ -761,6 +763,7 @@ export const RULES: Record<string, TableRules> = {
   ...PLANNING_RULES,
   // The warranty tables, likewise in their own file.
   ...WARRANTY_RULES,
+  ...ACCRUAL_RULES,
 };
 
 /**

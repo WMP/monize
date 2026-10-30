@@ -1,3 +1,22 @@
+jest.mock("../accruals/reporting-basis", () => ({
+  ...jest
+    .requireActual("../test-helpers/reporting-read-testing")
+    .reportingBasisMockModule(),
+  // ReportingRead is unwrapped here: there is no live preference snapshot.
+  // The real currency helper must read this suite's CAD preference fixture.
+  currentReportingRead: () => undefined,
+}));
+jest.mock("../accruals/reporting-query", () =>
+  jest
+    .requireActual("../test-helpers/reporting-read-testing")
+    .reportingQueryMockModule(),
+);
+jest.mock("../accruals/reporting-basis.interceptor", () =>
+  jest
+    .requireActual("../test-helpers/reporting-read-testing")
+    .reportingInterceptorMockModule(),
+);
+
 import { DataSource } from "typeorm";
 import { InternalServerErrorException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";

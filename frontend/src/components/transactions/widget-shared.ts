@@ -1,3 +1,4 @@
+import { roundMoney } from '@/lib/format';
 import { GroupedTotal, TransactionSummary } from '@/types/transaction';
 
 /**
@@ -6,6 +7,7 @@ import { GroupedTotal, TransactionSummary } from '@/types/transaction';
  * excludes the widget's own entity id -- each widget injects that itself.
  */
 export interface WidgetFilterParams {
+  basis?: 'cash' | 'accrual';
   accountIds?: string[];
   startDate?: string;
   endDate?: string;
@@ -38,6 +40,14 @@ export function buildDisplayCurrencyStrategy(
   defaultCurrency: string,
   convertToDefault: (amount: number, fromCurrency: string) => number | null,
 ): DisplayCurrencyStrategy {
+  if (summary?.currency && summary.fxComplete !== undefined) {
+    return {
+      displayCurrency: summary.currency,
+      toDisplay: (amount, fromCurrency) => fromCurrency === summary.currency
+        ? amount
+        : summary.currency === defaultCurrency ? convertToDefault(amount, fromCurrency) : null,
+    };
+  }
   const currencies = Object.keys(summary?.byCurrency ?? {});
   if (currencies.length === 1) {
     return { displayCurrency: currencies[0], toDisplay: (amount) => amount };
@@ -70,12 +80,20 @@ export function summarizeInDisplayCurrency(
    */
   excludedTransactionCount: number;
 } {
+  if (summary.currency === strategy.displayCurrency && summary.fxComplete !== undefined) {
+    const income = summary.totalIncome ?? summary.knownIncomeSubtotal ?? 0;
+    const expenses = summary.totalExpenses ?? summary.knownExpensesSubtotal ?? 0;
+    const excluded = summary.excludedTransactionCount ?? 0;
+    return { income, expenses, net: summary.netCashFlow ?? roundMoney(income - expenses),
+      missingCurrencies: [...new Set((summary.missingRatePairs ?? []).map(pair => pair.from))],
+      includedTransactionCount: Math.max(0, summary.transactionCount - excluded), excludedTransactionCount: excluded };
+  }
   const buckets = Object.entries(summary.byCurrency ?? {});
   if (buckets.length <= 1) {
     return {
-      income: summary.totalIncome,
-      expenses: summary.totalExpenses,
-      net: summary.netCashFlow,
+      income: summary.totalIncome ?? summary.knownIncomeSubtotal ?? 0,
+      expenses: summary.totalExpenses ?? summary.knownExpensesSubtotal ?? 0,
+      net: summary.netCashFlow ?? 0,
       missingCurrencies: [],
       includedTransactionCount: summary.transactionCount,
       excludedTransactionCount: 0,

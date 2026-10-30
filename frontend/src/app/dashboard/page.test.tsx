@@ -390,6 +390,24 @@ describe('DashboardPage', () => {
     });
   });
 
+  it('an account-list failure leaves independent net-worth widgets visible', async () => {
+    prefsState.current.dashboardWidgets = ['assets-liabilities', 'favourite-accounts'];
+    mockGetAccounts.mockRejectedValue(new Error('accounts offline'));
+    render(<DashboardPage />);
+    await waitFor(() => { expect(screen.getByRole('alert')).toBeInTheDocument(); });
+    expect(screen.getByTestId('assets-vs-liabilities')).toHaveAttribute('data-error', 'false');
+    expect(screen.queryByTestId('favourite-accounts')).not.toBeInTheDocument();
+  });
+  it('a scheduled-list failure leaves accounts and net-worth widgets visible', async () => {
+    prefsState.current.dashboardWidgets = ['assets-liabilities', 'favourite-accounts', 'upcoming-bills'];
+    mockGetScheduled.mockRejectedValue(new Error('schedule offline'));
+    render(<DashboardPage />);
+    await waitFor(() => { expect(screen.getByRole('alert')).toBeInTheDocument(); });
+    expect(screen.getByTestId('assets-vs-liabilities')).toHaveAttribute('data-error', 'false');
+    expect(screen.getByTestId('favourite-accounts')).toBeInTheDocument();
+    expect(screen.queryByTestId('upcoming-bills')).not.toBeInTheDocument();
+  });
+
   it('tells the assets widget when the net worth request failed, instead of handing it an empty series', async () => {
     prefsState.current.dashboardWidgets = ['assets-liabilities'];
     mockGetMonthly.mockRejectedValue(new Error('500'));

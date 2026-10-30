@@ -20,6 +20,8 @@ import { AsyncLocalStorage } from "node:async_hooks";
  *                      GUC-aware `updated_at` trigger keeps restored values.
  */
 export interface RequestContext {
+  /** Internal memo storage dies with this request/job identity scope. */
+  memo?: Map<symbol, unknown>;
   userId?: string;
   realUserId?: string;
   timezone?: string;

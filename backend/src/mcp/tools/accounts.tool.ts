@@ -38,6 +38,7 @@ export class McpAccountsTools {
           "`missingRatePairs` or `unpricedSymbols`. Loans/mortgages include their " +
           "schedule. `totalAccounts` counts filtered accounts.",
         inputSchema: z.object({
+          basis: z.literal("cash").optional(),
           accountNames: z
             .array(z.string().max(100))
             .max(100)

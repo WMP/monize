@@ -467,7 +467,9 @@
     "toasts": {
       "loadFailed": "Gagal memuat laporan",
       "executeFailed": "Gagal menjalankan laporan"
-    }
+    },
+    "limitedResults": "Dibatasi hingga {limit, number} transaksi pertama yang cocok. Semua angka yang ditampilkan bersifat sebagian. Persempit tanggal atau filter untuk hasil lengkap.",
+    "partialFigure": "(sebagian)"
   },
   "debtPayoff": {
     "empty": "Tidak ada akun utang ditemukan. Tambah pinjaman, hipotek, atau jalur kredit untuk melihat linimasa pelunasan.",
@@ -1944,7 +1946,10 @@
     "knownValue": "Nilai yang Diketahui",
     "weightingIntro": "Persentase hanya mencakup posisi yang dapat dinilai.",
     "weightingNoPrice": "Tidak ada harga untuk {symbols}: perbarui atau tambahkan harga di halaman sekuritas.",
-    "weightingNoRate": "Tidak ada kurs untuk {pairs}: tambahkan di halaman Mata Uang."
+    "weightingNoRate": "Tidak ada kurs untuk {pairs}: tambahkan di halaman Mata Uang.",
+    "detailsLimited": "Beberapa detail dihilangkan. Persempit tanggal atau filter untuk melihat lebih banyak.",
+    "resultUnavailable": "Hasil ini belum lengkap. Total dan skor yang dihitung tidak tersedia hingga kurs yang hilang ditambahkan.",
+    "knownComponents": "Jumlah yang diketahui"
   },
   "sankey": {
     "help": "Uang yang masuk mengalir melalui bagian tengah ke tempat uang itu dibelanjakan, yang ditabung atau diinvestasikan, dan yang membayar utang. Secara bawaan, laporan mencakup rekening giro, tabungan, tunai, kartu kredit, dan jalur kredit Anda yang masih terbuka, dan transfer antara dua di antaranya tidak ditampilkan. Keluarkan rekening tabungan dari filter rekening untuk melihat berapa yang Anda pindahkan ke sana. Pembayaran kartu kredit tidak pernah dianggap pembayaran utang: pembelian yang dilunasinya sudah dihitung sebagai pengeluaran.",

@@ -1,5 +1,6 @@
 'use client';
 
+import { ReportingBasisScope, ReportingBasisControl, useReportingBasis, useReportingRouter, CashReportingNotice } from '@/components/reports/ReportingBasis';
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -21,6 +22,8 @@ import { budgetsApi } from '@/lib/budgets';
 import { scheduledTransactionsApi } from '@/lib/scheduled-transactions';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { getErrorMessage } from '@/lib/errors';
+import { BudgetFxIncompleteError, type PartialBudgetData } from '@/lib/budget-partial';
+import { BudgetFxPartialNotice } from '@/components/reports/BudgetFxPartialNotice';
 import { STRATEGY_LABELS } from '@/components/budgets/utils/budget-labels';
 import type {
   Budget,
@@ -34,7 +37,7 @@ import type { ScheduledTransaction } from '@/types/scheduled-transaction';
 export default function BudgetDetailPage() {
   return (
     <ProtectedRoute>
-      <BudgetDetailContent />
+      <ReportingBasisScope surface="budget-detail" resetOnBasis><BudgetDetailContent /></ReportingBasisScope>
     </ProtectedRoute>
   );
 }
@@ -62,10 +65,12 @@ function computeHealthScore(summary: BudgetSummary): number {
 }
 
 function BudgetDetailContent() {
+  const basis = useReportingBasis();
   const t = useTranslations('budgets');
   const tc = useTranslations('common');
   const params = useParams();
   const router = useRouter();
+  const reportingRouter = useReportingRouter();
   const { formatCurrency } = useNumberFormat();
   const budgetId = params.id as string;
 
@@ -86,6 +91,7 @@ function BudgetDetailContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [isPeriodLoading, setIsPeriodLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [partial, setPartial] = useState<PartialBudgetData | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [budgets, setBudgets] = useState<Budget[]>([]);
 
@@ -105,14 +111,15 @@ function BudgetDetailContent() {
       try {
         const [summaryData, velocityData, periodsData, stData, dailyData, trend] =
           await Promise.all([
-            budgetsApi.getSummary(budgetId),
-            budgetsApi.getVelocity(budgetId),
+            budgetsApi.getSummary(budgetId, ...(basis ? [basis] as const : [])),
+            budgetsApi.getVelocity(budgetId, ...(basis ? [basis] as const : [])),
             budgetsApi.getPeriods(budgetId),
             scheduledTransactionsApi.getAll(),
-            budgetsApi.getDailySpending(budgetId).catch(() => []),
-            budgetsApi.getTrend(budgetId).catch(() => []),
+            budgetsApi.getDailySpending(budgetId, ...(basis ? [basis] as const : [])),
+            (basis ? budgetsApi.getTrend(budgetId, undefined, basis) : budgetsApi.getTrend(budgetId)),
           ]);
 
+        setPartial(null);
         setSummary(summaryData);
         setVelocity(velocityData);
         setPeriods(periodsData);
@@ -120,6 +127,8 @@ function BudgetDetailContent() {
         setDailySpending(dailyData);
         setTrendData(trend);
       } catch (err) {
+        if (err instanceof BudgetFxIncompleteError) { setPartial(err.details); setSummary(null); setVelocity(null); setError(null); return; }
+        setPartial(null);
         const message = getErrorMessage(err, t('pages.detail.toasts.loadFailed'));
         setError(message);
         toast.error(message);
@@ -128,7 +137,7 @@ function BudgetDetailContent() {
       }
     };
     return run();
-  }, [budgetId, t]);
+  }, [budgetId, t, basis]);
 
   const loadData = useCallback(() => {
     setIsLoading(true);
@@ -223,26 +232,30 @@ function BudgetDetailContent() {
         startDate: summary.budget.periodStart,
         endDate: periodEndVal,
         categoryIds: cat.categoryId,
+        accountStatus: 'all',
       });
-      router.push(`/transactions?${params.toString()}`);
+      (selectedPeriod && selectedPeriod.status !== 'OPEN' ? router : reportingRouter).push(`/transactions?${params.toString()}`);
     },
-    [summary, router],
+    [summary, router, reportingRouter, selectedPeriod],
   );
 
   if (isLoading) {
     return (
       <PageLayout>
         <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">
+        <ReportingBasisControl />
           <LoadingSpinner />
         </main>
       </PageLayout>
     );
   }
 
+  if (partial) return <PageLayout><main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8"><ReportingBasisControl /><BudgetFxPartialNotice data={partial} onRetry={loadData} /></main></PageLayout>;
   if (error || !summary || !velocity) {
     return (
       <PageLayout>
         <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">
+        <ReportingBasisControl />
           <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-12 text-center">
             <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
               {error || t('pages.detail.notFound')}
@@ -264,6 +277,7 @@ function BudgetDetailContent() {
     <PageLayout>
       <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">
         <BudgetBackLink href="/budgets" label={t('pages.detail.backToBudgets')} />
+        <ReportingBasisControl />
         <PageHeader
           title={summary.budget.name}
           titleAdornment={
@@ -299,10 +313,13 @@ function BudgetDetailContent() {
         {isPeriodLoading ? (
           <LoadingSpinner />
         ) : isViewingHistoricalPeriod ? (
+          <>
+          <CashReportingNotice />
           <BudgetPeriodDetail
             period={selectedPeriod}
             formatCurrency={(amount) => formatCurrency(amount, currencyCode)}
           />
+          </>
         ) : (
           <BudgetDashboard
             summary={summary}

@@ -1,5 +1,8 @@
 'use client';
 
+import { sumMoney } from '@/lib/format';
+
+import { useReportExportMetadata } from '@/hooks/useReportExportMetadata';
 import { useMemo, useRef } from 'react';
 import {
   PieChart,
@@ -20,8 +23,6 @@ import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { CHART_COLOURS } from '@/lib/chart-colours';
 import { chartColors } from '@/lib/chart-colors';
-import { exportToCsv } from '@/lib/csv-export';
-import { sumMoney } from '@/lib/format';
 import type { ConvertedTotal } from '@/lib/currency-total';
 import { usePartialTotalNote } from '@/hooks/usePartialTotalNote';
 import { ReportToolbarActions } from '@/components/reports/ReportToolbarActions';
@@ -45,6 +46,7 @@ interface ReportChartProps {
   totalRowValue?: number;
   /** Set when the headline is a subtotal, so the Total row is marked as one. */
   partialTotal?: ConvertedTotal | null;
+  completeness?: Record<string, string | number | boolean | undefined>;
 }
 
 function getColumnMap(
@@ -95,7 +97,8 @@ function ReportChartTooltip({ active, payload, total, formatCurrency, formatPerc
   return null;
 }
 
-export function ReportChart({ viewType, data, groupBy, onDataPointClick, tableColumns, exportFilename, reportTitle, reportSubtitle, metric, totalRowValue, partialTotal }: ReportChartProps) {
+export function ReportChart({ viewType, data, groupBy, onDataPointClick, tableColumns, exportFilename, reportTitle, reportSubtitle, metric, totalRowValue, partialTotal, completeness }: ReportChartProps) {
+  const { exportCsvWithBasis, withPdfBasis } = useReportExportMetadata();
   const { formatCurrency, formatNumber, formatPercent } = useNumberFormat();
   const { cellFor } = usePartialTotalNote();
   const { formatDate } = useDateFormat();
@@ -144,7 +147,9 @@ export function ReportChart({ viewType, data, groupBy, onDataPointClick, tableCo
       if (col === TableColumn.COUNT) return totalCount || '';
       return '';
     });
-    exportToCsv(exportFilename || 'report', headers, [...rows, totalRow]);
+    const metadata = Object.entries(completeness ?? {});
+    const metaCells = metadata.map(([, value]) => (value === undefined ? '' : String(value)));
+    exportCsvWithBasis(exportFilename || 'report', [...headers, ...metadata.map(([key]) => key)], [...rows, totalRow].map((row) => [...row, ...metaCells]));
   };
 
   const handleExportPdf = async () => {
@@ -169,13 +174,13 @@ export function ReportChart({ viewType, data, groupBy, onDataPointClick, tableCo
       if (col === TableColumn.COUNT) return totalCount ? formatNumber(totalCount, 0) : '';
       return '';
     });
-    await exportToPdf({
+    await exportToPdf(withPdfBasis({
       title: reportTitle || exportFilename || 'Report',
       subtitle: reportSubtitle,
       chartContainer: viewType !== ReportViewType.TABLE ? chartContainerRef.current : null,
-      tableData: { headers, rows, totalRow },
+      tableData: { headers, rows, totalRow: completeness ? undefined : totalRow },
       filename: exportFilename || 'report',
-    });
+    }));
   };
 
   const isTimeBased = groupBy === GroupByType.MONTH || groupBy === GroupByType.WEEK || groupBy === GroupByType.DAY;

@@ -1,4 +1,5 @@
 import { sharedLedgerRefusal } from "../common/db/shared-ledger-refusal";
+import { reportingFailure } from "../accruals/reporting-errors";
 import { sanitizeToolResultStrings } from "../common/sanitization.util";
 import type { AuthInfo, ServerContext } from "@modelcontextprotocol/server";
 import { ConfirmMismatchError } from "./mcp-confirm";
@@ -150,6 +151,9 @@ export function toolError(message: string) {
 export function safeToolError(err: unknown) {
   const sharedRefusal = sharedLedgerRefusal(err);
   if (sharedRefusal) return toolError(sharedRefusal);
+  const failure = reportingFailure(err);
+  if (failure)
+    return { ...toolResult({ error: failure }), isError: true as const };
   // A confirmation that no longer matches the change is not an internal
   // failure: it is a refusal the caller can act on, and the model needs to be
   // told to ask again rather than to retry the same call.

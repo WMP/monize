@@ -54,7 +54,7 @@ vi.mock('@/store/authStore', () => ({
 vi.mock('@/store/preferencesStore', () => ({
   usePreferencesStore: (selector?: any) => {
     const state = {
-      preferences: { twoFactorEnabled: true, theme: 'system', defaultCurrency: 'USD', numberFormat: 'en-US' },
+      preferences: { twoFactorEnabled: true, theme: 'system', defaultCurrency: 'USD', numberFormat: 'en-US', accrualEnabled: true, reportingBasis: "accrual" },
       isLoaded: true,
       _hasHydrated: true,
     };
@@ -289,6 +289,13 @@ describe('BudgetDetailPage', () => {
     });
   });
 
+  it.each(['daily', 'trend'] as const)('shows a retryable error when the %s history request fails', async (panel) => {
+    (panel === 'daily' ? mockGetDailySpending : mockGetTrend).mockRejectedValueOnce(new Error('History unavailable'));
+    render(<BudgetDetailPage />);
+    await waitFor(() => expect(screen.getByText('Failed to load budget')).toBeInTheDocument());
+    expect(screen.queryByText('February 2026')).not.toBeInTheDocument();
+  });
+
   it('renders the edit button, and the way back as a link above the title', async () => {
     render(<BudgetDetailPage />);
 
@@ -341,28 +348,31 @@ describe('BudgetDetailPage', () => {
     render(<BudgetDetailPage />);
 
     await waitFor(() => {
-      expect(mockGetSummary).toHaveBeenCalledWith('budget-1');
-      expect(mockGetVelocity).toHaveBeenCalledWith('budget-1');
+      expect(mockGetSummary).toHaveBeenCalledWith('budget-1', 'accrual');
+      expect(mockGetVelocity).toHaveBeenCalledWith('budget-1', 'accrual');
       expect(mockGetPeriods).toHaveBeenCalledWith('budget-1');
     });
   });
 
-  it('navigates to transactions with category filter on category click', async () => {
+  it('navigates to cash transactions with category filter when cash is selected', async () => {
     render(<BudgetDetailPage />);
 
     await waitFor(() => {
       expect(screen.getByTestId('budget-dashboard')).toBeInTheDocument();
     });
 
+    fireEvent.click(screen.getByRole('button', { name: /^Cash(?: \(user default\))?$/ }));
+    await waitFor(()=>expect(mockGetSummary).toHaveBeenCalledWith('budget-1','cash'));
+    await screen.findByTestId('budget-dashboard');
     // The BudgetDashboard mock captures onCategoryClick
     expect(capturedOnCategoryClick).toBeDefined();
-    capturedOnCategoryClick!('bc-1');
+    act(()=>capturedOnCategoryClick!('bc-1'));
 
     expect(localStorage.getItem('transactions.filter.accountStatus')).toBe(
       JSON.stringify('active'),
     );
     expect(mockPush).toHaveBeenCalledWith(
-      '/transactions?startDate=2026-02-01&endDate=2026-02-28&categoryIds=cat-groceries',
+      '/transactions?startDate=2026-02-01&endDate=2026-02-28&categoryIds=cat-groceries&accountStatus=all&basis=cash',
     );
   });
 

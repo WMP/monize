@@ -230,6 +230,11 @@ const PRODUCTION_SHAPED_VALUES: Record<string, Record<string, unknown>> = {
   shared_allocations: { kind: "SHARE", original_amount: 1, group_amount: 1 },
   shared_invitations: { role: "VIEWER" },
   shared_ledger_links: { kind: "BANK" },
+  accrual_history_chunks: {
+    side: "before",
+    part_index: 0,
+    payload: Buffer.from("{}"),
+  },
   ai_review_requests: { kind: "email_trade" },
   backup_offsite_uploads: {
     destination: "s3",
@@ -349,7 +354,19 @@ export class RlsRowSeeder {
           }
         : table === "shared_invitations"
           ? { token_hash: randomUUID().replace(/-/g, "").repeat(2) }
-          : {};
+          : table === "accrual_system_accounts"
+            ? { family: "expense" }
+            : table === "accrual_schedules"
+              ? {
+                  family: "expense",
+                  preset: "CUSTOM",
+                  start_month: "2026-01-01",
+                  month_count: 12,
+                  source_fingerprint: "a".repeat(64),
+                }
+              : table === "accrual_allocations"
+                ? { period_index: 0, recognition_date: "2026-01-31" }
+                : {};
     const entry = this.entry(table);
     const overrides = { ...PRODUCTION_SHAPED_VALUES[table], ...explicit };
     const rowValues = { ...rowDefaults, ...overrides };

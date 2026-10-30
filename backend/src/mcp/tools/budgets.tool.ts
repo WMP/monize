@@ -31,13 +31,12 @@ export class McpBudgetsTools {
           "and health score. Unpriced upcoming bills make " +
           "`velocity.safeDailySpend` null and `upcomingBillsComplete` false.",
         inputSchema: z.object({
+          basis: z.enum(["cash", "accrual"]).optional(),
           period: z
             .string()
             .max(20)
             .optional()
-            .describe(
-              "'CURRENT' (default), 'PREVIOUS', or a specific YYYY-MM month.",
-            ),
+            .describe("CURRENT (default), PREVIOUS, or YYYY-MM."),
           budgetName: z
             .string()
             .max(100)
@@ -57,6 +56,7 @@ export class McpBudgetsTools {
             user.userId,
             args.period ?? "CURRENT",
             args.budgetName,
+            args.basis,
           );
           return toolResult(
             await this.sharedReview.annotate(user.userId, data),

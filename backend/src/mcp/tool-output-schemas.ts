@@ -55,6 +55,7 @@ const sharedReview = looseObject({}).optional();
  */
 export const listAccountsOutput = toolOutput({
   sharedExpenses: sharedReview,
+  basis: z.literal("cash").optional(),
   // Each row carries `balance`/`currentBalance` in its own `currency` AND in
   // `defaultCurrency` (`balanceInDefaultCurrency`, `currentBalanceInDefaultCurrency`,
   // at `exchangeRate`); the description names them, and per the note above
@@ -87,6 +88,7 @@ export const comparePeriodsOutput = toolOutput({
   // a pair has no rate; `knownSubtotal` (per period, undeclared like the
   // portfolio's return diagnostics: the tool is at its `tools/list` budget)
   // is what did convert. These flags are the contract, not decoration.
+  basis: z.enum(["cash", "accrual"]).optional(),
   period1: looseObject({ start: str, end: str, total: num }),
   period2: looseObject({ start: str, end: str, total: num }),
   totalChange: num,
@@ -150,6 +152,7 @@ export const listTransactionsOutput = toolOutput({
   totalsCurrency: str,
   fxComplete: bool,
   missingRatePairs: z.array(str),
+  basis: z.literal("cash").optional(),
   transactionCount: num.optional(),
   byCurrency: z.record(z.string(), looseObject({})).optional(),
   groupedBy: strNull.optional(),
@@ -238,10 +241,10 @@ export const generateReportOutput = toolOutput({
   totalSpending: num.optional(),
   totalIncome: num.optional(),
   items: rows().optional(),
+  basis: z.enum(["cash", "accrual"]).optional(),
   currency: str.optional(),
-  statistics: looseObject({ mean: num, stdDev: num }).optional(),
-  anomalies: rows().optional(),
-  counts: looseObject({ high: num, medium: num, low: num }).optional(),
+  fxComplete: bool.optional(),
+  result: z.unknown().optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -437,6 +440,9 @@ export const calculateOutput = toolOutput({
 
 export const getBudgetStatusOutput = toolOutput({
   sharedExpenses: sharedReview,
+  basis: z.enum(["cash", "accrual"]).optional(),
+  currency: str.optional(),
+  fxComplete: bool.optional(),
   budgetName: str.optional(),
   strategy: str.optional(),
   period: looseObject({ start: str, end: str }).optional(),

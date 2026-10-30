@@ -1,3 +1,18 @@
+import { reportingExecutionBasis } from "../accruals/reporting-basis";
+import { exportReport } from "../accruals/reporting-export";
+import {
+  tryReportingConversion,
+  reportingRates,
+} from "../accruals/reporting-money";
+import {
+  createDatedReportConverter,
+  type RowConverter,
+} from "./report-row-converter";
+import {
+  currentReportingRead,
+  ReportingRead,
+} from "../accruals/reporting-basis";
+import { reportingEntities } from "../accruals/reporting-query";
 import {
   Injectable,
   NotFoundException,
@@ -19,6 +34,7 @@ import {
 } from "../transactions/apply-transaction-search";
 import { ParsedSearch } from "../transactions/transaction-search-query.util";
 import { createNetCells, netLinesOf } from "./report-net-cells";
+import { FxAggregate } from "../common/fx-aggregate";
 import {
   CustomReport,
   TimeframeType,
@@ -75,12 +91,6 @@ const REPORT_ROW_LIMIT = 50000;
  * {@link RowConverter.convert}, which records a row it cannot convert instead of
  * letting it join a sum in its own units (INV-FX-001).
  */
-interface RowConverter {
-  readonly currency: string;
-  readonly gaps: ConversionGaps;
-  /** `null` when `currencyCode` has no rate into the reporting currency. */
-  convert(amount: number, currencyCode: string): number | null;
-}
 
 /**
  * The window as a fraction of calendar months: for each month it touches, the
@@ -117,10 +127,20 @@ export class ReportsService {
     private currencyService: ReportCurrencyService,
   ) {}
 
-  private async createConverter(userId: string): Promise<RowConverter> {
+  private async createConverter(
+    userId: string,
+    countOnly = false,
+    transactions: Transaction[] = [],
+  ): Promise<RowConverter> {
     const currency = await this.currencyService.getDefaultCurrency(userId);
-    const rateMap = await this.currencyService.buildRateMap(currency);
     const gaps = new ConversionGaps();
+    // An event count has no converted amount: its cells retain only event ids.
+    if (countOnly) return { currency, gaps, convert: () => null };
+    if (reportingExecutionBasis(userId) === "accrual")
+      return withScopedDb(this.dataSource, (m) =>
+        createDatedReportConverter(m, currency, transactions),
+      );
+    const rateMap = await this.currencyService.buildRateMap(currency);
     return {
       currency,
       gaps,
@@ -289,6 +309,11 @@ export class ReportsService {
     });
   }
 
+  async export(userId: string, id: string, options?: ExecuteReportDto) {
+    return exportReport(await this.execute(userId, id, options));
+  }
+
+  @ReportingRead(undefined, false, 1)
   async execute(
     userId: string,
     id: string,
@@ -311,17 +336,21 @@ export class ReportsService {
     );
 
     // Query transactions with filters
-    const { transactions: selected, truncated } =
-      await this.getFilteredTransactions(
-        userId,
-        startDate,
-        endDate,
-        report.filters,
-        report.config,
-      );
+    const selection = await this.getFilteredTransactions(
+      userId,
+      startDate,
+      endDate,
+      report.filters,
+      report.config,
+    );
+    const selected = selection.rows;
     // A split parent reached the aggregators whatever its own sign, so its lines
     // are narrowed here, where each line's own amount and kind are readable.
-    const transactions = this.narrowSplitLines(selected, report.config);
+    const converted = {
+      currency: currentReportingRead(userId)!.currency,
+      transactions: this.narrowSplitLines(selected, report.config),
+    };
+    const transactions = converted.transactions;
 
     // Only fetch category/payee maps when the report groups by them (avoid over-fetching)
     const categoryMap = new Map<string, Category>();
@@ -341,7 +370,11 @@ export class ReportsService {
       for (const p of payees) payeeMap.set(p.id, p);
     }
 
-    const converter = await this.createConverter(userId);
+    const converter = await this.createConverter(
+      userId,
+      report.config.metric === MetricType.COUNT,
+      transactions,
+    );
 
     // Aggregate data based on groupBy type
     let data = this.aggregateData(
@@ -383,10 +416,25 @@ export class ReportsService {
       data,
       converter.gaps,
       report.config.metric,
-      truncated,
+      selection.truncated,
     );
 
     return {
+      ...(selection.truncated
+        ? {
+            dataComplete: false as const,
+            truncated: true as const,
+            rowLimit: 50000,
+          }
+        : {}),
+      fxComplete: converter.gaps.isComplete,
+      ...(converter.missingRatePairs?.length
+        ? {
+            missingRatePairs: converter.missingRatePairs,
+            repair: "currency_rate_history" as const,
+            fetchAttempted: false as const,
+          }
+        : {}),
       reportId: report.id,
       name: report.name,
       viewType: report.viewType,
@@ -401,7 +449,7 @@ export class ReportsService {
       currency: converter.currency,
       missingCurrencies: converter.gaps.missingCurrencies,
       excludedCount: converter.gaps.excludedCount,
-      truncated,
+      truncated: selection.truncated,
       tableColumns: report.config.tableColumns,
     };
   }
@@ -518,8 +566,8 @@ export class ReportsService {
     transactions: Transaction[],
     config: ReportConfig,
   ): Transaction[] {
-    // Only the list of single transactions judges a line by its own sign; every
-    // other metric nets a category's lines of both signs (audit A26-M33).
+    // The single-row list narrows signs here; COUNT selects native event signs
+    // in NetCells, and monetary metrics net each category (audit A26-M33).
     const narrowsDirection =
       config.metric === MetricType.NONE &&
       config.direction !== DirectionFilter.BOTH;
@@ -590,7 +638,7 @@ export class ReportsService {
     endDate: string,
     filters: CustomReport["filters"],
     config: ReportConfig,
-  ): Promise<{ transactions: Transaction[]; truncated: boolean }> {
+  ): Promise<{ rows: Transaction[]; truncated: boolean }> {
     return withScopedDb(this.dataSource, async (m) => {
       const queryBuilder = m
         .getRepository(Transaction)
@@ -739,14 +787,18 @@ export class ReportsService {
       }
 
       // M29: Limit result set to prevent unbounded memory consumption. One row
-      // past the limit proves rows were dropped (the newest, by the order), so
-      // the report says it is truncated instead of presenting a short total.
-      const rows = await queryBuilder
-        .orderBy("transaction.transactionDate", "ASC")
-        .take(REPORT_ROW_LIMIT + 1)
-        .getMany();
+      // past the limit proves rows were dropped, so the report says it is
+      // truncated instead of presenting a short total.
+      const rows = await reportingEntities(
+        m,
+        userId,
+        queryBuilder
+          .orderBy("transaction.transactionDate", "ASC")
+          .addOrderBy("transaction.id", "ASC")
+          .take(REPORT_ROW_LIMIT + 1),
+      );
       return {
-        transactions: rows.slice(0, REPORT_ROW_LIMIT),
+        rows: rows.slice(0, REPORT_ROW_LIMIT),
         truncated: rows.length > REPORT_ROW_LIMIT,
       };
     });
@@ -974,10 +1026,17 @@ export class ReportsService {
             const value = conv.convert(
               Math.abs(Number(split.amount)),
               tx.currencyCode,
+              tx,
             );
             if (value === null) continue;
             result.push({
               id: tx.id,
+              reportingProvenance: split.reportingProvenance && {
+                ...split.reportingProvenance,
+                ...(conv.conversion
+                  ? { conversion: conv.conversion(Number(split.amount), tx) }
+                  : {}),
+              },
               label:
                 split.memo ||
                 tx.payeeName ||
@@ -999,10 +1058,17 @@ export class ReportsService {
           const value = conv.convert(
             Math.abs(Number(tx.amount)),
             tx.currencyCode,
+            tx,
           );
           if (value === null) continue;
           result.push({
             id: tx.id,
+            reportingProvenance: tx.reportingProvenance && {
+              ...tx.reportingProvenance,
+              ...(conv.conversion
+                ? { conversion: conv.conversion(Number(tx.amount), tx) }
+                : {}),
+            },
             label:
               tx.payeeName || transferLabel || tx.description || "Transaction",
             value,
@@ -1028,7 +1094,11 @@ export class ReportsService {
     );
     for (const tx of transactions) {
       for (const line of netLinesOf(tx, false)) {
-        cells.add("total", line, conv.convert(line.amount, tx.currencyCode));
+        cells.add(
+          "total",
+          line,
+          conv.convert(line.amount, tx.currencyCode, tx),
+        );
       }
     }
 
@@ -1069,7 +1139,7 @@ export class ReportsService {
         cells.add(
           line.category,
           line,
-          conv.convert(line.amount, tx.currencyCode),
+          conv.convert(line.amount, tx.currencyCode, tx),
         );
       }
     }
@@ -1077,9 +1147,7 @@ export class ReportsService {
 
     // Shares of what converted: an excluded row is in no group's sum and in no
     // percentage, the same rule Spending by Category follows.
-    const totalSum = sumMoney(
-      Array.from(dataMap.values()).map((v) => v.agg.knownSubtotal),
-    );
+    const totalSum = this.percentageTotal(dataMap, metric);
 
     const result: AggregatedDataPoint[] = [];
     for (const [categoryId, data] of dataMap) {
@@ -1102,7 +1170,13 @@ export class ReportsService {
         ),
         color: category?.color || undefined,
         percentage:
-          totalSum > 0 ? (data.agg.knownSubtotal / totalSum) * 100 : 0,
+          totalSum > 0
+            ? ((this.keepsUnconverted(metric)
+                ? data.count
+                : data.agg.knownSubtotal) /
+                totalSum) *
+              100
+            : 0,
         count: data.count,
       });
     }
@@ -1130,7 +1204,11 @@ export class ReportsService {
       if (lines.length === 0) continue;
       const payeeId = tx.payeeId || "unknown";
       for (const line of lines) {
-        cells.add(payeeId, line, conv.convert(line.amount, tx.currencyCode));
+        cells.add(
+          payeeId,
+          line,
+          conv.convert(line.amount, tx.currencyCode, tx),
+        );
       }
       if (!payeeNames.has(payeeId) && tx.payeeName) {
         payeeNames.set(payeeId, tx.payeeName);
@@ -1140,9 +1218,7 @@ export class ReportsService {
 
     // Shares of what converted: an excluded row is in no group's sum and in no
     // percentage, the same rule Spending by Category follows.
-    const totalSum = sumMoney(
-      Array.from(dataMap.values()).map((v) => v.agg.knownSubtotal),
-    );
+    const totalSum = this.percentageTotal(dataMap, metric);
 
     const result: AggregatedDataPoint[] = [];
     for (const [payeeId, data] of dataMap) {
@@ -1156,7 +1232,13 @@ export class ReportsService {
           metric,
         ),
         percentage:
-          totalSum > 0 ? (data.agg.knownSubtotal / totalSum) * 100 : 0,
+          totalSum > 0
+            ? ((this.keepsUnconverted(metric)
+                ? data.count
+                : data.agg.knownSubtotal) /
+                totalSum) *
+              100
+            : 0,
         count: data.count,
       });
     }
@@ -1182,7 +1264,7 @@ export class ReportsService {
       // Converted once per line, so a row under several tags records one gap.
       const converted = lines.map((line) => ({
         line,
-        value: conv.convert(line.amount, tx.currencyCode),
+        value: conv.convert(line.amount, tx.currencyCode, tx),
       }));
       // A line sits under its own tags plus the parent's, never under a tag
       // that only a sibling line carries. `netLinesOf` maps `ordinarySplitLines`
@@ -1213,9 +1295,7 @@ export class ReportsService {
 
     // Shares of what converted: an excluded row is in no group's sum and in no
     // percentage, the same rule Spending by Category follows.
-    const totalSum = sumMoney(
-      Array.from(dataMap.values()).map((v) => v.agg.knownSubtotal),
-    );
+    const totalSum = this.percentageTotal(dataMap, metric);
 
     const result: AggregatedDataPoint[] = [];
     for (const [tagId, data] of dataMap) {
@@ -1230,7 +1310,13 @@ export class ReportsService {
         ),
         color: info?.color,
         percentage:
-          totalSum > 0 ? (data.agg.knownSubtotal / totalSum) * 100 : 0,
+          totalSum > 0
+            ? ((this.keepsUnconverted(metric)
+                ? data.count
+                : data.agg.knownSubtotal) /
+                totalSum) *
+              100
+            : 0,
         count: data.count,
       });
     }
@@ -1279,7 +1365,7 @@ export class ReportsService {
 
       labels.set(key, label);
       for (const line of lines) {
-        cells.add(key, line, conv.convert(line.amount, tx.currencyCode));
+        cells.add(key, line, conv.convert(line.amount, tx.currencyCode, tx));
       }
     }
     const dataMap = cells.settle();
@@ -1300,6 +1386,18 @@ export class ReportsService {
 
     // Sort by date key for time-based groupings
     return result.sort((a, b) => a.id!.localeCompare(b.id!));
+  }
+
+  /** Count shares use event counts; monetary shares retain converted amounts. */
+  private percentageTotal(
+    data: ReadonlyMap<string, { agg: FxAggregate; count: number }>,
+    metric: MetricType,
+  ): number {
+    return sumMoney(
+      Array.from(data.values()).map((value) =>
+        this.keepsUnconverted(metric) ? value.count : value.agg.knownSubtotal,
+      ),
+    );
   }
 
   private calculateMetricValue(
@@ -1333,43 +1431,75 @@ export class ReportsService {
     conv: RowConverter,
     filters: CustomReport["filters"],
   ): Promise<AggregatedDataPoint[]> {
-    try {
-      const budgets = await this.budgetsService.findAll(userId);
-      const activeBudget = budgets.find((b) => b.isActive) || budgets[0];
-      if (!activeBudget) return data;
+    const budgets = await this.budgetsService.findAll(userId);
+    const activeBudget = budgets.find((b) => b.isActive) || budgets[0];
+    if (!activeBudget) return data;
 
-      const budget = await this.budgetsService.findOne(userId, activeBudget.id);
-      // A budget amount is one month's; the actuals span the whole window, so
-      // the budget is scaled by the exact months of the window (see below).
-      const months = windowMonthFraction(startDate, endDate);
-      // Budget amounts are per budget period: a month, a year, or a pay period
-      // (cadence from the budget's `payFrequency`, monthly when unset).
-      const periodsInWindow =
-        budget.budgetType === BudgetType.ANNUAL
-          ? months / 12
-          : budget.budgetType === BudgetType.PAY_PERIOD
-            ? (LOAN_PERIODS_PER_YEAR[budget.config?.payFrequency ?? "MONTHLY"] *
-                months) /
-              12
-            : months;
-      // In the reporting currency, through the report's own converter; a budget
-      // currency with no rate leaves its categories unenriched and records the gap.
-      const budgetMap = new Map<string, number>();
-      const unconvertible = new Set<string>();
-      for (const bc of budget.categories || []) {
-        if (bc.categoryId && !bc.isIncome) {
-          const converted = conv.convert(
-            (Number(bc.amount) || 0) * periodsInWindow,
-            budget.currencyCode,
-          );
-          if (converted === null) unconvertible.add(bc.categoryId);
-          else budgetMap.set(bc.categoryId, converted);
-        }
+    const budget = await this.budgetsService.findOne(userId, activeBudget.id);
+    // A budget amount is one month's; the actuals span the whole window, so
+    // the budget is scaled by the exact months of the window (see below).
+    const months = windowMonthFraction(startDate, endDate);
+    // Budget amounts are per budget period: a month, a year, or a pay period
+    // (cadence from the budget's `payFrequency`, monthly when unset).
+    const periodsInWindow =
+      budget.budgetType === BudgetType.ANNUAL
+        ? months / 12
+        : budget.budgetType === BudgetType.PAY_PERIOD
+          ? (LOAN_PERIODS_PER_YEAR[budget.config?.payFrequency ?? "MONTHLY"] *
+              months) /
+            12
+          : months;
+    // In the reporting currency, through the report's own converter; a budget
+    // currency with no rate withholds its categories and records the gap.
+    const source = {
+      currencyCode: budget.currencyCode,
+      transactionDate: endDate,
+    };
+    const rates =
+      reportingExecutionBasis(userId) === "accrual"
+        ? await withScopedDb(this.dataSource, (manager) =>
+            reportingRates(manager, [source], conv.currency),
+          )
+        : null;
+    // Accrual reads convert at the window's end date, cash through the converter.
+    const convertBudget = (amount: number): number | null => {
+      if (!rates) return conv.convert(amount, budget.currencyCode, source);
+      const result = tryReportingConversion(
+        amount,
+        source,
+        conv.currency,
+        rates,
+      );
+      if (result.amount === null) {
+        conv.gaps.record(budget.currencyCode);
+        if (
+          conv.missingRatePairs &&
+          !conv.missingRatePairs.some(
+            (pair) =>
+              JSON.stringify(pair) === JSON.stringify(result.missingRatePair),
+          )
+        )
+          conv.missingRatePairs.push(result.missingRatePair);
       }
+      return result.amount;
+    };
+    const budgetMap = new Map<string, number>();
+    const unconvertible = new Set<string>();
+    for (const bc of budget.categories || []) {
+      if (bc.categoryId && !bc.isIncome) {
+        const converted = convertBudget(
+          (Number(bc.amount) || 0) * periodsInWindow,
+        );
+        if (converted === null) unconvertible.add(bc.categoryId);
+        else budgetMap.set(bc.categoryId, converted);
+      }
+    }
 
-      const enriched = data.map((point) => {
+    // An unpriceable budget is not a zero budget, nor an actual-only variance.
+    const enriched = data
+      .filter((point) => !unconvertible.has(point.id || ""))
+      .map((point) => {
         const id = point.id || "";
-        if (unconvertible.has(id)) return point;
         const budgeted = budgetMap.get(id) ?? 0;
         return {
           ...point,
@@ -1379,43 +1509,40 @@ export class ReportsService {
         };
       });
 
-      // A budgeted category with no spending is a full under-spend, not absent.
-      // Only where nothing but the category filter narrowed the rows: under an
-      // account, payee, search or advanced-group filter a zero means "filtered
-      // out", not "unspent", and would enter the headline as an invented gap.
-      const narrowed =
-        (filters?.accountIds?.length ?? 0) > 0 ||
-        (filters?.payeeIds?.length ?? 0) > 0 ||
-        !!filters?.searchText ||
-        (filters?.filterGroups?.length ?? 0) > 0;
-      const inScope = new Set(filters?.categoryIds ?? []);
-      const seen = new Set(data.map((point) => point.id));
-      for (const [categoryId, budgeted] of narrowed ? [] : budgetMap) {
-        const category = categoryMap.get(categoryId);
-        if (seen.has(categoryId) || !category) continue;
-        if (inScope.size > 0 && !inScope.has(categoryId)) continue;
-        enriched.push({
-          id: categoryId,
-          label: this.formatCategoryLabel(
-            category.parentId
-              ? {
-                  ...category,
-                  parent: categoryMap.get(category.parentId) ?? null,
-                }
-              : category,
-          ) as string,
-          value: roundMoney(-budgeted),
-          color: category.color || undefined,
-          percentage: 0,
-          count: 0,
-          budgeted: roundMoney(budgeted),
-          actual: 0,
-        });
-      }
-      return enriched;
-    } catch {
-      return data;
+    // A budgeted category with no spending is a full under-spend, not absent.
+    // Only where nothing but the category filter narrowed the rows: under an
+    // account, payee, search or advanced-group filter a zero means "filtered
+    // out", not "unspent", and would enter the headline as an invented gap.
+    const narrowed =
+      (filters?.accountIds?.length ?? 0) > 0 ||
+      (filters?.payeeIds?.length ?? 0) > 0 ||
+      !!filters?.searchText ||
+      (filters?.filterGroups?.length ?? 0) > 0;
+    const inScope = new Set(filters?.categoryIds ?? []);
+    const seen = new Set(data.map((point) => point.id));
+    for (const [categoryId, budgeted] of narrowed ? [] : budgetMap) {
+      const category = categoryMap.get(categoryId);
+      if (seen.has(categoryId) || !category) continue;
+      if (inScope.size > 0 && !inScope.has(categoryId)) continue;
+      enriched.push({
+        id: categoryId,
+        label: this.formatCategoryLabel(
+          category.parentId
+            ? {
+                ...category,
+                parent: categoryMap.get(category.parentId) ?? null,
+              }
+            : category,
+        ) as string,
+        value: roundMoney(-budgeted),
+        color: category.color || undefined,
+        percentage: 0,
+        count: 0,
+        budgeted: roundMoney(budgeted),
+        actual: 0,
+      });
     }
+    return enriched;
   }
 
   /**

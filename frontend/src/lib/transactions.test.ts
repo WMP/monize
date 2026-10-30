@@ -1,3 +1,4 @@
+import { BudgetFxIncompleteError } from './budget-partial';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import apiClient from './api';
 import { transactionsApi } from './transactions';
@@ -96,9 +97,9 @@ describe('transactionsApi', () => {
       expect(params).not.toHaveProperty('pageSize');
     });
 
-    it('stops when a page returns no rows even if hasMore stays true', async () => {
+    it('refuses an incomplete selection when an empty page still claims more rows', async () => {
       // A backend bug could report hasMore=true on an empty page; the helper
-      // must not loop forever accumulating nothing.
+      // must refuse a partial success rather than loop or return a truncated selection.
       vi.mocked(apiClient.get)
         .mockResolvedValueOnce({
           data: { data: [{ id: 't1' }], pagination: { hasMore: true } },
@@ -106,8 +107,7 @@ describe('transactionsApi', () => {
         .mockResolvedValueOnce({
           data: { data: [], pagination: { hasMore: true } },
         });
-      const result = await transactionsApi.getAllPages();
-      expect(result.map((t) => (t as { id: string }).id)).toEqual(['t1']);
+      await expect(transactionsApi.getAllPages()).rejects.toThrow('Incomplete transaction pages');
       expect(apiClient.get).toHaveBeenCalledTimes(2);
     });
   });
@@ -336,4 +336,24 @@ describe('transactionsApi', () => {
       transactionIds: ['tx-1', 'tx-2', 'tx-3'],
     });
   });
+});
+
+it('forwards an explicit recognition basis without changing legacy callers', async () => {
+ const {default:apiClient}=await import('./api');
+ vi.mocked(apiClient.get).mockResolvedValue({data:{data:[],pagination:{total:0}}});
+ await transactionsApi.getAll({basis:'accrual',startDate:'2026-10-01',endDate:'2026-10-31'});
+ expect(apiClient.get).toHaveBeenLastCalledWith('/transactions',expect.objectContaining({params:expect.objectContaining({basis:'accrual',startDate:'2026-10-01',endDate:'2026-10-31'})}));
+});
+
+const partialMonthly = {
+  fxComplete:false as const,result:null,total:null,currency:'EUR',
+  knownComponents:[{id:'monthly-known',currency:'EUR',date:'2026-06-15',knownSubtotal:-80}],
+  missingRatePairs:[{from:'USD',to:'EUR',date:'2026-06-30',reason:null}],
+  repair:'currency_rate_history' as const,fetchAttempted:false as const,
+};
+
+it('recognizes incomplete monthly responses before treating them as an array and allows repaired retry', async () => {
+  vi.mocked(apiClient.get).mockResolvedValueOnce({data:partialMonthly}).mockResolvedValueOnce({data:[{month:'2026-06',total:-160,count:2}]});
+  await expect(transactionsApi.getMonthlyTotals({basis:'accrual'})).rejects.toBeInstanceOf(BudgetFxIncompleteError);
+  expect(await transactionsApi.getMonthlyTotals({basis:'accrual'})).toEqual([{month:'2026-06',total:-160,count:2}]);
 });

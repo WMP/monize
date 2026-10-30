@@ -4,22 +4,14 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/server";
 import { BuiltInReportsService } from "../../built-in-reports/built-in-reports.service";
 import {
-  SPENDING_ANOMALY_DEFAULT_MONTHS,
-  SPENDING_ANOMALY_DEFAULT_THRESHOLD,
-} from "../../built-in-reports/anomaly-reports.service";
-import { NetWorthService } from "../../net-worth/net-worth.service";
-import {
   resolveUserContext,
   requireScope,
   toolResult,
   toolError,
   safeToolError,
 } from "../mcp-context";
-import {
-  getDefaultDateRange,
-  getDefaultPreviousMonth,
-  numberArg,
-} from "../../common/tool-schemas";
+import { numberArg } from "../../common/tool-schemas";
+import { REPORT_TOOL_TYPES } from "../../built-in-reports/report-tool.types";
 import { generateReportOutput } from "../tool-output-schemas";
 import { READ_ONLY } from "../mcp-annotations";
 
@@ -28,7 +20,6 @@ export class McpReportsTools {
   constructor(
     private readonly sharedReview: SharedReviewService,
     private readonly reportsService: BuiltInReportsService,
-    private readonly netWorthService: NetWorthService,
   ) {}
 
   register(server: McpServer) {
@@ -40,19 +31,14 @@ export class McpReportsTools {
         description:
           "Financial aggregates: prefer over list_transactions for breakdowns, " +
           "anomalies and month comparisons. See `type` for date parameters; " +
-          "use compare_periods for arbitrary date ranges.",
+          "use compare_periods for arbitrary date ranges. Anomalies are cash-only.",
         inputSchema: z.object({
+          basis: z
+            .enum(["cash", "accrual"])
+            .optional()
+            .describe("Omit for your reporting preference."),
           type: z
-            .enum([
-              "spending_by_category",
-              "spending_by_payee",
-              "income_vs_expenses",
-              "monthly_trend",
-              "income_by_source",
-              "spending_anomalies",
-              "month_comparison",
-              "net_worth_history",
-            ])
+            .enum(REPORT_TOOL_TYPES)
             .describe(
               "The five totals reports use startDate/endDate (default last 30 days); net_worth_history uses them too (default 12 months). spending_anomalies uses months to find transactions statistically large for their category; an empty list means no anomalies. month_comparison uses month and covers income, category changes, net worth and investments.",
             ),
@@ -86,81 +72,12 @@ export class McpReportsTools {
         if (check.error) return check.result;
 
         try {
-          if (args.type === "spending_anomalies") {
-            // Window and threshold in their own places (audit A26-M34).
-            const data = await this.reportsService.getSpendingAnomalies(
-              user.userId,
-              SPENDING_ANOMALY_DEFAULT_THRESHOLD,
-              args.months ?? SPENDING_ANOMALY_DEFAULT_MONTHS,
-            );
-            return toolResult(
-              await this.sharedReview.annotate(user.userId, data),
-            );
-          }
-          if (args.type === "month_comparison") {
-            const data = await this.reportsService.getMonthlyComparison(
-              user.userId,
-              args.month ?? getDefaultPreviousMonth(),
-            );
-            return toolResult(
-              await this.sharedReview.annotate(user.userId, data),
-            );
-          }
-          if (args.type === "net_worth_history") {
-            // Dates omitted -> getLlmHistory defaults to the last 12 months.
-            const data = await this.netWorthService.getLlmHistory(
-              user.userId,
-              args.startDate,
-              args.endDate,
-            );
-            return toolResult(
-              await this.sharedReview.annotate(user.userId, data),
-            );
-          }
-
-          const defaults = getDefaultDateRange();
-          const startDate = args.startDate ?? defaults.startDate;
-          const endDate = args.endDate ?? defaults.endDate;
-          let data: any;
-          switch (args.type) {
-            case "spending_by_category":
-              data = await this.reportsService.getSpendingByCategory(
-                user.userId,
-                startDate,
-                endDate,
-              );
-              break;
-            case "spending_by_payee":
-              data = await this.reportsService.getSpendingByPayee(
-                user.userId,
-                startDate,
-                endDate,
-              );
-              break;
-            case "income_vs_expenses":
-              data = await this.reportsService.getIncomeVsExpenses(
-                user.userId,
-                startDate,
-                endDate,
-              );
-              break;
-            case "monthly_trend":
-              data = await this.reportsService.getMonthlySpendingTrend(
-                user.userId,
-                startDate,
-                endDate,
-              );
-              break;
-            case "income_by_source":
-              data = await this.reportsService.getIncomeBySource(
-                user.userId,
-                startDate,
-                endDate,
-              );
-              break;
-          }
+          const data = await this.reportsService.getLlmReport(
+            user.userId,
+            args,
+          );
           return toolResult(
-            await this.sharedReview.annotate(user.userId, data),
+            await this.sharedReview.annotate(user.userId, data.result),
           );
         } catch (err: unknown) {
           return safeToolError(err);

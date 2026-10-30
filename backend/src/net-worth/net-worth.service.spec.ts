@@ -1,3 +1,8 @@
+jest.mock("../accruals/reporting-basis", () =>
+  jest
+    .requireActual("../test-helpers/reporting-read-testing")
+    .reportingBasisMockModule(),
+);
 import * as fs from "fs";
 import * as path from "path";
 import { NetWorthService } from "./net-worth.service";
@@ -1957,7 +1962,7 @@ describe("NetWorthService", () => {
       const result = await service.getMonthlyNetWorth("user-1");
 
       // 1000 EUR / 0.92 = ~1087
-      expect(result[0].assets).toBe(Math.round(1000 / 0.92));
+      expect(result[0].assets).toBe(1087);
     });
 
     it("returns amount unconverted when no rate exists", async () => {
@@ -2121,7 +2126,7 @@ describe("NetWorthService", () => {
       expect(result[2].month).toBe("2024-03-01");
     });
 
-    it("rounds values to whole numbers", async () => {
+    it("preserves upstream whole-unit Cash rounding", async () => {
       mabRepository.count.mockResolvedValue(5);
       prefRepository.findOne.mockResolvedValue({
         defaultCurrency: "USD",
@@ -2141,10 +2146,13 @@ describe("NetWorthService", () => {
 
       const result = await service.getMonthlyNetWorth("user-1");
 
-      expect(result[0].assets).toBe(1001);
-      expect(Number.isInteger(result[0].assets)).toBe(true);
-      expect(Number.isInteger(result[0].liabilities)).toBe(true);
-      expect(Number.isInteger(result[0].netWorth)).toBe(true);
+      expect(result[0]).toMatchObject({
+        assets: 1001,
+        liabilities: 0,
+        netWorth: 1001,
+        fxComplete: true,
+        missingRatePairs: [],
+      });
     });
 
     it("classifies all liability types correctly", async () => {

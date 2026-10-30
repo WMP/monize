@@ -1,3 +1,9 @@
+import { ReportingEndpoint } from "../accruals/reporting-endpoint";
+import {
+  AddTransactionSplitDto,
+  RemoveTransactionSplitDto,
+  IncrementalSplitPreviewDto,
+} from "./dto/incremental-split.dto";
 import {
   Controller,
   Get,
@@ -45,7 +51,6 @@ import { JointRegisterService } from "./joint-register.service";
 import { TransactionStatus } from "./entities/transaction.entity";
 import { CreateTransactionDto } from "./dto/create-transaction.dto";
 import { UpdateTransactionDto } from "./dto/update-transaction.dto";
-import { CreateTransactionSplitDto } from "./dto/create-transaction-split.dto";
 import { UpdateSplitsDto } from "./dto/update-splits.dto";
 import { CreateTransferDto } from "./dto/create-transfer.dto";
 import { UpdateTransferDto } from "./dto/update-transfer.dto";
@@ -465,7 +470,11 @@ export class TransactionsController {
     @Query("sortBy") sortBy?: string,
     @Query("sortDirection") sortDirection?: string,
     @Query("externalId") externalId?: string,
+    @Query("basis") basis?: string,
   ) {
+    if (basis !== undefined && basis !== "cash" && basis !== "accrual") {
+      throw new BadRequestException("basis must be cash or accrual");
+    }
     // Validate pagination parameters
     if (page !== undefined) {
       const pageNum = parseInt(page, 10);
@@ -589,7 +598,7 @@ export class TransactionsController {
       jointAccountIds = scope.jointAccountIds;
     }
 
-    return this.transactionsService.findAll(
+    const args: Parameters<TransactionsService["findAll"]> = [
       registerUserId,
       effectiveAccountIds,
       startDate,
@@ -612,9 +621,12 @@ export class TransactionsController {
       hasAttachments,
       jointAccountIds,
       externalIdFilter,
-    );
+    ];
+    if (basis !== undefined) args.push(basis);
+    return this.transactionsService.findAll(...args);
   }
 
+  @ReportingEndpoint()
   @Get("summary")
   @ApiOperation({ summary: "Get transaction summary statistics" })
   @ApiQuery({
@@ -742,6 +754,7 @@ export class TransactionsController {
     );
   }
 
+  @ReportingEndpoint()
   @Get("grouped-totals")
   @ApiOperation({
     summary:
@@ -903,6 +916,7 @@ export class TransactionsController {
     });
   }
 
+  @ReportingEndpoint()
   @Get("tag-key-breakdown")
   @ApiOperation({
     summary: "Spending broken down by the value of a KEY:VALUE tag key",
@@ -1010,6 +1024,7 @@ export class TransactionsController {
     );
   }
 
+  @ReportingEndpoint("cash")
   @Get("recurring-charges")
   @ApiOperation({
     summary:
@@ -1100,6 +1115,7 @@ export class TransactionsController {
     );
   }
 
+  @ReportingEndpoint(undefined, { partialBudget: true })
   @Get("monthly-totals")
   @ApiOperation({ summary: "Get monthly transaction totals" })
   @ApiQuery({
@@ -1227,6 +1243,7 @@ export class TransactionsController {
     );
   }
 
+  @ReportingEndpoint("cash")
   @Get("fx-fee-summary")
   @ApiOperation({
     summary:
@@ -1475,6 +1492,14 @@ export class TransactionsController {
     return this.bulkCreateService.createMany(transferActorFrom(req), dto);
   }
 
+  @Post("bulk-update-preview")
+  @ApiOperation({
+    summary: "Preview accrual impacts of a bulk transaction update",
+  })
+  previewBulkUpdate(@Request() req, @Body() dto: BulkUpdateDto) {
+    return this.transactionsService.previewBulkUpdate(req.user.id, dto);
+  }
+
   @Post("bulk-update")
   @ApiOperation({ summary: "Bulk update transactions by IDs or filters" })
   @ApiResponse({
@@ -1676,6 +1701,9 @@ export class TransactionsController {
       req.user.id,
       id,
       updateStatusDto.status,
+      ...(updateStatusDto.accrualImpactFingerprint === undefined
+        ? []
+        : [updateStatusDto.accrualImpactFingerprint]),
     );
   }
 
@@ -1705,7 +1733,30 @@ export class TransactionsController {
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: UpdateSplitsDto,
   ) {
-    return this.transactionsService.updateSplits(req.user.id, id, dto.splits);
+    return dto.accrualImpactFingerprint === undefined
+      ? this.transactionsService.updateSplits(req.user.id, id, dto.splits)
+      : this.transactionsService.updateSplits(
+          req.user.id,
+          id,
+          dto.splits,
+          dto.accrualImpactFingerprint,
+        );
+  }
+
+  @Post(":id/splits/preview")
+  @ApiOperation({
+    summary: "Preview accrual impacts of adding or removing one split",
+  })
+  previewIncrementalSplit(
+    @Request() req,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: IncrementalSplitPreviewDto,
+  ) {
+    return this.transactionsService.previewIncrementalSplit(
+      req.user.id,
+      id,
+      dto,
+    );
   }
 
   @Post(":id/splits")
@@ -1718,9 +1769,17 @@ export class TransactionsController {
   addSplit(
     @Request() req,
     @Param("id", ParseUUIDPipe) id: string,
-    @Body() splitDto: CreateTransactionSplitDto,
+    @Body() dto: AddTransactionSplitDto,
   ) {
-    return this.transactionsService.addSplit(req.user.id, id, splitDto);
+    const { accrualImpactFingerprint, ...splitDto } = dto;
+    return accrualImpactFingerprint === undefined
+      ? this.transactionsService.addSplit(req.user.id, id, splitDto)
+      : this.transactionsService.addSplit(
+          req.user.id,
+          id,
+          splitDto,
+          accrualImpactFingerprint,
+        );
   }
 
   @Delete(":id/splits/:splitId")
@@ -1734,8 +1793,16 @@ export class TransactionsController {
     @Request() req,
     @Param("id", ParseUUIDPipe) id: string,
     @Param("splitId", ParseUUIDPipe) splitId: string,
+    @Body() dto: RemoveTransactionSplitDto = {},
   ) {
-    return this.transactionsService.removeSplit(req.user.id, id, splitId);
+    return dto?.accrualImpactFingerprint === undefined
+      ? this.transactionsService.removeSplit(req.user.id, id, splitId)
+      : this.transactionsService.removeSplit(
+          req.user.id,
+          id,
+          splitId,
+          dto.accrualImpactFingerprint,
+        );
   }
 
   @Get(":id/linked")

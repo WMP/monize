@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { type ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
 import { sumConverted, type ConvertedTotal } from '@/lib/currency-total';
 import { PartialTotal } from '@/components/ui/PartialTotal';
 import { useRouter } from 'next/navigation';
@@ -104,6 +104,7 @@ function getStoredValue<T>(key: string, defaultValue: T): T {
 }
 
 interface AccountListProps {
+  otherAccounts?: ReactNode;
   accounts: Account[];
   institutions?: Institution[];
   brokerageMarketValues?: Map<string, number>;
@@ -217,7 +218,7 @@ const EMPTY_CONVERTED_TOTAL: ConvertedTotal = {
   excludedCount: 0,
 };
 
-export function AccountList({ accounts, institutions, brokerageMarketValues, unpricedHoldingCounts, incompleteHoldingAccountIds, portfolioFailed, defaultCurrency, convertToDefault, onEdit, onRefresh }: AccountListProps) {
+export function AccountList({ otherAccounts, accounts, institutions, brokerageMarketValues, unpricedHoldingCounts, incompleteHoldingAccountIds, portfolioFailed, defaultCurrency, convertToDefault, onEdit, onRefresh }: AccountListProps) {
   const t = useTranslations('accounts');
   const ts = useTranslations("sharedExpenses");
   const tc = useTranslations('common');
@@ -360,7 +361,7 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
     ) {
       router.push(`/accounts/${account.id}`);
     } else {
-      router.push(`/transactions?accountId=${account.id}`);
+      router.push(`/transactions?basis=cash&accountId=${account.id}`);
     }
   }, [router, accountOpenTarget]);
 
@@ -524,10 +525,13 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
       }
     }
 
+    if (otherAccounts && !filterJoint && filterStatus !== 'closed' && (!filterTypes.length || filterTypes.includes('OTHER'))) {
+      if (!groups.has('OTHER')) groups.set('OTHER', []);
+    }
     const result: { type: AccountGroupType; accounts: LogicalAccount[] }[] = [];
     for (const type of ACCOUNT_TYPE_ORDER) {
       const list = groups.get(type);
-      if (list && list.length > 0) {
+      if (list && (list.length > 0 || (type === 'OTHER' && otherAccounts))) {
         result.push({ type, accounts: list });
         groups.delete(type);
       }
@@ -537,7 +541,7 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
       if (list.length > 0) result.push({ type, accounts: list });
     }
     return result;
-  }, [filteredAndSortedAccounts]);
+  }, [filteredAndSortedAccounts, otherAccounts, filterJoint, filterStatus, filterTypes]);
 
   // Per-group total balance, converted into the user's default currency.
   // Brokerage accounts use their portfolio market value (matching the page
@@ -598,6 +602,7 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
   const renderItems = useMemo(() => {
     type Item =
       | { kind: 'header'; type: AccountGroupType; count: number; total: ConvertedTotal; isCollapsed: boolean }
+      | { kind: 'system' }
       | { kind: 'row'; logical: LogicalAccount; index: number };
     const items: Item[] = [];
     let rowIndex = 0;
@@ -613,6 +618,7 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
         isCollapsed,
       });
       if (!isCollapsed) {
+        if (type === 'OTHER' && otherAccounts) items.push({ kind: 'system' });
         for (const logical of groupAccounts) {
           items.push({ kind: 'row', logical, index: rowIndex });
           rowIndex += 1;
@@ -620,7 +626,7 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
       }
     }
     return items;
-  }, [groupedAccounts, collapsedGroups, groupTotals]);
+  }, [groupedAccounts, collapsedGroups, groupTotals, otherAccounts]);
 
   // Only show the net worth filter when at least one account is excluded
   const hasExcludedAccounts = useMemo(
@@ -670,7 +676,7 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
     if (account.accountSubType === 'INVESTMENT_BROKERAGE') {
       router.push(`/investments?accountId=${account.id}`);
     } else {
-      router.push(`/transactions?accountId=${account.id}`);
+      router.push(`/transactions?basis=cash&accountId=${account.id}`);
     }
   }, [router]);
 
@@ -798,7 +804,7 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
     [onRefresh, t],
   );
 
-  if (accounts.length === 0) {
+  if (accounts.length === 0 && !otherAccounts) {
     return (
       <EmptyState title={t('list.empty')} />
     );
@@ -906,7 +912,7 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
         </div>
       </div>
 
-      {filteredAndSortedAccounts.length === 0 ? (
+      {groupedAccounts.length === 0 ? (
         <EmptyState
           title={t('list.noMatch')}
           action={
@@ -1032,7 +1038,9 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
           </thead>
           <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
             {renderItems.map((item) =>
-              item.kind === 'header' ? (
+              item.kind === 'system' ? (
+                <tr key="system-accrual-accounts"><td colSpan={wrapped ? 1 : 5} className={cellPadding}>{otherAccounts}</td></tr>
+              ) : item.kind === 'header' ? (
                 <tr
                   key={`group-${item.type}`}
                   className="group bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer select-none"
@@ -1061,17 +1069,17 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
                         <div className="flex items-center gap-2 min-w-0">
                           <GroupHeaderLabel
                             label={groupLabel(item.type)}
-                            count={t('list.groupCount', { count: item.count })}
+                            count={item.type === 'OTHER' && otherAccounts ? '' : t('list.groupCount', { count: item.count })}
                             isCollapsed={item.isCollapsed}
                             labelClassName="truncate"
                           />
                         </div>
                         <span className="text-right whitespace-nowrap">
-                          <GroupHeaderTotal
+                          {!(item.type === 'OTHER' && otherAccounts) && <GroupHeaderTotal
                             total={item.total}
                             displayCurrency={defaultCurrency}
                             format={formatCurrencyBase}
-                          />
+                          />}
                         </span>
                       </div>
                     </td>
@@ -1081,7 +1089,7 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
                     <div className="flex items-center gap-2 min-w-0 text-sm">
                       <GroupHeaderLabel
                         label={groupLabel(item.type)}
-                        count={t('list.groupCount', { count: item.count })}
+                        count={item.type === 'OTHER' && otherAccounts ? '' : t('list.groupCount', { count: item.count })}
                         isCollapsed={item.isCollapsed}
                       />
                     </div>
@@ -1090,11 +1098,11 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
                   <td className="hidden md:table-cell" aria-hidden="true" />
                   <td className="hidden lg:table-cell" aria-hidden="true" />
                   <td className={`${cellPadding} text-right whitespace-nowrap`}>
-                    <GroupHeaderTotal
+                    {!(item.type === 'OTHER' && otherAccounts) && <GroupHeaderTotal
                       total={item.total}
                       displayCurrency={defaultCurrency}
                       format={formatCurrencyBase}
-                    />
+                    />}
                   </td>
                   <td
                     className="hidden min-[480px]:table-cell sticky right-0 bg-gray-100 dark:bg-gray-800 group-hover:bg-gray-200 dark:group-hover:bg-gray-700"

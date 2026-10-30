@@ -152,8 +152,9 @@ export class McpTransactionsTools {
         description:
           "Cash income, expenses and net totals with optional grouping. " +
           "Own-account transfers are excluded; transfersOnly adds their " +
-          "per-account rollup. Prefer totals; includeTransactions adds costly raw rows.",
+          "per-account rollup. includeTransactions adds costly raw rows.",
         inputSchema: z.object({
+          basis: z.literal("cash").optional(),
           searchText: z
             .string()
             .max(200)
@@ -164,7 +165,7 @@ export class McpTransactionsTools {
             .max(10)
             .optional()
             .describe("Defaults to 30 days ago."),
-          endDate: z.string().max(10).optional().describe("Defaults to today."),
+          endDate: z.string().max(10).optional(),
           accountNames: z
             .array(z.string().max(100))
             .max(50)
@@ -205,7 +206,7 @@ export class McpTransactionsTools {
             .optional()
             .default(false)
             .describe(
-              "A foreign-currency row carries read-only originalAmount, originalCurrencyCode and exchangeRate beside the account-currency amount.",
+              "Foreign rows include originalAmount, originalCurrencyCode and exchangeRate; amount is in account currency.",
             ),
           limit: numberArg(z.number().int().min(1).max(100))
             .optional()
@@ -303,9 +304,10 @@ export class McpTransactionsTools {
         title: "Compare periods",
         annotations: READ_ONLY,
         description:
-          "Spending/income change per group across two periods. Dates default " +
-          "to last full month versus this month to date.",
+          "Spending/income change per group between periods. Dates default " +
+          "to last full month vs this month to date.",
         inputSchema: z.object({
+          basis: z.enum(["cash", "accrual"]).optional(),
           period1Start: z.string().max(10).optional(),
           period1End: z.string().max(10).optional(),
           period2Start: z.string().max(10).optional(),
@@ -343,6 +345,7 @@ export class McpTransactionsTools {
               period2End: periods.period2End,
               groupBy: args.groupBy,
               direction: args.direction,
+              basis: args.basis,
             },
           );
           return toolResult(

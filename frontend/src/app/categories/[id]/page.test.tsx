@@ -1,3 +1,5 @@
+import { BudgetFxIncompleteError } from '@/lib/budget-partial';
+import { usePreferencesStore } from '@/store/preferencesStore';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, act, fireEvent, waitFor, within } from '@/test/render';
 import CategoryDetailPage from './page';
@@ -213,6 +215,7 @@ async function renderPage() {
 
 describe('CategoryDetailPage', () => {
   beforeEach(() => {
+    usePreferencesStore.setState({preferences:{accrualEnabled:true,reportingBasis:"accrual"} as never});
     vi.clearAllMocks();
     chartProps.length = 0;
     searchParams.current = new URLSearchParams();
@@ -239,6 +242,50 @@ describe('CategoryDetailPage', () => {
     });
   });
 
+  it('uses the user basis for trends and supports a view override', async () => {
+    usePreferencesStore.getState().updatePreferences({reportingBasis:'cash'});
+    await renderPage();
+    expect(mockGetMonthlyTotals).toHaveBeenLastCalledWith({basis:'cash', categoryIds:['cat-1']});
+    await act(async()=>fireEvent.click(screen.getByRole('button', { name: /^Accrual(?: \(user default\))?$/ })));
+    expect(mockGetMonthlyTotals).toHaveBeenLastCalledWith({basis:'accrual', categoryIds:['cat-1']});
+    expect(usePreferencesStore.getState().preferences?.reportingBasis).toBe('cash');
+    await act(async()=>usePreferencesStore.setState({preferences:null}));
+  });
+  it('keeps a failed monthly read local with retry rather than showing empty history', async () => {
+    mockGetMonthlyTotals.mockRejectedValueOnce(new Error('trend unavailable'));
+    await renderPage();
+    expect(screen.getAllByText(/failed to load report data/i)).toHaveLength(2);
+    expect(screen.getByRole('heading',{name:'Groceries'})).toBeInTheDocument();
+    expect(screen.queryByTestId('chart')).not.toBeInTheDocument();
+    await act(async () => fireEvent.click(screen.getAllByRole('button',{name:/try again/i})[0]));
+    expect(screen.getByTestId('chart')).toBeInTheDocument();
+  });
+  it('shows known monthly amounts and repair guidance while withholding chart and seasonality', async () => {
+    mockGetMonthlyTotals.mockRejectedValueOnce(new BudgetFxIncompleteError(partialMonthly));
+    await renderPage();
+    expect(screen.getAllByTestId('budget-fx-partial')).toHaveLength(2);
+    for (const panel of screen.getAllByTestId('budget-fx-partial')) {
+      expect(panel).toHaveTextContent('USD → EUR');
+      expect(panel).toHaveTextContent('80');
+    }
+    expect(screen.queryByTestId('chart')).not.toBeInTheDocument();
+    expect(screen.queryByText('Seasonality')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading',{name:'Groceries'})).toBeInTheDocument();
+  });
+
+  it('discards an old monthly partial response after switching categories', async () => {
+    let rejectOld!: (error: unknown) => void;
+    mockGetMonthlyTotals.mockReturnValueOnce(new Promise((_,reject) => {rejectOld = reject;}));
+    mockGetDetail.mockResolvedValueOnce(detailFixture()).mockResolvedValueOnce(detailFixture({category:categoryFixture({id:'cat-2',name:'Salary',isIncome:true})}));
+    const view = await renderPage();
+    routeParams.current = {id:'cat-2'};
+    await act(async () => view.rerender(<CategoryDetailPage />));
+    expect(screen.getByRole('heading',{name:'Salary'})).toBeInTheDocument();
+    await act(async () => rejectOld(new BudgetFxIncompleteError(partialMonthly)));
+    expect(screen.getByRole('heading',{name:'Salary'})).toBeInTheDocument();
+    expect(screen.queryByTestId('budget-fx-partial')).not.toBeInTheDocument();
+    expect(screen.getByTestId('chart')).toBeInTheDocument();
+  });
   it('renders the header, cards and overview panels', async () => {
     await renderPage();
 
@@ -297,15 +344,16 @@ describe('CategoryDetailPage', () => {
     );
   });
 
-  it('survives every analytics call failing: the page still renders', async () => {
+  it('shows a retryable error when every analytics call fails', async () => {
     mockGetSummary.mockRejectedValue(new Error('summary down'));
     mockGetMonthlyTotals.mockRejectedValue(new Error('down'));
     mockGetGroupedTotals.mockRejectedValue(new Error('down'));
 
     await renderPage();
 
-    expect(screen.getByRole('heading', { name: 'Groceries' })).toBeInTheDocument();
-    expect(screen.getByText('Spent This Year')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    expect(screen.getByRole('button', {name:'Retry'})).toBeInTheDocument();
+    expect(screen.queryByTestId('chart')).not.toBeInTheDocument();
   });
 
   it('opens on the tab a deep link names', async () => {
@@ -346,7 +394,7 @@ describe('CategoryDetailPage', () => {
     // accountStatus=all, or the register hides payments made from an account
     // that has since been closed.
     expect(mockPush).toHaveBeenCalledWith(
-      '/transactions?categoryId=cat-1&accountStatus=all',
+      '/transactions?categoryId=cat-1&accountStatus=all&basis=accrual',
     );
   });
 
@@ -356,7 +404,7 @@ describe('CategoryDetailPage', () => {
     fireEvent.click(screen.getByText('Chequing'));
 
     expect(mockPush).toHaveBeenCalledWith(
-      '/transactions?categoryId=cat-1&accountStatus=all&accountId=acct-1',
+      '/transactions?categoryId=cat-1&accountStatus=all&accountId=acct-1&basis=accrual',
     );
   });
 
@@ -366,7 +414,7 @@ describe('CategoryDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /95\.20/ }));
 
     expect(mockPush).toHaveBeenCalledWith(
-      '/transactions?categoryId=cat-1&accountStatus=all&startDate=2025-12-24&endDate=2025-12-24',
+      '/transactions?categoryId=cat-1&accountStatus=all&startDate=2025-12-24&endDate=2025-12-24&basis=cash',
     );
   });
 
@@ -382,7 +430,7 @@ describe('CategoryDetailPage', () => {
   it('asks for the whole history for the chart, not a window', async () => {
     await renderPage();
 
-    expect(mockGetMonthlyTotals).toHaveBeenCalledWith({ categoryIds: ['cat-1'] });
+    expect(mockGetMonthlyTotals).toHaveBeenCalledWith({ basis: 'accrual', categoryIds: ['cat-1'] });
   });
 
   it('hides Edit and Delete for a system category', async () => {
@@ -477,6 +525,7 @@ describe('CategoryDetailPage', () => {
     });
 
     it('carries the 12-month window into a payee link', async () => {
+      usePreferencesStore.getState().updatePreferences({reportingBasis:'cash'});
       await renderPage();
 
       const panel = screen.getByText('Top Payees').closest('section')!;
@@ -491,6 +540,7 @@ describe('CategoryDetailPage', () => {
     });
 
     it('drops the date filter from a payee link when showing all time', async () => {
+      usePreferencesStore.getState().updatePreferences({reportingBasis:'cash'});
       await renderPage();
 
       const panel = screen.getByText('Top Payees').closest('section')!;
@@ -500,7 +550,7 @@ describe('CategoryDetailPage', () => {
       fireEvent.click(within(panel).getByText('Metro'));
 
       expect(mockPush).toHaveBeenCalledWith(
-        '/transactions?categoryId=cat-1&accountStatus=all&payeeId=payee-8',
+        '/transactions?categoryId=cat-1&accountStatus=all&payeeId=payee-8&basis=cash',
       );
     });
   });
@@ -543,3 +593,10 @@ describe('CategoryDetailPage', () => {
     ).not.toBeInTheDocument();
   });
 });
+
+const partialMonthly = {
+  fxComplete:false as const,result:null,total:null,currency:'EUR',
+  knownComponents:[{id:'monthly-known',currency:'EUR',date:'2026-06-15',knownSubtotal:-80}],
+  missingRatePairs:[{from:'USD',to:'EUR',date:'2026-06-30',reason:null}],
+  repair:'currency_rate_history' as const,fetchAttempted:false as const,
+};

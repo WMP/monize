@@ -27,6 +27,8 @@ import {
 import { tr } from "../i18n/translate";
 import { withScopedDb } from "../common/db/scoped-db";
 import { lockTransactionRow } from "../common/db/locks";
+import { verifySourceAccrualEdit } from "../accruals/accrual-source-edit";
+import { refreshSourceAccruals } from "../accruals/accrual-lifecycle";
 import {
   assertReconciledRowsMutable,
   isReconciledUndo,
@@ -75,6 +77,7 @@ export class TransactionReconciliationService {
     resolve: (current: TransactionStatus) => ResolvedTransition,
     /** Inside the transaction, after the row lock, before any write. */
     beforeWrite?: (m: EntityManager) => Promise<void>,
+    accrualImpactFingerprint?: string,
   ): Promise<{
     accountId: string;
     balanceMoved: boolean;
@@ -147,6 +150,20 @@ export class TransactionReconciliationService {
       const isVoid = status === TransactionStatus.VOID;
       const balanceMoved = wasVoid !== isVoid;
 
+      // A VOID boundary changes recognized income/expense as well as cash.
+      // Validate the same source preview as ordinary edits under this lock,
+      // before balances or statuses move. Clearing/reconciling only changes
+      // metadata and can refresh without a financial-impact confirmation.
+      if (balanceMoved || accrualImpactFingerprint !== undefined) {
+        await verifySourceAccrualEdit(
+          m,
+          userId,
+          transactionId,
+          { status },
+          accrualImpactFingerprint,
+        );
+      }
+
       // Crossing the VOID boundary carries the same obligations here as on
       // every other route: a split-transfer counterpart leg is refused (the
       // pairing belongs to the parent), a mirror transfer leg takes its
@@ -216,6 +233,8 @@ export class TransactionReconciliationService {
         }
       }
 
+      await refreshSourceAccruals(m, userId, transactionId);
+
       return {
         accountId: locked.accountId,
         balanceMoved,
@@ -235,11 +254,18 @@ export class TransactionReconciliationService {
     status: TransactionStatus,
     triggerNetWorthRecalc: (accountId: string, userId: string) => void,
     findOne: (userId: string, id: string) => Promise<Transaction>,
+    accrualImpactFingerprint?: string,
   ): Promise<Transaction> {
     const { accountId, balanceMoved, counterpartAccountIds } =
-      await this.applyStatusTransition(userId, transactionId, () => ({
-        status,
-      }));
+      await this.applyStatusTransition(
+        userId,
+        transactionId,
+        () => ({
+          status,
+        }),
+        undefined,
+        accrualImpactFingerprint,
+      );
 
     if (balanceMoved) {
       triggerNetWorthRecalc(accountId, userId);
@@ -612,6 +638,13 @@ export class TransactionReconciliationService {
         .where("id IN (:...ids)", { ids: transactionIds })
         .andWhere("userId = :userId", { userId })
         .execute();
+
+      const scheduled: { id: string }[] = await m.query(
+        "SELECT DISTINCT source_transaction_id AS id FROM accrual_schedules WHERE user_id=$1 AND source_transaction_id=ANY($2::uuid[]) ORDER BY id",
+        [userId, transactionIds],
+      );
+      for (const row of scheduled)
+        await refreshSourceAccruals(m, userId, row.id);
 
       return { reconciled: transactions.length };
     });

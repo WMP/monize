@@ -1,3 +1,9 @@
+import {
+  reportingFxColumns,
+  reportingFxGrouping,
+} from "../accruals/reporting-fx-sql";
+import { ReportingRead } from "../accruals/reporting-basis";
+import { reportingQuery } from "../accruals/reporting-query";
 import { Injectable } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
@@ -38,13 +44,13 @@ export class ComparisonReportsService {
     private currencyService: ReportCurrencyService,
   ) {}
 
+  @ReportingRead()
   async getYearOverYear(
     userId: string,
     yearsToCompare: number,
   ): Promise<YearOverYearResponse> {
     const defaultCurrency =
       await this.currencyService.getDefaultCurrency(userId);
-    const rateMap = await this.currencyService.buildRateMap(defaultCurrency);
 
     const currentYear = new Date().getFullYear();
     const oldestYear = currentYear - yearsToCompare + 1;
@@ -53,7 +59,7 @@ export class ComparisonReportsService {
       SELECT
         EXTRACT(YEAR FROM t.transaction_date)::int as year,
         EXTRACT(MONTH FROM t.transaction_date)::int as month,
-        t.currency_code,
+        ${reportingFxColumns(userId)},
         SUM(CASE
           WHEN c.is_income = true THEN COALESCE(ts.amount, t.amount)
           WHEN c.is_income = false THEN 0
@@ -78,13 +84,16 @@ export class ComparisonReportsService {
         AND t.parent_transaction_id IS NULL
         AND ${INVESTMENT_EXCLUSION}
         AND (ts.transfer_account_id IS NULL OR ts.id IS NULL)
-      GROUP BY EXTRACT(YEAR FROM t.transaction_date), EXTRACT(MONTH FROM t.transaction_date), t.currency_code
+      GROUP BY EXTRACT(YEAR FROM t.transaction_date), EXTRACT(MONTH FROM t.transaction_date), ${reportingFxGrouping(userId)}
       ORDER BY year, month
     `;
 
     interface RawYearMonth {
       year: number;
       month: number;
+      conversion_date?: string;
+      original_currency_code?: string | null;
+      exchange_rate?: string | number | null;
       currency_code: string;
       income: string;
       expenses: string;
@@ -92,7 +101,12 @@ export class ComparisonReportsService {
 
     const rawResults: RawYearMonth[] = await withScopedDb(
       this.dataSource,
-      (m) => m.query(query, [userId, oldestYear, currentYear]),
+      (m) =>
+        reportingQuery(m, userId, query, [userId, oldestYear, currentYear]),
+    );
+    const rateMap = await this.currencyService.buildRateMap(
+      defaultCurrency,
+      rawResults,
     );
 
     const yearMap = new Map<number, YearData>();
@@ -143,12 +157,14 @@ export class ComparisonReportsService {
           row.currency_code,
           defaultCurrency,
           rateMap,
+          row,
         );
         const expenses = this.currencyService.tryConvertAmount(
           toMoneyNumber(row.expenses),
           row.currency_code,
           defaultCurrency,
           rateMap,
+          row,
         );
         if (income === null || expenses === null) {
           gaps.record(row.currency_code);
@@ -189,6 +205,7 @@ export class ComparisonReportsService {
     };
   }
 
+  @ReportingRead("cash")
   async getWeekendVsWeekday(
     userId: string,
     startDate: string | undefined,
@@ -196,13 +213,12 @@ export class ComparisonReportsService {
   ): Promise<WeekendVsWeekdayResponse> {
     const defaultCurrency =
       await this.currencyService.getDefaultCurrency(userId);
-    const rateMap = await this.currencyService.buildRateMap(defaultCurrency);
 
     let query = `
       SELECT
         EXTRACT(DOW FROM t.transaction_date)::int as day_of_week,
         COALESCE(ts.category_id, t.category_id) as category_id,
-        t.currency_code,
+        ${reportingFxColumns(userId)},
         COUNT(*)::int as tx_count,
         SUM(${NET_SPEND_AMOUNT}) as total
       FROM transactions t
@@ -225,11 +241,14 @@ export class ComparisonReportsService {
       params.push(startDate);
     }
 
-    query += ` GROUP BY EXTRACT(DOW FROM t.transaction_date), COALESCE(ts.category_id, t.category_id), t.currency_code`;
+    query += ` GROUP BY EXTRACT(DOW FROM t.transaction_date), COALESCE(ts.category_id, t.category_id), ${reportingFxGrouping(userId)}`;
 
     interface RawDayCategory {
       day_of_week: number;
       category_id: string | null;
+      conversion_date?: string;
+      original_currency_code?: string | null;
+      exchange_rate?: string | number | null;
       currency_code: string;
       tx_count: number;
       total: string;
@@ -237,7 +256,11 @@ export class ComparisonReportsService {
 
     const rawResults: RawDayCategory[] = await withScopedDb(
       this.dataSource,
-      (m) => m.query(query, params),
+      (m) => reportingQuery(m, userId, query, params),
+    );
+    const rateMap = await this.currencyService.buildRateMap(
+      defaultCurrency,
+      rawResults,
     );
 
     const categories = await withScopedDb(this.dataSource, (m) =>
@@ -270,6 +293,7 @@ export class ComparisonReportsService {
         row.currency_code,
         defaultCurrency,
         rateMap,
+        row,
       );
       if (total === null) {
         gaps.record(row.currency_code);

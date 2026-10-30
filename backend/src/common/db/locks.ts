@@ -117,6 +117,8 @@ export enum LockScope {
    * and caps against it one after the other (INV-PAYROLL-002).
    */
   PayrollCategory = 9,
+  /** Versioned accrual history replay, keyed by user; taken before row locks. */
+  AccrualBulkHistory = 10,
 }
 
 /**

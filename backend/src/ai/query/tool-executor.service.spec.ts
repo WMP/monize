@@ -3,6 +3,12 @@ import {
   SHARED_LEDGER_TOOLS,
 } from "../../shared-expenses/shared-review.service";
 import { sharedReviewProvider } from "../../shared-expenses/__fixtures__/shared-review";
+jest.mock("../../accruals/reporting-basis", () =>
+  jest
+    .requireActual("../../test-helpers/reporting-read-testing")
+    .reportingBasisMockModule(),
+);
+import { reportToolFixture } from "../../test-helpers/reporting-tool-fixture";
 import { Test, TestingModule } from "@nestjs/testing";
 import { BadRequestException, HttpException } from "@nestjs/common";
 import { ToolExecutorService } from "./tool-executor.service";
@@ -726,6 +732,9 @@ describe("ToolExecutorService", () => {
       releaseForPrompt: jest.fn(),
     };
 
+    builtInReports.getLlmReport = jest.fn(
+      reportToolFixture(builtInReports, netWorth),
+    );
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         sharedReviewProvider(),
@@ -1088,10 +1097,10 @@ describe("ToolExecutorService", () => {
         undefined,
         undefined,
       );
-      expect(result.sources[0].type).toBe("net_worth");
+      expect(result.sources[0].type).toBe("report");
       // data must be the bare array returned by getLlmHistory so it matches the
       // MCP server's generate_report net_worth_history payload exactly.
-      expect(result.data).toEqual([
+      expect(result.data as any).toEqual([
         {
           month: "2026-01",
           assets: 19000,
@@ -1525,6 +1534,7 @@ describe("ToolExecutorService", () => {
         userId,
         "CURRENT",
         undefined,
+        undefined,
       );
       expect(result.sources[0].type).toBe("budget");
     });
@@ -1707,10 +1717,13 @@ describe("ToolExecutorService", () => {
       expect(result.summary).toContain(
         "Total withheld: no exchange rate for JPY->USD, CHF->USD; add it under Currencies.",
       );
-      // The payload is the report's own, untouched (MCP parity).
-      expect(
-        (result.data as { totalSpending: unknown }).totalSpending,
-      ).toBeNull();
+      expect(result.isError).toBeUndefined();
+      expect(result.data).toMatchObject({
+        totalSpending: null,
+        knownSpending: 50,
+        missingCurrencies: ["JPY", "CHF"],
+        excludedCount: 2,
+      });
     });
 
     it("generate_report adds no withheld clause when every row converted", async () => {
@@ -1744,7 +1757,7 @@ describe("ToolExecutorService", () => {
       });
 
       expect(result.summary).toContain(
-        "Transactions in those currencies were left out of the analysis: no exchange rate for JPY->USD; add it under Currencies.",
+        "Total withheld: no exchange rate for JPY->USD; add it under Currencies.",
       );
     });
 
@@ -1774,8 +1787,8 @@ describe("ToolExecutorService", () => {
         2,
         6,
       );
-      expect(result.sources[0].type).toBe("anomalies");
-      expect(result.summary).toContain("2 spending anomalies");
+      expect(result.sources[0].type).toBe("report");
+      expect((result.data as any).anomalies).toHaveLength(2);
     });
 
     it("generate_report type month_comparison delegates to getMonthlyComparison", async () => {
@@ -1788,8 +1801,8 @@ describe("ToolExecutorService", () => {
         userId,
         "2026-04",
       );
-      expect(result.sources[0].type).toBe("monthly_comparison");
-      expect(result.summary).toContain("April 2026 vs March 2026");
+      expect(result.sources[0].type).toBe("report");
+      expect((result.data as any).currentMonthLabel).toBe("April 2026");
       expect(result.summary).not.toContain("withheld");
     });
 
@@ -1812,10 +1825,16 @@ describe("ToolExecutorService", () => {
         month: "2026-04",
       });
 
-      expect(result.summary).toContain("April 2026 vs March 2026");
-      expect(result.summary).toContain(
-        "Net worth is withheld for an incomplete month: no exchange rate for ZZZ->USD",
-      );
+      expect(result.isError).toBeUndefined();
+      expect(result.data).toMatchObject({
+        netWorth: {
+          currentNetWorth: null,
+          netWorthChange: null,
+          fxComplete: false,
+          missingRatePairs: ["ZZZ->USD"],
+        },
+      });
+      expect(result.summary).toContain("ZZZ->USD");
     });
 
     it("calculate runs locally without hitting any service", async () => {

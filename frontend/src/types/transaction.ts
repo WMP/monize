@@ -56,8 +56,21 @@ export interface TransactionSplit {
   createdAt: string;
 }
 
+export interface RegisterProvenance {
+  readOnly: true;
+  isRecognition?: boolean;
+  reportId: string;
+  sourceTransactionId: string;
+  cashDate: string;
+  effectiveDate: string;
+  sourceAmount: string;
+  nativeAmount: string;
+}
 export interface Transaction {
   sharedExpensePostingId?: string | null;
+  /** Transient editor navigation context, never sent to the ledger API. */
+  accrualRecognitionDate?: string;
+  reportingProvenance?: RegisterProvenance;
   id: string;
   userId: string;
   accountId: string;
@@ -151,6 +164,7 @@ export interface CreateTransactionData {
 }
 
 export interface UpdateTransactionData extends Partial<CreateTransactionData> {
+  accrualImpactFingerprint?: string;
   createdAt?: string;
 }
 
@@ -162,13 +176,19 @@ export interface CurrencySummary {
 }
 
 export interface TransactionSummary {
-  totalIncome: number;
-  totalExpenses: number;
-  netCashFlow: number;
+  currency?: string;
+  fxComplete?: boolean;
+  totalIncome: number | null;
+  totalExpenses: number | null;
+  netCashFlow: number | null;
   transactionCount: number;
   firstTransactionDate?: string | null;
   lastTransactionDate?: string | null;
   byCurrency?: Record<string, CurrencySummary>;
+  knownIncomeSubtotal?: number;
+  knownExpensesSubtotal?: number;
+  excludedTransactionCount?: number;
+  missingRatePairs?: { from: string; to: string; date: string; reason: string | null }[];
 }
 
 export interface GroupedTotal {

@@ -1,3 +1,25 @@
+jest.mock("../accruals/reporting-money", () =>
+  jest
+    .requireActual("../test-helpers/reporting-read-testing")
+    .reportingMoneyMockModule(),
+);
+import { budgetReportFixtureRows } from "../test-helpers/budget-report-fixture-rows";
+jest.mock("../accruals/reporting-basis", () =>
+  jest
+    .requireActual("../test-helpers/reporting-read-testing")
+    .reportingBasisMockModule(),
+);
+jest.mock("../accruals/reporting-query", () =>
+  jest
+    .requireActual("../test-helpers/reporting-read-testing")
+    .reportingQueryMockModule(),
+);
+jest.mock("../accruals/reporting-basis.interceptor", () =>
+  jest
+    .requireActual("../test-helpers/reporting-read-testing")
+    .reportingInterceptorMockModule(),
+);
+
 import { DataSource } from "typeorm";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
@@ -194,18 +216,39 @@ describe("BudgetReportsService", () => {
     updatedAt: new Date("2026-01-01"),
   };
 
-  const createMockQueryBuilder = (overrides = {}) => ({
-    select: jest.fn().mockReturnThis(),
-    addSelect: jest.fn().mockReturnThis(),
-    where: jest.fn().mockReturnThis(),
-    andWhere: jest.fn().mockReturnThis(),
-    innerJoin: jest.fn().mockReturnThis(),
-    groupBy: jest.fn().mockReturnThis(),
-    addGroupBy: jest.fn().mockReturnThis(),
-    getRawMany: jest.fn().mockResolvedValue([]),
-    getRawOne: jest.fn().mockResolvedValue({ total: "0" }),
-    ...overrides,
-  });
+  const createMockQueryBuilder = (
+    overrides: Record<string, jest.Mock> = {},
+  ) => {
+    const where = jest.fn().mockReturnThis();
+    const andWhere = jest.fn().mockReturnThis();
+    const qb = {
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      where,
+      andWhere,
+      innerJoin: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      addGroupBy: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn(async () =>
+        budgetReportFixtureRows(
+          [...where.mock.calls, ...andWhere.mock.calls],
+          periodsRepository.find.mock.results.slice(-1)[0]?.value,
+          overrides.getRawOne ? await overrides.getRawOne() : undefined,
+        ),
+      ),
+      getRawOne: jest.fn(async () => {
+        const rows = await budgetReportFixtureRows(
+          [...where.mock.calls, ...andWhere.mock.calls],
+          periodsRepository.find.mock.results.slice(-1)[0]?.value,
+        );
+        return {
+          total: String(rows.reduce((sum, row) => sum + Number(row.total), 0)),
+        };
+      }),
+      ...overrides,
+    };
+    return qb;
+  };
 
   beforeEach(async () => {
     mockedSpending.mockReset();
@@ -224,7 +267,12 @@ describe("BudgetReportsService", () => {
     };
 
     splitsRepository = {
-      createQueryBuilder: jest.fn(() => createMockQueryBuilder()),
+      createQueryBuilder: jest.fn(() =>
+        createMockQueryBuilder({
+          getRawOne: jest.fn().mockResolvedValue({ total: "0" }),
+          getRawMany: jest.fn().mockResolvedValue([]),
+        }),
+      ),
     };
 
     budgetsService = {
@@ -2341,7 +2389,8 @@ describe("BudgetReportsService", () => {
     it("returns a full status payload for the first active budget when no name given", async () => {
       const result = await service.getLlmBudgetStatus("user-1");
 
-      if ("error" in result) throw new Error("unexpected error payload");
+      if ("error" in result || "result" in result)
+        throw new Error("unexpected incomplete/error payload");
       expect(result.budgetName).toBe("Monthly Household");
       expect(result.totalBudgeted).toBe(3000);
       expect(result.overBudgetCategories).toHaveLength(1);
@@ -2382,7 +2431,8 @@ describe("BudgetReportsService", () => {
 
       const result = await service.getLlmBudgetStatus("user-1");
 
-      if ("error" in result) throw new Error("unexpected error payload");
+      if ("error" in result || "result" in result)
+        throw new Error("unexpected incomplete/error payload");
       expect(result.velocity).toBeUndefined();
       expect(result.healthScore).toBeUndefined();
       expect(result.totalBudgeted).toBe(3000);

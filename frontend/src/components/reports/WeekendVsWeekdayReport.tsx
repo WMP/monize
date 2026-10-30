@@ -1,5 +1,6 @@
 'use client';
 
+import { useReportExportMetadata } from '@/hooks/useReportExportMetadata';
 import { useState, useMemo, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { Skeleton } from '@/components/ui/LoadingSkeleton';
@@ -77,6 +78,7 @@ const VIEW_OPTIONS = [
 ] as const satisfies ReadonlyArray<{ value: WeekendViewType; labelKey: string }>;
 
 export function WeekendVsWeekdayReport() {
+  const { withPdfBasis } = useReportExportMetadata('cash');
   const t = useTranslations('reports');
   const tc = useTranslations('common');
   const DAY_NAMES = tc.raw('weekdaysShort') as string[];
@@ -177,7 +179,7 @@ export function WeekendVsWeekdayReport() {
 
   const handleExportPdf = async () => {
     const { exportToPdf } = await import('@/lib/pdf-export');
-    await exportToPdf({
+    await exportToPdf(withPdfBasis({
       title: t('weekendVsWeekday.pdfTitle'),
       summaryCards: [
         { label: partialText(t('weekendVsWeekday.pdfWeekendSpending'), weekendKnown), value: formatCurrency(weekendTotal), color: '#7c3aed' },
@@ -191,7 +193,7 @@ export function WeekendVsWeekdayReport() {
         { color: resolvePdfColor(WEEKDAY_COLOR), label: `${partialText(t('weekendVsWeekday.weekdayLabel'), weekdayKnown)} - ${formatCurrency(weekdayTotal)} (${percentText(weekdayPercent)})` },
       ],
       filename: 'weekend-vs-weekday',
-    });
+    }));
   };
 
   // Loading and error render inside the tree below, never as an early return,

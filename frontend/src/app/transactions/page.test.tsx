@@ -1,3 +1,4 @@
+import { BudgetFxIncompleteError } from '@/lib/budget-partial';
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, act } from '@/test/render';
@@ -205,11 +206,11 @@ const { mockPreferences } = vi.hoisted(() => ({
 vi.mock('@/store/preferencesStore', () => ({
   usePreferencesStore: (selector?: any) => {
     const state = {
-      preferences: mockPreferences.value ?? {
+      preferences: { reportingBasis: 'cash', accrualEnabled: true, ...(mockPreferences.value ?? {
         twoFactorEnabled: true,
         theme: 'system',
         defaultCurrency: 'USD',
-      },
+      }) },
       isLoaded: true,
       _hasHydrated: true,
     };
@@ -636,6 +637,8 @@ beforeEach(() => {
 
 describe('TransactionsPage', () => {
   beforeEach(() => {
+    mockPreferences.value = undefined;
+    mockSearchParams.value = '';
     vi.clearAllMocks();
     mockGetAll.mockResolvedValue({ data: [], pagination: { page: 1, totalPages: 1, total: 0 } });
     mockGetSummary.mockResolvedValue({ totalIncome: 0, totalExpenses: 0, netCashFlow: 0, transactionCount: 0 });
@@ -644,6 +647,29 @@ describe('TransactionsPage', () => {
     mockGetAllPayees.mockResolvedValue([]);
     mockGetDailyBalances.mockResolvedValue([]);
     mockGetMonthlyTotals.mockResolvedValue([]);
+  });
+
+  it('requests recognition rows and opens their original parent transaction', async () => {
+    mockPreferences.value = {defaultCurrency:'USD', reportingBasis:'accrual'};
+    const row={...mockTransactions[0],id:'recognition',reportingProvenance:{readOnly:true,reportId:'recognition',sourceTransactionId:'parent',cashDate:'2026-02-01',effectiveDate:'2026-02-28',sourceAmount:'-600',nativeAmount:'-50'}};
+    mockGetAll.mockResolvedValue({data:[row],pagination:{page:1,totalPages:1,total:1}});
+    mockGetById.mockResolvedValue({...mockTransactions[0],id:'parent'});
+    render(<TransactionsPage/>);
+    await screen.findByTestId('tx-recognition');
+    expect(mockGetAll).toHaveBeenCalledWith(expect.objectContaining({basis:'accrual'}));
+    expect(screen.queryByRole('button',{name:'Bulk Update'})).not.toBeInTheDocument();
+    await act(async()=>fireEvent.click(screen.getByTestId('tx-recognition')));
+    expect(mockGetById).toHaveBeenCalledWith('parent');
+    expect(mockTxOpenEdit).toHaveBeenCalledWith(expect.objectContaining({id:'parent'}));
+  });
+
+  it('starts on page one when the basis changes without changing the saved preference', async () => {
+    mockSearchParams.value='page=3';
+    render(<TransactionsPage/>);
+    await waitFor(()=>expect(mockGetAll).toHaveBeenCalledWith(expect.objectContaining({basis:'cash',page:3})));
+    await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Accrual'})));
+    await waitFor(()=>expect(mockGetAll).toHaveBeenLastCalledWith(expect.objectContaining({basis:'accrual',page:1})));
+    expect(mockPreferences.value).toBeUndefined();
   });
 
   describe('Rendering', () => {
@@ -988,6 +1014,17 @@ describe('TransactionsPage', () => {
       }, { timeout: 3000 });
     });
 
+    it('shows known monthly components instead of an empty chart after a partial read', async () => {
+      mockGetMonthlyTotals.mockRejectedValue(new BudgetFxIncompleteError(partialMonthly));
+      render(<TransactionsPage />);
+      await waitFor(() => expect(screen.getByTestId('filter-panel')).toBeInTheDocument());
+      fireEvent.click(screen.getByTestId('set-search'));
+      await waitFor(() => expect(screen.getByTestId('budget-fx-partial')).toBeInTheDocument(),{timeout:3000});
+      expect(screen.getByTestId('budget-fx-partial')).toHaveTextContent('USD → EUR');
+      expect(screen.queryByTestId('chart-monthly-totals')).not.toBeInTheDocument();
+      mockGetMonthlyTotals.mockResolvedValue([]);
+    });
+
     it('fetches monthly totals instead of daily balances when search filter is active', async () => {
       render(<TransactionsPage />);
 
@@ -1001,7 +1038,7 @@ describe('TransactionsPage', () => {
       fireEvent.click(screen.getByTestId('set-search'));
 
       await waitFor(() => {
-        expect(mockGetMonthlyTotals).toHaveBeenCalled();
+        expect(mockGetMonthlyTotals).toHaveBeenCalledWith(expect.objectContaining({basis:'cash'}));
       }, { timeout: 3000 });
     });
   });
@@ -2554,6 +2591,15 @@ describe('TransactionsPage', () => {
       });
     });
 
+    it('preserves the original CSV columns and values when accruals are disabled', async () => {
+      mockPreferences.value={accrualEnabled:false,reportingBasis:'cash',defaultCurrency:'USD'};
+      mockGetAll.mockResolvedValue({data:[mockTransactions[0]],pagination:{page:1,totalPages:1,total:1}});
+      await act(async()=>{render(<TransactionsPage />);});
+      await act(async()=>{fireEvent.click(screen.getByTestId('export-btn'));});
+      await waitFor(()=>expect(mockExportToCsv).toHaveBeenCalledTimes(1));
+      expect(mockExportToCsv.mock.calls[0][1]).toEqual(['Date','Account','Payee','Category','Description','Tags','Amount','Currency','Status']);
+      expect(mockExportToCsv.mock.calls[0][2][0]).toHaveLength(9);
+    });
     it('exports all transactions as CSV when export button is clicked', async () => {
       const exportTransactions = [
         { id: 'tx-1', transactionDate: '2026-02-01', amount: -50, status: 'UNRECONCILED', payee: { id: 'p1', name: 'Store' }, payeeName: 'Store', category: { id: 'c1', name: 'Groceries' }, account: { id: 'acc-1', name: 'Checking' }, description: 'Weekly shop', tags: [{ id: 't1', name: 'Essential' }], currencyCode: 'USD', isTransfer: false },
@@ -2581,10 +2627,10 @@ describe('TransactionsPage', () => {
       const [filename, headers, rows] = mockExportToCsv.mock.calls[0];
 
       expect(filename).toMatch(/^Monize_Transactions_\d{4}-\d{2}-\d{2}_\d{6}\.csv$/);
-      expect(headers).toEqual(['Date', 'Account', 'Payee', 'Category', 'Description', 'Tags', 'Amount', 'Currency', 'Status']);
+      expect(headers).toEqual(['Reporting basis', 'Payment date', 'Parent transaction', 'Date', 'Account', 'Payee', 'Category', 'Description', 'Tags', 'Amount', 'Currency', 'Status']);
       expect(rows).toHaveLength(2);
-      expect(rows[0]).toEqual(['2026-02-01', 'Checking', 'Store', 'Groceries', 'Weekly shop', 'Essential', -50, 'USD', 'UNRECONCILED']);
-      expect(rows[1]).toEqual(['2026-02-02', 'Checking', 'Employer', 'Salary', 'Monthly pay', '', 3000, 'USD', 'CLEARED']);
+      expect(rows[0]).toEqual(['cash', '2026-02-01', 'tx-1', '2026-02-01', 'Checking', 'Store', 'Groceries', 'Weekly shop', 'Essential', -50, 'USD', 'UNRECONCILED']);
+      expect(rows[1]).toEqual(['cash', '2026-02-02', 'tx-2', '2026-02-02', 'Checking', 'Employer', 'Salary', 'Monthly pay', '', 3000, 'USD', 'CLEARED']);
     });
 
     it('fetches all pages when exporting multi-page results', async () => {
@@ -2722,7 +2768,7 @@ describe('TransactionsPage', () => {
       });
 
       const [, , rows] = mockExportToCsv.mock.calls[0];
-      expect(rows[0]).toEqual(['2026-02-01', '', '', '', '', '', -25, 'USD', 'UNRECONCILED']);
+      expect(rows[0]).toEqual(['cash', '2026-02-01', 'tx-1', '2026-02-01', '', '', '', '', '', -25, 'USD', 'UNRECONCILED']);
     });
 
     it('exports the amount as a number when the API sends it as a decimal string', async () => {
@@ -2758,10 +2804,10 @@ describe('TransactionsPage', () => {
       });
 
       const [, , rows] = mockExportToCsv.mock.calls[0];
-      expect(rows[0][6]).toBe(-67.99);
-      expect(rows[1][6]).toBe(38.57);
-      expect(typeof rows[0][6]).toBe('number');
-      expect(typeof rows[1][6]).toBe('number');
+      expect(rows[0][9]).toBe(-67.99);
+      expect(rows[1][9]).toBe(38.57);
+      expect(typeof rows[0][9]).toBe('number');
+      expect(typeof rows[1][9]).toBe('number');
     });
 
     it('exports a transfer with the counterpart account and the direction', async () => {
@@ -2792,8 +2838,8 @@ describe('TransactionsPage', () => {
       });
 
       const [, , rows] = mockExportToCsv.mock.calls[0];
-      expect(rows[0][3]).toBe('Transfer To Savings');
-      expect(rows[1][3]).toBe('Transfer From Chequing');
+      expect(rows[0][6]).toBe('Transfer To Savings');
+      expect(rows[1][6]).toBe('Transfer From Chequing');
     });
 
     it('keeps a category a transfer also carries, beside the transfer label', async () => {
@@ -2821,7 +2867,7 @@ describe('TransactionsPage', () => {
         expect(mockExportToCsv).toHaveBeenCalledTimes(1);
       });
 
-      expect(mockExportToCsv.mock.calls[0][2][0][3]).toBe('Investments; Transfer To RRSP');
+      expect(mockExportToCsv.mock.calls[0][2][0][6]).toBe('Investments; Transfer To RRSP');
     });
 
     it('labels a transfer split line instead of calling it uncategorized', async () => {
@@ -2867,7 +2913,7 @@ describe('TransactionsPage', () => {
         expect(mockExportToCsv).toHaveBeenCalledTimes(1);
       });
 
-      expect(mockExportToCsv.mock.calls[0][2][0][3]).toBe('Groceries; Transfer To Savings');
+      expect(mockExportToCsv.mock.calls[0][2][0][6]).toBe('Groceries; Transfer To Savings');
     });
 
     it('exports filtered split amount when only some splits match the filter', async () => {
@@ -2912,9 +2958,9 @@ describe('TransactionsPage', () => {
 
       const [, , rows] = mockExportToCsv.mock.calls[0];
       // Amount should be the filtered split sum (-50), not the full amount (-200)
-      expect(rows[0][6]).toBe(-50);
+      expect(rows[0][9]).toBe(-50);
       // Category should show split categories
-      expect(rows[0][3]).toBe('Groceries');
+      expect(rows[0][6]).toBe('Groceries');
     });
 
     it('exports full amount when all splits are present', async () => {
@@ -2960,9 +3006,9 @@ describe('TransactionsPage', () => {
 
       const [, , rows] = mockExportToCsv.mock.calls[0];
       // Full amount since all splits are present
-      expect(rows[0][6]).toBe(-200);
+      expect(rows[0][9]).toBe(-200);
       // Category should show all split categories
-      expect(rows[0][3]).toBe('Groceries; Dining');
+      expect(rows[0][6]).toBe('Groceries; Dining');
     });
   });
 });
@@ -3448,3 +3494,10 @@ describe('TransactionsPage register sorting', () => {
     expect(screen.getByTestId('balance-withheld')).toHaveTextContent('none');
   });
 });
+
+const partialMonthly = {
+  fxComplete:false as const,result:null,total:null,currency:'EUR',
+  knownComponents:[{id:'monthly-known',currency:'EUR',date:'2026-06-15',knownSubtotal:-80}],
+  missingRatePairs:[{from:'USD',to:'EUR',date:'2026-06-30',reason:null}],
+  repair:'currency_rate_history' as const,fetchAttempted:false as const,
+};

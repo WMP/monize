@@ -1,5 +1,10 @@
 'use client';
 
+import { ReportError } from '@/components/reports/ReportError';
+
+import { CashReportingNotice } from '@/components/reports/CashReportingNotice';
+import { ReportingBasisScope, ReportingBasisControl, useReportingBasis, useReportingViewChanged } from '@/components/reports/ReportingBasis';
+import { useSearchParams } from 'next/navigation';
 import { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
@@ -113,18 +118,25 @@ type RetainedWidget =
   | { kind: 'account'; account: Account; currentBalance?: number };
 
 export default function TransactionsPage() {
+  const params = useSearchParams();
+  const initialBasis = params.has('targetTransactionId') || params.has('highlightTransactionId') ? 'cash' : params.get('basis') === 'cash' ? 'cash' : params.get('basis') === 'accrual' ? 'accrual' : undefined;
   return (
     <ProtectedRoute>
-      <TransactionsContent />
+      <ReportingBasisScope surface="transactions" initialBasis={initialBasis} resetOnBasis>
+        <TransactionsContent />
+      </ReportingBasisScope>
     </ProtectedRoute>
   );
 }
 
 function TransactionsContent() {
+  const basis = useReportingBasis() ?? 'cash';
+  const resetPageOnMount = useReportingViewChanged();
   const t = useTranslations('transactions');
   const tc = useTranslations('common');
   const router = useRouter();
   const { formatDate } = useDateFormat();
+  const accrualEnabled = usePreferencesStore(state => state.preferences?.accrualEnabled ?? false);
   const weekStartsOn = (usePreferencesStore((s) => s.preferences?.weekStartsOn) ?? 1) as 0 | 1 | 2 | 3 | 4 | 5 | 6;
   const defaultCurrency = preferredCurrency(
     usePreferencesStore((s) => s.preferences?.defaultCurrency),
@@ -154,6 +166,7 @@ function TransactionsContent() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [dailyBalances, setDailyBalances] = useState<Array<{ date: string; balance: number; accountId: string; currencyCode: string }>>([]);
   const [monthlyTotals, setMonthlyTotals] = useState<MonthlyTotal[]>([]);
+  const [monthlyError, setMonthlyError] = useState<unknown>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { showForm, editingItem: editingTransaction, openCreate, openEdit, close, modalProps, setFormDirty, unsavedChangesDialog, formSubmitRef } = useFormModal<Transaction>();
   const { view, setView } = useViewMode('transactions');
@@ -191,7 +204,7 @@ function TransactionsContent() {
     modalOpenRef.current = anyModalOpen;
   });
 
-  const filters = useTransactionFilters({ accounts, categories, payees, tags, weekStartsOn });
+  const filters = useTransactionFilters({ accounts, categories, payees, tags, weekStartsOn, resetPageOnMount });
   // The hook's refs under local names, so they are written as refs rather than
   // as fields of the hook's return value, which must not be modified.
   const {
@@ -222,6 +235,7 @@ function TransactionsContent() {
    */
   const calendarFilters = useMemo(
     () => ({
+      basis,
       accountIds: accountIdsForQuery,
       categoryIds: filters.filterCategoryIds.length > 0 ? filters.filterCategoryIds : undefined,
       payeeIds: filters.filterPayeeIds.length > 0 ? filters.filterPayeeIds : undefined,
@@ -243,6 +257,7 @@ function TransactionsContent() {
           : filters.filterHasAttachments === 'yes',
     }),
     [
+      basis,
       accountIdsForQuery,
       filters.filterCategoryIds,
       filters.filterPayeeIds,
@@ -298,8 +313,8 @@ function TransactionsContent() {
   const { hidden: hiddenColumns } = useHiddenColumns('transactions');
   const phoneCard = useRegisterPhoneCard('transactions', false);
   const registerSort = useMemo(
-    () => resolveRegisterSort(storedSort, isSingleAccountView, hiddenColumns, phoneCard),
-    [storedSort, isSingleAccountView, hiddenColumns, phoneCard],
+    () => resolveRegisterSort(storedSort, isSingleAccountView, basis === 'accrual' ? new Set([...hiddenColumns, 'status']) : hiddenColumns, phoneCard),
+    [basis, storedSort, isSingleAccountView, hiddenColumns, phoneCard],
   );
   // Whether the phone card is what holds the remembered sort back. A layout
   // switch (a phone's density, a window crossing `sm`) changes the resolved
@@ -443,8 +458,9 @@ function TransactionsContent() {
         const parsedAmountFrom = filters.filterAmountFrom ? parseFloat(filters.filterAmountFrom) : undefined;
         const parsedAmountTo = filters.filterAmountTo ? parseFloat(filters.filterAmountTo) : undefined;
 
+        let chartError: unknown = null;
         const chartPromise = hasCategoryOrPayeeFilter
-          ? transactionsApi.getMonthlyTotals({
+          ? transactionsApi.getMonthlyTotals({ basis,
               accountIds: accountIdsForQuery,
               startDate: filters.filterStartDate || undefined,
               endDate: filters.filterEndDate || undefined,
@@ -454,14 +470,14 @@ function TransactionsContent() {
               search: filters.filterSearch || undefined,
               amountFrom: parsedAmountFrom,
               amountTo: parsedAmountTo,
-            }).catch(() => [] as MonthlyTotal[])
+            }).catch((error: unknown) => { chartError = error; return [] as MonthlyTotal[]; })
           : accountsApi.getDailyBalances(
               Object.keys(chartParams).length > 0 ? chartParams : undefined,
             ).catch(() => [] as Array<{ date: string; balance: number; accountId: string; currencyCode: string }>);
 
         const requestedSearch = filters.filterSearch;
         const [transactionsResponse, chartResult] = await Promise.all([
-          transactionsApi.getAll({
+          transactionsApi.getAll({ basis,
             accountIds: accountIdsForQuery,
             startDate: filters.filterStartDate || undefined,
             endDate: filters.filterEndDate || undefined,
@@ -518,10 +534,12 @@ function TransactionsContent() {
 
         if (hasCategoryOrPayeeFilter) {
           setMonthlyTotals(chartResult as MonthlyTotal[]);
+          setMonthlyError(chartError);
           setDailyBalances([]);
         } else {
           setDailyBalances(chartResult as Array<{ date: string; balance: number; accountId: string; currencyCode: string }>);
           setMonthlyTotals([]);
+          setMonthlyError(null);
         }
 
         if (targetTransactionId && transactionsResponse.pagination.page !== safePage) {
@@ -537,7 +555,7 @@ function TransactionsContent() {
           ),
         ];
         if (categoryIds.length > 0) {
-          budgetsApi.getCategoryBudgetStatus(categoryIds).then(setBudgetStatusMap).catch(() => {});
+          budgetsApi.getCategoryBudgetStatus(categoryIds, basis).then(setBudgetStatusMap).catch(() => {});
         }
       } catch (error) {
         // A superseded request's failure is not this register's failure: the
@@ -561,7 +579,7 @@ function TransactionsContent() {
       }
     };
     return run();
-  }, [accountIdsForQuery, filters.filterAccountStatus, filters.filterCategoryIds, filters.filterPayeeIds, filters.filterTagIds, filters.filterStartDate, filters.filterEndDate, filters.filterSearch, filters.filterAmountFrom, filters.filterAmountTo, filters.filterStatuses, filters.filterOriginalCurrencyCodes, filters.filterTagKey, filters.filterTagKeyOp, filters.filterTagKeyValue, filters.filterHasAttachments, t]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [basis, accountIdsForQuery, filters.filterAccountStatus, filters.filterCategoryIds, filters.filterPayeeIds, filters.filterTagIds, filters.filterStartDate, filters.filterEndDate, filters.filterSearch, filters.filterAmountFrom, filters.filterAmountTo, filters.filterStatuses, filters.filterOriginalCurrencyCodes, filters.filterTagKey, filters.filterTagKeyOp, filters.filterTagKeyValue, filters.filterHasAttachments, filters.filterTagKey, filters.filterTagKeyOp, filters.filterTagKeyValue, t]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadData = useCallback(async (page: number = filters.currentPage) => {
     await loadTransactions(page);
@@ -672,6 +690,17 @@ function TransactionsContent() {
   };
 
   const handleEdit = async (transaction: Transaction) => {
+    if (transaction.reportingProvenance) {
+      try {
+        const source = await transactionsApi.getById(transaction.reportingProvenance.sourceTransactionId);
+        const investmentId = transaction.linkedInvestmentTransactionId ?? source.linkedInvestmentTransactionId;
+        if (investmentId) router.push(`/investments?edit=${investmentId}`);
+        else openEdit({...source, accrualRecognitionDate: transaction.reportingProvenance?.isRecognition ? transaction.transactionDate : undefined});
+      } catch (error) {
+        showErrorToast(error, t('toasts.loadFailed'));
+      }
+      return;
+    }
     if (transaction.linkedInvestmentTransactionId) {
       toast(t('page.toasts.investmentLinked'));
       router.push(`/investments?edit=${transaction.linkedInvestmentTransactionId}`);
@@ -1057,6 +1086,7 @@ function TransactionsContent() {
   // The active page filters each widget forwards to its queries, minus the
   // widget's own entity id (each widget injects that itself).
   const widgetFilterParams = useMemo<WidgetFilterParams>(() => ({
+    basis,
     accountIds: accountIdsForQuery,
     startDate: filters.filterStartDate || undefined,
     endDate: filters.filterEndDate || undefined,
@@ -1064,7 +1094,7 @@ function TransactionsContent() {
     search: filters.filterSearch || undefined,
     amountFrom: filters.filterAmountFrom ? parseFloat(filters.filterAmountFrom) : undefined,
     amountTo: filters.filterAmountTo ? parseFloat(filters.filterAmountTo) : undefined,
-  }), [accountIdsForQuery, filters.filterStartDate, filters.filterEndDate, filters.filterTagIds, filters.filterSearch, filters.filterAmountFrom, filters.filterAmountTo]);
+  }), [basis, accountIdsForQuery, filters.filterStartDate, filters.filterEndDate, filters.filterTagIds, filters.filterSearch, filters.filterAmountFrom, filters.filterAmountTo]);
 
   // Retain the last single-filtered entity across the moment the filter
   // widens, so the widget can stay mounted and play the same slide-out
@@ -1189,6 +1219,9 @@ function TransactionsContent() {
         amountTo: parsedAmountTo,
         statuses: filters.filterStatuses.length > 0 ? filters.filterStatuses : undefined,
         originalCurrencyCodes: filters.filterOriginalCurrencyCodes.length > 0 ? filters.filterOriginalCurrencyCodes : undefined,
+        tagKey: filters.filterTagKey || undefined,
+        tagKeyOp: filters.filterTagKeyOp,
+        tagKeyValue: filters.filterTagKeyValue || undefined,
         hasAttachments:
           filters.filterHasAttachments === ''
             ? undefined
@@ -1201,13 +1234,15 @@ function TransactionsContent() {
       let hasMore = true;
 
       while (hasMore) {
-        const response = await transactionsApi.getAll({
+        const response = await transactionsApi.getAll({ basis,
           ...queryParams,
           page,
           limit: PAGE_SIZE,
         });
+        if (!response.data.length && page < response.pagination.totalPages) throw new Error('Incomplete register export');
         allTransactions.push(...response.data);
         hasMore = page < response.pagination.totalPages;
+        if (hasMore && page >= 5000) throw new Error('Register export is too large; narrow the filters');
         page++;
       }
 
@@ -1216,7 +1251,7 @@ function TransactionsContent() {
         return;
       }
 
-      const headers = ['Date', 'Account', 'Payee', 'Category', 'Description', 'Tags', 'Amount', 'Currency', 'Status'];
+      const headers = [...(accrualEnabled ? ['Reporting basis', 'Payment date', 'Parent transaction'] : []), 'Date', 'Account', 'Payee', 'Category', 'Description', 'Tags', 'Amount', 'Currency', 'Status'];
       const rows = allTransactions.map(tx => {
         // `tx.amount` is typed number but arrives as the decimal string the
         // API serialized ("-67.9900"), so coerce it: the Amount column holds a
@@ -1277,7 +1312,7 @@ function TransactionsContent() {
       const timePart = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
       const filename = `Monize_Transactions_${datePart}_${timePart}.csv`;
 
-      exportToCsv(filename, headers, rows);
+      exportToCsv(filename, headers, accrualEnabled ? rows.map((row, index) => [basis, allTransactions[index].reportingProvenance?.cashDate ?? allTransactions[index].transactionDate, allTransactions[index].reportingProvenance?.sourceTransactionId ?? allTransactions[index].id, ...row]) : rows);
       toast.success(t('toasts.exported', { count: allTransactions.length }));
     } catch (error) {
       showErrorToast(error, t('toasts.exportFailed'));
@@ -1285,11 +1320,13 @@ function TransactionsContent() {
     } finally {
       setIsExporting(false);
     }
-  }, [accountIdsForQuery, filters.filterCategoryIds, filters.filterPayeeIds, filters.filterTagIds, filters.filterStartDate, filters.filterEndDate, filters.filterSearch, filters.filterAmountFrom, filters.filterAmountTo, filters.filterStatuses, filters.filterOriginalCurrencyCodes, filters.filterHasAttachments, t]);
+  }, [basis, accrualEnabled, accountIdsForQuery, filters.filterCategoryIds, filters.filterPayeeIds, filters.filterTagIds, filters.filterStartDate, filters.filterEndDate, filters.filterSearch, filters.filterAmountFrom, filters.filterAmountTo, filters.filterStatuses, filters.filterOriginalCurrencyCodes, filters.filterHasAttachments, filters.filterTagKey, filters.filterTagKeyOp, filters.filterTagKeyValue, t]);
 
   return (
     <PageLayout>
       <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">
+        <ReportingBasisControl />
+        {basis === 'accrual' && <p className="mb-4 text-sm text-gray-600 dark:text-gray-300">{tc('recognitionDetails.help')}</p>}
         <PageHeader
           title={t('page.title')}
           subtitle={t('page.subtitle')}
@@ -1303,6 +1340,7 @@ function TransactionsContent() {
             </Button>
           }
         />
+        {!(filters.filterCategoryIds.length || filters.filterPayeeIds.length || filters.filterTagIds.length || filters.filterSearch.length) && <CashReportingNotice balances />}
         {(() => {
           if (chartCollapsed) return <CollapsedChartStrip onExpand={expandChart} />;
           const chartKind =
@@ -1322,6 +1360,7 @@ function TransactionsContent() {
           const chart = (
             <div key={chartKind} className="animate-chart-in motion-reduce:animate-none">
               {chartKind === 'monthlyTotals' ? (
+                <>{monthlyError ? <ReportError error={monthlyError} onRetry={() => { void loadData(); }} /> : (
                 <CategoryPayeeBarChart
                   data={monthlyTotals}
                   isLoading={isLoading}
@@ -1334,6 +1373,7 @@ function TransactionsContent() {
                     filters.setFilterTimePeriod('custom');
                   }}
                 />
+                )}</>
               ) : chartKind === 'accountBalances' ? (
                 <AccountBalancesBarChart
                   data={accountBalances}
@@ -1611,10 +1651,10 @@ function TransactionsContent() {
           tagFilterOptions={filters.tagFilterOptions}
           formatDate={formatDate}
           bulkSelectMode={bulkSelectMode}
-          onToggleBulkSelectMode={() => {
+          onToggleBulkSelectMode={basis === 'cash' ? () => {
             if (bulkSelectMode) selection.clearSelection();
             setBulkSelectMode(!bulkSelectMode);
-          }}
+          } : undefined}
           onClearFilters={filters.clearFilters}
           hideDateRange={view === 'calendar'}
         />
@@ -1625,6 +1665,7 @@ function TransactionsContent() {
             <TagKeyBreakdownChart
               tagKey={filters.filterTagKey}
               params={{
+                basis,
                 accountIds: accountIdsForQuery,
                 startDate: filters.filterStartDate || undefined,
                 endDate: filters.filterEndDate || undefined,
@@ -1705,6 +1746,7 @@ function TransactionsContent() {
           ) : (
             <TransactionList
               transactions={transactions}
+              readOnly={basis === 'accrual'}
               jointPermissionsByAccount={jointPermissionsByAccount}
               onEdit={handleEdit}
               onDuplicate={handleDuplicate}
@@ -1722,7 +1764,7 @@ function TransactionsContent() {
               isExporting={isExporting}
               viewToggle={<ViewModeToggle value={view} onChange={setView} />}
               isSingleAccountView={filters.filterAccountIds.length === 1}
-              selectionMode={bulkSelectMode}
+              selectionMode={basis === 'cash' && bulkSelectMode}
               selectedIds={selection.selectedIds}
               selectAllMatching={selection.selectAllMatching}
               excludedIds={selection.excludedIds}

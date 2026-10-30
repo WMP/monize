@@ -1,3 +1,9 @@
+import {
+  reportingFxColumns,
+  reportingFxGrouping,
+} from "../accruals/reporting-fx-sql";
+import { ReportingRead } from "../accruals/reporting-basis";
+import { reportingQuery } from "../accruals/reporting-query";
 import { Injectable } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
@@ -55,6 +61,9 @@ const INVESTMENT_EXCLUSION_NO_SPLITS = investmentExclusionSql({
 
 interface RawTagValuePeriodAggregate {
   period_start: string;
+  conversion_date?: string;
+  original_currency_code?: string | null;
+  exchange_rate?: string | number | null;
   currency_code: string;
   value: string | null;
   income: string;
@@ -64,6 +73,9 @@ interface RawTagValuePeriodAggregate {
 interface RawTagFlowAggregate {
   period_start: string;
   value: string;
+  conversion_date?: string;
+  original_currency_code?: string | null;
+  exchange_rate?: string | number | null;
   currency_code: string;
   inflow: string;
   outflow: string;
@@ -80,6 +92,7 @@ export class IncomeReportsService {
    * `options.accountIds` restricts the window to those accounts, the way every
    * other income query does; absent or empty means all accounts.
    */
+  @ReportingRead()
   async getIncomeBySource(
     userId: string,
     startDate: string | undefined,
@@ -89,12 +102,11 @@ export class IncomeReportsService {
     const { accountIds } = options;
     const defaultCurrency =
       await this.currencyService.getDefaultCurrency(userId);
-    const rateMap = await this.currencyService.buildRateMap(defaultCurrency);
 
     let query = `
       SELECT
         COALESCE(ts.category_id, t.category_id) as category_id,
-        t.currency_code,
+        ${reportingFxColumns(userId)},
         SUM(COALESCE(ts.amount, t.amount)) as total
       FROM transactions t
       LEFT JOIN transaction_splits ts ON ts.transaction_id = t.id
@@ -129,11 +141,15 @@ export class IncomeReportsService {
       params.push(accountIds);
     }
 
-    query += ` GROUP BY COALESCE(ts.category_id, t.category_id), t.currency_code`;
+    query += ` GROUP BY COALESCE(ts.category_id, t.category_id), ${reportingFxGrouping(userId)}`;
 
     const rawResults: RawCategoryAggregate[] = await withScopedDb(
       this.dataSource,
-      (m) => m.query(query, params),
+      (m) => reportingQuery(m, userId, query, params),
+    );
+    const rateMap = await this.currencyService.buildRateMap(
+      defaultCurrency,
+      rawResults,
     );
 
     const categories = await withScopedDb(this.dataSource, (m) =>
@@ -158,6 +174,7 @@ export class IncomeReportsService {
         row.currency_code,
         defaultCurrency,
         rateMap,
+        row,
       );
       if (total === null) {
         gaps.record(row.currency_code);
@@ -239,6 +256,7 @@ export class IncomeReportsService {
    * {@link getTagKeyBuckets} through the very same query, so the top-level
    * fields keep meaning the All bucket regardless.
    */
+  @ReportingRead()
   async getIncomeVsExpenses(
     userId: string,
     startDate: string | undefined,
@@ -260,7 +278,6 @@ export class IncomeReportsService {
     } = options;
     const defaultCurrency =
       await this.currencyService.getDefaultCurrency(userId);
-    const rateMap = await this.currencyService.buildRateMap(defaultCurrency);
 
     // The week-start offset is a parameter so the grouping expression stays a
     // constant string: see `weekTruncOffsetDays` for what it shifts. It is bound
@@ -282,7 +299,7 @@ export class IncomeReportsService {
     let query = `
       SELECT
         ${bucketStart} as period_start,
-        t.currency_code,
+        ${reportingFxColumns(userId)},
         SUM(CASE
           WHEN c.is_income = true THEN COALESCE(ts.amount, t.amount)
           WHEN c.is_income = false THEN 0
@@ -326,13 +343,17 @@ export class IncomeReportsService {
     }
 
     query += `
-      GROUP BY ${bucketStart}, t.currency_code
+      GROUP BY ${bucketStart}, ${reportingFxGrouping(userId)}
       ORDER BY period_start
     `;
 
     const rawResults: RawPeriodAggregate[] = await withScopedDb(
       this.dataSource,
-      (m) => m.query(query, params),
+      (m) => reportingQuery(m, userId, query, params),
+    );
+    const rateMap = await this.currencyService.buildRateMap(
+      defaultCurrency,
+      rawResults,
     );
 
     const { data, totals, missingCurrencies, excludedCount } =
@@ -367,7 +388,6 @@ export class IncomeReportsService {
       { accountIds, bucket, weekStartsOn, transferScopeAccountIds },
       trimmedTagKey,
       defaultCurrency,
-      rateMap,
     );
 
     return { ...response, tagKey: trimmedTagKey, buckets };
@@ -384,6 +404,9 @@ export class IncomeReportsService {
   private summarizePeriodRows(
     rows: {
       period_start: string;
+      conversion_date?: string;
+      original_currency_code?: string | null;
+      exchange_rate?: string | number | null;
       currency_code: string;
       income: string;
       expenses: string;
@@ -427,12 +450,14 @@ export class IncomeReportsService {
         row.currency_code,
         defaultCurrency,
         rateMap,
+        row,
       );
       const expenses = this.currencyService.tryConvertAmount(
         toMoneyNumber(row.expenses),
         row.currency_code,
         defaultCurrency,
         rateMap,
+        row,
       );
       // One rate serves both halves of the row, so they fail together.
       if (income === null || expenses === null) {
@@ -533,7 +558,6 @@ export class IncomeReportsService {
     },
     tagKey: string,
     defaultCurrency: string,
-    rateMap: RateMap,
   ): Promise<IncomeExpenseTagBucket[]> {
     const { accountIds, bucket, weekStartsOn, transferScopeAccountIds } =
       windowOptions;
@@ -565,7 +589,7 @@ export class IncomeReportsService {
       WITH tagged_base AS (
         SELECT
           ${valueBucketStart} as period_start,
-          t.currency_code,
+          ${reportingFxColumns(userId)},
           CASE
             WHEN c.is_income = true THEN COALESCE(ts.amount, t.amount)
             WHEN c.is_income = false THEN 0
@@ -611,18 +635,18 @@ export class IncomeReportsService {
       )
       SELECT
         tb.period_start,
-        tb.currency_code,
+        ${reportingFxGrouping(userId, "tb", true)},
         tv.value,
         SUM(tb.income) as income,
         SUM(tb.expenses) as expenses
       FROM tagged_base tb
       CROSS JOIN UNNEST(COALESCE(tb.tag_values, ARRAY[NULL]::text[])) AS tv(value)
-      GROUP BY tb.period_start, tb.currency_code, tv.value
+      GROUP BY tb.period_start, ${reportingFxGrouping(userId, "tb", true)}, tv.value
     `;
 
     const valueRows: RawTagValuePeriodAggregate[] = await withScopedDb(
       this.dataSource,
-      (m) => m.query(valueQuery, valueParams),
+      (m) => reportingQuery(m, userId, valueQuery, valueParams),
     );
 
     // ---- Tagged transfer flows (section 3, INV-REPORT-003) ----
@@ -666,7 +690,7 @@ export class IncomeReportsService {
       WITH transfer_rows AS (
         SELECT
           ${wholeFlowBucketStart} as period_start,
-          t.currency_code,
+${reportingFxColumns(userId)},
           t.amount as leg_amount,
           ${transactionTagValuesArrayExpr("t", wholeFlowKeyParam)} as tag_values
         FROM transactions t
@@ -701,12 +725,12 @@ export class IncomeReportsService {
       SELECT
         tr.period_start,
         tv.value,
-        tr.currency_code,
+        ${reportingFxGrouping(userId, "tr", true)},
         SUM(CASE WHEN tr.leg_amount > 0 THEN tr.leg_amount ELSE 0 END) as inflow,
         SUM(CASE WHEN tr.leg_amount < 0 THEN ABS(tr.leg_amount) ELSE 0 END) as outflow
       FROM transfer_rows tr
       CROSS JOIN UNNEST(tr.tag_values) AS tv(value)
-      GROUP BY tr.period_start, tv.value, tr.currency_code
+      GROUP BY tr.period_start, tv.value, ${reportingFxGrouping(userId, "tr", true)}
     `;
 
     const splitFlowParams: (string | string[] | number)[] = [
@@ -728,7 +752,7 @@ export class IncomeReportsService {
       WITH transfer_rows AS (
         SELECT
           ${splitFlowBucketStart} as period_start,
-          t.currency_code,
+${reportingFxColumns(userId)},
           ts.amount as leg_amount,
           ${tagValuesArrayExpr("t", "ts", splitFlowKeyParam)} as tag_values
         FROM transactions t
@@ -760,20 +784,24 @@ export class IncomeReportsService {
       SELECT
         tr.period_start,
         tv.value,
-        tr.currency_code,
+        ${reportingFxGrouping(userId, "tr", true)},
         SUM(CASE WHEN tr.leg_amount > 0 THEN tr.leg_amount ELSE 0 END) as inflow,
         SUM(CASE WHEN tr.leg_amount < 0 THEN ABS(tr.leg_amount) ELSE 0 END) as outflow
       FROM transfer_rows tr
       CROSS JOIN UNNEST(tr.tag_values) AS tv(value)
-      GROUP BY tr.period_start, tv.value, tr.currency_code
+      GROUP BY tr.period_start, tv.value, ${reportingFxGrouping(userId, "tr", true)}
     `;
 
     const [wholeFlowRows, splitFlowRows]: RawTagFlowAggregate[][] =
       await withScopedDb(this.dataSource, async (m) => [
-        await m.query(wholeFlowQuery, wholeFlowParams),
-        await m.query(splitFlowQuery, splitFlowParams),
+        await reportingQuery(m, userId, wholeFlowQuery, wholeFlowParams),
+        await reportingQuery(m, userId, splitFlowQuery, splitFlowParams),
       ]);
     const flowRows = [...wholeFlowRows, ...splitFlowRows];
+    const rateMap = await this.currencyService.buildRateMap(defaultCurrency, [
+      ...valueRows,
+      ...flowRows,
+    ]);
 
     // ---- Assemble one bucket per discovered value, plus the untagged bucket ----
     const rowsByValue = new Map<string, RawTagValuePeriodAggregate[]>();
@@ -854,12 +882,14 @@ export class IncomeReportsService {
         row.currency_code,
         defaultCurrency,
         rateMap,
+        row,
       );
       const outflow = this.currencyService.tryConvertAmount(
         toMoneyNumber(row.outflow),
         row.currency_code,
         defaultCurrency,
         rateMap,
+        row,
       );
       if (inflow === null || outflow === null) {
         missing.add(row.currency_code);

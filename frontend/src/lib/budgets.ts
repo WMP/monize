@@ -1,3 +1,4 @@
+import { budgetResponse } from './budget-partial';
 import apiClient from './api';
 import {
   Budget,
@@ -29,29 +30,29 @@ export const budgetsApi = {
   create: async (data: CreateBudgetData): Promise<Budget> => {
     const response = await apiClient.post<Budget>('/budgets', data);
     invalidateCache('budgets:');
-    return response.data;
+    return budgetResponse(response.data);
   },
 
-  getAll: async (): Promise<Budget[]> => {
+  getAll: async (basis?: 'cash' | 'accrual'): Promise<Budget[]> => {
     return dedupe(
-      'budgets:all',
+      basis ? `budgets:all:${basis}` : 'budgets:all',
       async () => {
-        const response = await apiClient.get<Budget[]>('/budgets');
-        return response.data;
+        const response = await apiClient.get<Budget[]>('/budgets', ...(basis ? [{params:{basis}}] as const : []));
+        return budgetResponse(response.data);
       },
       120_000, // 2 min
     );
   },
 
-  getById: async (id: string): Promise<Budget> => {
-    const response = await apiClient.get<Budget>(`/budgets/${id}`);
-    return response.data;
+  getById: async (id: string, basis?: 'cash' | 'accrual'): Promise<Budget> => {
+    const response = await apiClient.get<Budget>(`/budgets/${id}`, ...(basis ? [{params:{basis}}] as const : []));
+    return budgetResponse(response.data);
   },
 
   update: async (id: string, data: UpdateBudgetData): Promise<Budget> => {
     const response = await apiClient.patch<Budget>(`/budgets/${id}`, data);
     invalidateCache('budgets:');
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   delete: async (id: string): Promise<void> => {
@@ -69,7 +70,7 @@ export const budgetsApi = {
       data,
     );
     invalidateCache('budgets:');
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   updateCategory: async (
@@ -82,7 +83,7 @@ export const budgetsApi = {
       data,
     );
     invalidateCache('budgets:');
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   removeCategory: async (
@@ -102,7 +103,7 @@ export const budgetsApi = {
       { categories },
     );
     invalidateCache('budgets:');
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   // Generator
@@ -113,7 +114,7 @@ export const budgetsApi = {
       '/budgets/generate',
       data,
     );
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   applyGenerated: async (data: ApplyGeneratedBudgetData): Promise<Budget> => {
@@ -122,30 +123,33 @@ export const budgetsApi = {
       data,
     );
     invalidateCache('budgets:');
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   // Execution
-  getSummary: async (budgetId: string): Promise<BudgetSummary> => {
+  getSummary: async (budgetId: string, basis?: 'cash' | 'accrual'): Promise<BudgetSummary> => {
     const response = await apiClient.get<BudgetSummary>(
       `/budgets/${budgetId}/summary`,
+      ...(basis ? [{ params: { basis } }] as const : []),
     );
-    return response.data;
+    return budgetResponse(response.data);
   },
 
-  getVelocity: async (budgetId: string): Promise<BudgetVelocity> => {
+  getVelocity: async (budgetId: string, basis?: 'cash' | 'accrual'): Promise<BudgetVelocity> => {
     const response = await apiClient.get<BudgetVelocity>(
       `/budgets/${budgetId}/velocity`,
+      ...(basis ? [{ params: { basis } }] as const : []),
     );
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   // Periods
   getPeriods: async (budgetId: string): Promise<BudgetPeriod[]> => {
     const response = await apiClient.get<BudgetPeriod[]>(
       `/budgets/${budgetId}/periods`,
+      { params: { basis: 'cash' } },
     );
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   getPeriodDetail: async (
@@ -154,8 +158,9 @@ export const budgetsApi = {
   ): Promise<BudgetPeriod> => {
     const response = await apiClient.get<BudgetPeriod>(
       `/budgets/${budgetId}/periods/${periodId}`,
+      { params: { basis: 'cash' } },
     );
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   closePeriod: async (budgetId: string): Promise<BudgetPeriod> => {
@@ -163,116 +168,115 @@ export const budgetsApi = {
       `/budgets/${budgetId}/periods/close`,
     );
     invalidateCache('budgets:');
-    return response.data;
+    return budgetResponse(response.data);
   },
 
 
   // Reports
   getTrend: async (
     budgetId: string,
-    months = 6,
-  ): Promise<BudgetTrendPoint[]> => {
+    months = 6, basis?: 'cash' | 'accrual'): Promise<BudgetTrendPoint[]> => {
     const response = await apiClient.get<BudgetTrendPoint[]>(
       `/budgets/${budgetId}/reports/trend`,
-      { params: { months } },
+      { params: { months, ...(basis ? { basis } : {}) } },
     );
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   getCategoryTrend: async (
     budgetId: string,
     months = 6,
-    categoryIds?: string[],
-  ): Promise<CategoryTrendSeries[]> => {
+    categoryIds?: string[], basis?: 'cash' | 'accrual'): Promise<CategoryTrendSeries[]> => {
     const response = await apiClient.get<CategoryTrendSeries[]>(
       `/budgets/${budgetId}/reports/category-trend`,
-      { params: { months, categoryIds } },
+      { params: { months, categoryIds, ...(basis ? { basis } : {}) } },
     );
-    return response.data;
+    return budgetResponse(response.data);
   },
 
-  getHealthScore: async (budgetId: string): Promise<HealthScoreResult> => {
+  getHealthScore: async (budgetId: string, basis?: 'cash' | 'accrual'): Promise<HealthScoreResult> => {
     const response = await apiClient.get<HealthScoreResult>(
       `/budgets/${budgetId}/reports/health-score`,
+      ...(basis ? [{ params: { basis } }] as const : []),
     );
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   getSeasonalPatterns: async (
-    budgetId: string,
-  ): Promise<SeasonalPattern[]> => {
+    budgetId: string, basis?: 'cash' | 'accrual'): Promise<SeasonalPattern[]> => {
     const response = await apiClient.get<SeasonalPattern[]>(
       `/budgets/${budgetId}/reports/seasonal`,
+      ...(basis ? [{ params: { basis } }] as const : []),
     );
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   getFlexGroupStatus: async (
-    budgetId: string,
-  ): Promise<FlexGroupStatus[]> => {
+    budgetId: string, basis?: 'cash' | 'accrual'): Promise<FlexGroupStatus[]> => {
     const response = await apiClient.get<FlexGroupStatus[]>(
       `/budgets/${budgetId}/reports/flex-groups`,
+      ...(basis ? [{ params: { basis } }] as const : []),
     );
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   getDailySpending: async (
-    budgetId: string,
-  ): Promise<Array<{ date: string; amount: number }>> => {
+    budgetId: string, basis?: 'cash' | 'accrual'): Promise<Array<{ date: string; amount: number }>> => {
     const response = await apiClient.get<Array<{ date: string; amount: number }>>(
       `/budgets/${budgetId}/reports/daily-spending`,
+      ...(basis ? [{ params: { basis } }] as const : []),
     );
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   getSavingsRate: async (
     budgetId: string,
-    months = 12,
-  ): Promise<SavingsRatePoint[]> => {
+    months = 12, basis?: 'cash' | 'accrual'): Promise<SavingsRatePoint[]> => {
     const response = await apiClient.get<SavingsRatePoint[]>(
       `/budgets/${budgetId}/reports/savings-rate`,
-      { params: { months } },
+      { params: { months, ...(basis ? { basis } : {}) } },
     );
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   getHealthScoreHistory: async (
     budgetId: string,
-    months = 12,
-  ): Promise<HealthScoreHistoryPoint[]> => {
+    months = 12, basis?: 'cash' | 'accrual'): Promise<HealthScoreHistoryPoint[]> => {
     const response = await apiClient.get<HealthScoreHistoryPoint[]>(
       `/budgets/${budgetId}/reports/health-score-history`,
-      { params: { months } },
+      { params: { months, ...(basis ? { basis } : {}) } },
     );
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   // Dashboard
-  getDashboardSummary: async (): Promise<DashboardBudgetSummary | null> => {
+  getDashboardSummary: async (basis?: 'cash' | 'accrual'): Promise<DashboardBudgetSummary | null> => {
     return dedupe<DashboardBudgetSummary | null>(
-      'budgets:dashboard',
+      basis ? `budgets:dashboard:${basis}` : 'budgets:dashboard',
       async () => {
         const response = await apiClient.get<DashboardBudgetSummary | null>(
           '/budgets/dashboard-summary',
+      ...(basis ? [{ params: { basis } }] as const : []),
         );
-        return response.data;
+        return budgetResponse(response.data);
       },
     );
   },
 
   // Transaction context
   getCategoryBudgetStatus: async (
-    categoryIds: string[],
+    categoryIds: string[], basis?: 'cash'|'accrual',
   ): Promise<Record<string, CategoryBudgetStatus>> => {
     if (categoryIds.length === 0) return {};
     const sortedIds = [...categoryIds].sort();
-    const cacheKey = `budgets:cat-status:${sortedIds.join(',')}`;
+    const cacheKey = `budgets:cat-status:${sortedIds.join(',')}${basis ? ':' + basis : ''}`;
     return dedupe(cacheKey, async () => {
       const response = await apiClient.post<Record<string, CategoryBudgetStatus>>(
         '/budgets/category-budget-status',
         { categoryIds },
+        ...(basis ? [{ params: { basis } }] as const : []),
       );
-      return response.data;
+      return budgetResponse(response.data);
     }, 60_000);
   },
 };
