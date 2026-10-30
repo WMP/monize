@@ -219,3 +219,13 @@ Put the new screen next to its reference screen at the same width and check:
 - [ ] no two buttons with the same label and different behaviour
 - [ ] nothing in [Known debt](#known-debt) copied into the new screen
 - [ ] at 375 px nothing leaves the screen
+
+## Shared expense review and list chrome
+
+Shared activity uses Notifications; render private review state only on its explicit
+page, and a known-zero result as a plain empty state, never an app-wide notice.
+`SharedReviewContent.test.tsx` covers actionable, revoked, failed and stale-identity
+responses. Tab panels and expense attachments own their top spacing; browser
+geometry tests cover the rendered gap, since component fragments cannot carry it.
+Shared group and expense cards use ListTopToolbar with the complete paging state
+and ListBottomPager outside the card, including a filtered one-page result.
