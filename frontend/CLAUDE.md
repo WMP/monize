@@ -82,7 +82,7 @@ npm run docs:build         # Regenerate the user docs (website/docs/) from their
 
 **An unknown value is `null` and renders as unknown; a known zero renders as a number.** Never `?? 0`, `|| 0` or `?? 1` on an API value, never `connectNulls` by default, and never `> 0` or truthiness where `0` is a legitimate value. Decide which of the two states a branch is in before writing it.
 
-**A change to what a user sees or does updates its page in `website/docs/*.md`** in the same PR, then `npm run docs:build`; `website/README.md` has the conventions.
+**A change to what a user sees or does updates its page in `website/docs/*.md`** in the same PR, regenerates the screenshots of the screens it changed (`npm run docs:screenshots` in `e2e/`), then `npm run docs:build`; `website/README.md` has the conventions.
 
 **Every user-facing string is translated.** `useTranslations('namespace')`; catalogs in `src/i18n/messages/{locale}/{namespace}.json`, new namespaces registered in `src/i18n/messages.ts`. Develop English-first and run `npm run i18n:pseudo`; translate every other locale as the final commit on the PR (`src/i18n/messages.parity.test.ts`). Compose punctuation in the catalog, not in JSX, and never write `--` in copy. Full flow: `src/i18n/messages/README.md`.
 
