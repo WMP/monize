@@ -50,6 +50,7 @@
       "accountName": "[XX-Account Name-XX]",
       "type": "[XX-Type-XX]",
       "status": "[XX-Status-XX]",
+      "lastReconciled": "[XX-Last Reconciled-XX]",
       "balance": "[XX-Balance-XX]",
       "actions": "[XX-Actions-XX]"
     },
@@ -92,7 +93,10 @@
     "jointSharedBy": "[XX-Shared by {owner}-XX]",
     "jointSharedWith": "[XX-Shared with {count, plural, one {# person} other {# people}}-XX]",
     "includeInNetWorth": "[XX-Include in my net worth-XX]",
-    "excludeFromNetWorth": "[XX-Exclude from my net worth-XX]"
+    "excludeFromNetWorth": "[XX-Exclude from my net worth-XX]",
+    "neverReconciled": "[XX-Never-XX]",
+    "lastReconciledOn": "[XX-Reconciled {date}-XX]",
+    "neverReconciledCard": "[XX-Never reconciled-XX]"
   },
   "contextMenu": {
     "subtypeBrokerage": "[XX-Brokerage-XX]",

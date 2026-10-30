@@ -13,6 +13,7 @@ import type { RowAction } from '@/components/ui/row-actions/rowAction';
 import type { LogicalAccount } from '@/lib/logical-accounts';
 import { LinkIcon } from '@heroicons/react/24/outline';
 import { Badge } from '@/components/ui/Badge';
+import { useDateFormat } from '@/hooks/useDateFormat';
 
 export interface AccountActionLabels {
   viewTransactions: string;
@@ -44,6 +45,41 @@ export interface AccountActionHandlers {
   onDeleteClick: (account: Account) => void;
   // Joint rows only: the grantee's per-account net-worth exclusion toggle.
   onToggleNetWorthExclusion?: (account: Account) => void;
+}
+
+/**
+ * The ledger a row reconciles, or null when it has none. Reconciling means
+ * comparing a cash ledger against a statement: a pair reconciles its cash half,
+ * and a brokerage with no cash half has no such ledger. The Reconcile action
+ * and the Last Reconciled column both read it, so the date shown is always the
+ * one for the ledger that action opens.
+ */
+export function reconcileLedgerOf(
+  account: Account,
+  logical?: LogicalAccount,
+): Account | null {
+  if (logical) {
+    if (logical.cashRegisterId === null) return null;
+    return logical.cash ?? account;
+  }
+  return account.accountSubType === 'INVESTMENT_BROKERAGE' ? null : account;
+}
+
+/**
+ * What the Last Reconciled column says about a row: the date its ledger was
+ * last reconciled to, "Never" when nothing in it is reconciled, or nothing at
+ * all when it has no ledger to reconcile or the date is not known (a joint
+ * row, which only its owner reconciles).
+ */
+function lastReconciledOf(
+  account: Account,
+  logical?: LogicalAccount,
+): { kind: 'date'; date: string } | { kind: 'never' } | null {
+  const ledger = reconcileLedgerOf(account, logical);
+  if (!ledger || account.isJoint) return null;
+  const date = ledger.lastReconciledDate;
+  if (date === undefined) return null;
+  return date === null ? { kind: 'never' } : { kind: 'date', date };
 }
 
 /**
@@ -209,13 +245,7 @@ export function buildAccountActions(
     : Number(account.currentBalance) !== 0;
   // An unknown total is not a zero one: Close stays unavailable, and says why.
   const valueUnknown = !!logical && logical.combinedValue === null;
-  // Reconciling means comparing a cash ledger against a statement. A pair
-  // reconciles its cash half; a brokerage with no cash half has no such ledger.
-  const reconcileTargetId = logical
-    ? logical.cashRegisterId
-    : account.accountSubType === 'INVESTMENT_BROKERAGE'
-      ? null
-      : account.id;
+  const reconcileTargetId = reconcileLedgerOf(account, logical)?.id ?? null;
   // A joint row is another user's account shown natively: the account object
   // itself (edit/close/reopen/delete) and reconciliation stay owner-only. The
   // grantee instead gets their personal net-worth inclusion toggle.
@@ -400,6 +430,8 @@ export const AccountRow = memo(function AccountRow({
   onToggleNetWorthExclusion,
 }: AccountRowProps) {
   const t = useTranslations('accounts');
+  const { formatDate } = useDateFormat();
+  const lastReconciled = lastReconciledOf(account, logical);
   // Every figure in the row is in the account's own currency, named when that
   // is not the reader's. `Number` because a decimal column can arrive as text.
   const formatInAccountCurrency = (amount: number) =>
@@ -633,6 +665,13 @@ export const AccountRow = memo(function AccountRow({
                 />
               </AccountTypePill>
               <AccountStatusPill account={account} />
+              {lastReconciled && (
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {lastReconciled.kind === 'date'
+                    ? t('row.lastReconciledOn', { date: formatDate(lastReconciled.date) })
+                    : t('row.neverReconciledCard')}
+                </span>
+              )}
             </div>
           </div>
         </td>
@@ -706,6 +745,15 @@ export const AccountRow = memo(function AccountRow({
       </td>
       <td className={`${cellPadding} whitespace-nowrap hidden md:table-cell w-1`}>
         <AccountStatusPill account={account} />
+      </td>
+      <td className={`${cellPadding} whitespace-nowrap hidden lg:table-cell text-sm text-gray-500 dark:text-gray-400`}>
+        {/* Blank rather than a dash when there is nothing to say: a dash on
+            this list means a total that cannot be worked out. */}
+        {lastReconciled === null
+          ? null
+          : lastReconciled.kind === 'date'
+            ? formatDate(lastReconciled.date)
+            : t('row.neverReconciled')}
       </td>
       <td className={`${cellPadding} whitespace-nowrap text-right ${account.isClosed ? 'opacity-50' : ''}`}>
         {balance.figure}

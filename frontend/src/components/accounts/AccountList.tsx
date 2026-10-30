@@ -14,7 +14,12 @@ import { useAuthStore } from '@/store/authStore';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '@/lib/errors';
-import { AccountRow, buildAccountActions, type AccountActionLabels } from './AccountRow';
+import {
+  AccountRow,
+  buildAccountActions,
+  reconcileLedgerOf,
+  type AccountActionLabels,
+} from './AccountRow';
 import { useLongPress } from '@/hooks/useLongPress';
 import { RowActionSheet } from '@/components/ui/row-actions/RowActionSheet';
 import { useTableDensity } from '@/hooks/useTableDensity';
@@ -34,7 +39,7 @@ import { BUILT_IN_VIEW_DEFAULTS } from '@/lib/view-defaults';
 import { ChevronDownIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
 
-type SortField = 'name' | 'type' | 'balance' | 'status';
+type SortField = 'name' | 'type' | 'balance' | 'status' | 'lastReconciled';
 type SortDirection = 'asc' | 'desc';
 
 /**
@@ -48,6 +53,7 @@ const SORT_FIELD_LABEL_KEYS = [
   { field: 'name', labelKey: 'list.columns.accountName' },
   { field: 'type', labelKey: 'list.columns.type' },
   { field: 'status', labelKey: 'list.columns.status' },
+  { field: 'lastReconciled', labelKey: 'list.columns.lastReconciled' },
   { field: 'balance', labelKey: 'list.columns.balance' },
 ] as const satisfies ReadonlyArray<{ field: SortField; labelKey: string }>;
 
@@ -453,6 +459,13 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
           break;
         case 'status':
           comparison = (a.primary.isClosed ? 1 : 0) - (b.primary.isClosed ? 1 : 0);
+          break;
+        case 'lastReconciled':
+          // Ascending puts the longest-unreconciled first: never reconciled
+          // (and no ledger to reconcile) ahead of the oldest date.
+          comparison = (reconcileLedgerOf(a.primary, a)?.lastReconciledDate ?? '').localeCompare(
+            reconcileLedgerOf(b.primary, b)?.lastReconciledDate ?? '',
+          );
           break;
       }
       return sortDirection === 'asc' ? comparison : -comparison;
@@ -899,9 +912,9 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
               chosen field is persisted, so a header showing fewer fields than
               the sort can be in would leave the list ordered by something the
               phone can neither see nor undo. A slim control header carries all
-              four as buttons -- the card shows all four values -- and no column
+              five as buttons -- the card shows all five values -- and no column
               label of its own: the single card cell below holds name, balance,
-              type and status at once, so naming this header after any one of
+              type, status and last reconciled at once, so naming this header after any one of
               them would misdescribe the column to a screen reader. Each button
               names itself with the label of the field it sorts by. */}
           <thead className="bg-gray-50 dark:bg-gray-800">
@@ -964,6 +977,17 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
                 <ColumnSortLabel
                   label={t('list.columns.status')}
                   field="status"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                />
+              </th>
+              <th
+                className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 select-none hidden lg:table-cell w-1 whitespace-nowrap`}
+                onClick={() => handleSort('lastReconciled')}
+              >
+                <ColumnSortLabel
+                  label={t('list.columns.lastReconciled')}
+                  field="lastReconciled"
                   sortField={sortField}
                   sortDirection={sortDirection}
                 />
@@ -1039,6 +1063,7 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
                   </td>
                   <td className="hidden sm:table-cell" aria-hidden="true" />
                   <td className="hidden md:table-cell" aria-hidden="true" />
+                  <td className="hidden lg:table-cell" aria-hidden="true" />
                   <td className={`${cellPadding} text-right whitespace-nowrap`}>
                     <GroupHeaderTotal
                       total={item.total}

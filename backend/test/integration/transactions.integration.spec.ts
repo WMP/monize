@@ -4,6 +4,7 @@ import { TransactionsService } from "@/transactions/transactions.service";
 import { TransactionsModule } from "@/transactions/transactions.module";
 import { TransactionStatus } from "@/transactions/entities/transaction.entity";
 import { Account } from "@/accounts/entities/account.entity";
+import { AccountsService } from "@/accounts/accounts.service";
 import {
   createIntegrationModule,
   cleanTables,
@@ -282,6 +283,64 @@ describe("TransactionsService (integration)", () => {
       expect(found.category!.id).toBe(category.id);
       expect(found.category!.name).toBe("Utilities");
       expect(found.description).toBe("Electric bill");
+    });
+  });
+  describe("AccountsService.findAll() lastReconciledDate", () => {
+    /**
+     * The accounts list's Last Reconciled column: the statement date the
+     * reconcile stamped, not the newest reconciled row's own date, and the
+     * row's date for one reconciled without a stamp.
+     */
+    it("reports the statement date reconciled to, the row date without one, and null when never", async () => {
+      const accounts = module.get(AccountsService);
+      const stamped = await createTestAccount(dataSource, userId, {
+        name: "Stamped",
+        openingBalance: 0,
+        currentBalance: 0,
+      });
+      const never = await createTestAccount(dataSource, userId, {
+        name: "Never",
+        openingBalance: 0,
+        currentBalance: 0,
+      });
+
+      await withUserContext(userId, async () => {
+        const onStatement = await service.create(userId, {
+          accountId: stamped.id,
+          transactionDate: "2026-09-10",
+          amount: -25,
+          currencyCode: "USD",
+        });
+        await service.bulkReconcile(
+          userId,
+          stamped.id,
+          [onStatement.id],
+          "2026-09-15",
+        );
+        // Imported already reconciled, with no statement date of its own.
+        await service.create(userId, {
+          accountId,
+          transactionDate: "2026-08-01",
+          amount: -10,
+          currencyCode: "USD",
+          status: TransactionStatus.RECONCILED,
+        });
+        await service.create(userId, {
+          accountId: never.id,
+          transactionDate: "2026-09-01",
+          amount: -5,
+          currencyCode: "USD",
+          status: TransactionStatus.CLEARED,
+        });
+      });
+
+      const list = await withUserContext(userId, () =>
+        accounts.findAll(userId),
+      );
+      const byId = new Map(list.map((a) => [a.id, a.lastReconciledDate]));
+      expect(byId.get(stamped.id)).toBe("2026-09-15");
+      expect(byId.get(accountId)).toBe("2026-08-01");
+      expect(byId.get(never.id)).toBeNull();
     });
   });
 });

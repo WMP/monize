@@ -8,7 +8,10 @@ import {
   AccountType,
   AccountSubType,
 } from "./entities/account.entity";
-import { Transaction } from "../transactions/entities/transaction.entity";
+import {
+  Transaction,
+  TransactionStatus,
+} from "../transactions/entities/transaction.entity";
 import { InvestmentTransaction } from "../securities/entities/investment-transaction.entity";
 import { Holding } from "../securities/entities/holding.entity";
 import { Institution } from "../institutions/entities/institution.entity";
@@ -1829,6 +1832,43 @@ describe("AccountsService", () => {
 
       expect(result).toHaveLength(1);
       expect(result[0]).toHaveProperty("canDelete");
+    });
+
+    it("returns the date each account was last reconciled to, null when never", async () => {
+      const getMany = jest
+        .fn()
+        .mockResolvedValue([mockAccount, { ...mockAccount, id: "account-2" }]);
+      accountsRepository.createQueryBuilder.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany,
+      });
+      mockQueryRunner.query.mockImplementation(async (sql: string) =>
+        sql.includes('as "lastReconciledDate"')
+          ? [{ accountId: mockAccount.id, lastReconciledDate: "2026-09-15" }]
+          : [],
+      );
+
+      const result = await service.findAll("user-1");
+
+      expect(result.map((a) => a.lastReconciledDate)).toEqual([
+        "2026-09-15",
+        null,
+      ]);
+      const [sql, params] = (
+        mockQueryRunner.query.mock.calls as unknown[][]
+      ).find(([q]) => String(q).includes('as "lastReconciledDate"'))!;
+      // The statement date a reconcile stamped, falling back to the row's
+      // own date for one reconciled without it; split children never count.
+      expect(sql).toContain(
+        "MAX(COALESCE(t.reconciled_date, t.transaction_date))",
+      );
+      expect(sql).toContain("t.parent_transaction_id IS NULL");
+      expect(params).toEqual([
+        [mockAccount.id, "account-2"],
+        TransactionStatus.RECONCILED,
+      ]);
     });
 
     it("returns empty array when no accounts", async () => {

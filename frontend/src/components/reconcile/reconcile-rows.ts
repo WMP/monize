@@ -146,3 +146,47 @@ export function groupReconcileRows(
   }
   return groups;
 }
+
+/**
+ * The rows a reconciliation starts with ticked: every listed row dated on or
+ * before the statement date, whatever its status. With the statement balance
+ * pre-filled from the ledger, that opening selection already balances, and the
+ * user unticks what the statement does not show rather than ticking all of what
+ * it does.
+ *
+ * The server lists nothing after the statement date today; the date is still
+ * checked here so the selection does not depend on that.
+ */
+export function initialReconcileSelection(
+  rows: readonly Transaction[],
+  statementDate: string,
+): Set<string> {
+  return new Set(
+    rows.filter((row) => row.transactionDate <= statementDate).map((row) => row.id),
+  );
+}
+
+/**
+ * The selection after the list is reloaded inside the reconcile step.
+ *
+ * A row keeps whatever the user made of it while it stays listed; a row that
+ * has gone (deleted, or edited past the statement date) drops out rather than
+ * leaving a phantom in the selected total; and a row that has newly appeared
+ * is ticked by the {@link initialReconcileSelection} rule, so an added
+ * transaction behaves the way one already on the statement would.
+ */
+export function carryReconcileSelection(
+  previouslySelected: ReadonlySet<string>,
+  previouslyListed: ReadonlySet<string>,
+  rows: readonly Transaction[],
+  statementDate: string,
+): Set<string> {
+  const next = new Set<string>();
+  for (const row of rows) {
+    const keep = previouslyListed.has(row.id)
+      ? previouslySelected.has(row.id)
+      : row.transactionDate <= statementDate;
+    if (keep) next.add(row.id);
+  }
+  return next;
+}

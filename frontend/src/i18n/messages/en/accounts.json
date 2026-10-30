@@ -50,6 +50,7 @@
       "accountName": "Account Name",
       "type": "Type",
       "status": "Status",
+      "lastReconciled": "Last Reconciled",
       "balance": "Balance",
       "actions": "Actions"
     },
@@ -92,7 +93,10 @@
     "jointSharedBy": "Shared by {owner}",
     "jointSharedWith": "Shared with {count, plural, one {# person} other {# people}}",
     "includeInNetWorth": "Include in my net worth",
-    "excludeFromNetWorth": "Exclude from my net worth"
+    "excludeFromNetWorth": "Exclude from my net worth",
+    "neverReconciled": "Never",
+    "lastReconciledOn": "Reconciled {date}",
+    "neverReconciledCard": "Never reconciled"
   },
   "contextMenu": {
     "subtypeBrokerage": "Brokerage",
