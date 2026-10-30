@@ -506,11 +506,22 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
   }, [mode, watchedAccountId, transferToAccountId, accounts]);
 
   // Cross-currency transfer: typing either amount fills the other from the
-  // day's rate, while the other side is empty or still auto-filled.
+  // day's rate less the FX fee, while the other side is empty or still
+  // auto-filled. The fee is the sending account's, which is the one that
+  // converts; a receiving account's fee applies only when the sender has none.
+  const transferFxFeePercent = useMemo(() => {
+    if (!crossCurrencyInfo) return null;
+    const feeOf = (id: string) => {
+      const fee = accounts.find((a) => a.id === id)?.fxFeePercent;
+      return fee != null && Number(fee) > 0 ? Number(fee) : null;
+    };
+    return feeOf(watchedAccountId) ?? feeOf(transferToAccountId);
+  }, [crossCurrencyInfo, accounts, watchedAccountId, transferToAccountId]);
   const transferFx = useTransferFxAutofill({
     fromCurrency: crossCurrencyInfo?.fromCurrency ?? null,
     toCurrency: crossCurrencyInfo?.toCurrency ?? null,
     date: watchedDate,
+    fxFeePercent: transferFxFeePercent,
     amount: watchedAmount,
     targetAmount: transferTargetAmount,
     setAmount: (value) => setValue('amount', value, { shouldValidate: true }),

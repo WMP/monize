@@ -4955,6 +4955,40 @@ describe('TransactionForm', () => {
       );
     });
 
+    it('takes the sending account\'s FX fee out of the filled received amount', async () => {
+      mockAccountsGetAll.mockResolvedValue([
+        { ...mockAccounts[0], fxFeePercent: 2.5 },
+        ...mockAccounts.slice(1),
+      ]);
+      mockGetRateForDate.mockResolvedValue(0.73);
+      render(<TransactionForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} defaultAccountId="acc-1" />);
+      await waitFor(() => expect(screen.getByText('Transfer')).toBeInTheDocument());
+      fireEvent.click(screen.getByText('Transfer'));
+      await waitFor(() => expect(screen.getByText('To Account')).toBeInTheDocument());
+
+      const selects = document.querySelectorAll('select');
+      const toAccountSelect = Array.from(selects).find((s) =>
+        Array.from(s.options).some((o) => o.value === 'acc-3') && s.name !== 'accountId',
+      );
+      await act(async () => {
+        if (toAccountSelect) fireEvent.change(toAccountSelect, { target: { value: 'acc-3' } });
+      });
+      await waitFor(() =>
+        expect(mockGetRateForDate).toHaveBeenCalledWith('CAD', 'USD', expect.any(String)),
+      );
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText('Transfer Amount (CAD)'), { target: { value: '100' } });
+      });
+      // 73.00 at the market rate, less the 2.5% fee of 1.83.
+      await waitFor(() =>
+        expect((screen.getByLabelText('Amount Received (USD)') as HTMLInputElement).value).toBe('71.17'),
+      );
+    });
+
     it('keeps the amount positive when an expense category is chosen on a transfer', async () => {
       // Regression for the transfer category sign bug: selecting an expense
       // category in transfer mode must NOT flip the amount negative, or the

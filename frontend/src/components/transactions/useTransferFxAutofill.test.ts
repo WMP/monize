@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@/test/render';
 import { useState } from 'react';
-import { useTransferFxAutofill } from './useTransferFxAutofill';
+import { receivedForSent, sentForReceived, useTransferFxAutofill } from './useTransferFxAutofill';
 
 const mockGetRateForDate = vi.fn();
 vi.mock('@/lib/exchange-rates', () => ({
@@ -16,6 +16,7 @@ interface Options {
   date?: string;
   amount?: number;
   target?: number;
+  fee?: number | null;
 }
 
 /** The hook over real state, the way the transfer form holds both fields. */
@@ -26,15 +27,17 @@ function setup(options: Options = {}) {
     date = '2026-10-29',
     amount: initialAmount = 0,
     target: initialTarget,
+    fee = null,
   } = options;
   return renderHook(
-    ({ fromCurrency, toCurrency, txDate }) => {
+    ({ fromCurrency, toCurrency, txDate, fxFeePercent }) => {
       const [amount, setAmount] = useState<number | undefined>(initialAmount);
       const [targetAmount, setTargetAmount] = useState<number | undefined>(initialTarget);
       const handlers = useTransferFxAutofill({
         fromCurrency,
         toCurrency,
         date: txDate,
+        fxFeePercent,
         amount,
         targetAmount,
         setAmount,
@@ -42,7 +45,7 @@ function setup(options: Options = {}) {
       });
       return { amount, targetAmount, ...handlers };
     },
-    { initialProps: { fromCurrency: from, toCurrency: to, txDate: date } },
+    { initialProps: { fromCurrency: from, toCurrency: to, txDate: date, fxFeePercent: fee } },
   );
 }
 
@@ -134,7 +137,7 @@ describe('useTransferFxAutofill', () => {
     expect(result.current.targetAmount).toBe(73);
 
     mockGetRateForDate.mockResolvedValue(0.75);
-    rerender({ fromCurrency: 'CAD', toCurrency: 'USD', txDate: '2026-10-28' });
+    rerender({ fromCurrency: 'CAD', toCurrency: 'USD', txDate: '2026-10-28', fxFeePercent: null });
     await flushRate();
     expect(mockGetRateForDate).toHaveBeenLastCalledWith('CAD', 'USD', '2026-10-28');
     expect(result.current.targetAmount).toBe(75);
@@ -163,5 +166,53 @@ describe('useTransferFxAutofill', () => {
     await flushRate();
     act(() => result.current.handleTargetAmountChange(50));
     expect(result.current.amount).toBe(0);
+  });
+
+  describe('with an FX fee on the converting account', () => {
+    it('fills the received amount less the fee', async () => {
+      // 100 CAD at 0.73 is 73.00 USD; a 2.5% fee of 1.83 leaves 71.17.
+      const { result } = setup({ fee: 2.5 });
+      await flushRate();
+      act(() => result.current.handleAmountChange(100));
+      expect(result.current.targetAmount).toBe(71.17);
+    });
+
+    it('fills the amount that must be sent for a typed received amount', async () => {
+      const { result } = setup({ fee: 2.5 });
+      await flushRate();
+      // 50 / 0.975 / 0.73 = 70.2494; and 70.25 sent arrives as 51.28 - 1.28 = 50.00.
+      act(() => result.current.handleTargetAmountChange(50));
+      expect(result.current.amount).toBe(70.25);
+      expect(receivedForSent(70.25, 0.73, 2.5)).toBe(50);
+    });
+
+    it('re-derives an auto-filled side when the fee changes', async () => {
+      const { result, rerender } = setup();
+      await flushRate();
+      act(() => result.current.handleAmountChange(100));
+      expect(result.current.targetAmount).toBe(73);
+
+      rerender({ fromCurrency: 'CAD', toCurrency: 'USD', txDate: '2026-10-29', fxFeePercent: 2.5 });
+      await flushRate();
+      expect(result.current.targetAmount).toBe(71.17);
+    });
+  });
+});
+
+describe('receivedForSent / sentForReceived', () => {
+  it('apply no fee when none is set', () => {
+    expect(receivedForSent(100, 0.73, null)).toBe(73);
+    expect(receivedForSent(100, 0.73, 0)).toBe(73);
+    expect(sentForReceived(73, 0.73, undefined)).toBe(100);
+  });
+
+  it('round-trip through a fee', () => {
+    expect(receivedForSent(250, 1.365, 2.5)).toBe(332.72);
+    expect(sentForReceived(332.72, 1.365, 2.5)).toBe(250);
+  });
+
+  it('cannot invert a 100% fee', () => {
+    expect(receivedForSent(100, 0.73, 100)).toBe(0);
+    expect(sentForReceived(50, 0.73, 100)).toBeNull();
   });
 });
