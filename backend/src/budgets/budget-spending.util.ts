@@ -1,3 +1,15 @@
+import { createHash } from "node:crypto";
+import { reportingExecutionBasis } from "../accruals/reporting-basis";
+import {
+  reportingConversion,
+  tryReportingConversion,
+} from "../accruals/reporting-money";
+import {
+  currentBudgetPartialScope,
+  recordBudgetComponent,
+} from "../accruals/reporting-partial-budget";
+import type { ReportingBasis } from "../accruals/reporting-basis";
+import { reportingRawMany } from "../accruals/reporting-query";
 import { ObjectLiteral, Repository, SelectQueryBuilder } from "typeorm";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { TransactionSplit } from "../transactions/entities/transaction-split.entity";
@@ -153,6 +165,22 @@ interface SpendingRow {
   currencyCode: string;
   txDate: string;
   total: string | null;
+  originalCurrencyCode?: string | null;
+  exchangeRate?: string | number | null;
+}
+
+function withEnteredRates<T extends ObjectLiteral>(
+  qb: SelectQueryBuilder<T>,
+  userId: string,
+  basis?: ReportingBasis,
+) {
+  if (basis !== "cash" && reportingExecutionBasis(userId) === "accrual")
+    return qb
+      .addSelect("t.original_currency_code", "originalCurrencyCode")
+      .addSelect("t.exchange_rate", "exchangeRate")
+      .addGroupBy("t.original_currency_code")
+      .addGroupBy("t.exchange_rate");
+  return qb;
 }
 
 /**
@@ -178,6 +206,8 @@ export async function queryCategorySpending(
   budgetCategories: BudgetCategory[],
   periodStart: string,
   periodEnd: string,
+  _targetCurrency?: string,
+  basis?: ReportingBasis,
 ): Promise<CategorySpending> {
   const { currency, buckets } = await queryCategorySpendingBuckets(
     transactionsRepository,
@@ -187,6 +217,7 @@ export async function queryCategorySpending(
     periodStart,
     periodEnd,
     () => "",
+    basis,
   );
   return buckets.get("") ?? emptyCategorySpending(currency);
 }
@@ -220,6 +251,7 @@ export async function queryCategorySpendingBuckets(
   periodStart: string,
   periodEnd: string,
   bucketOf: (txDate: string) => string,
+  basis?: ReportingBasis,
 ): Promise<{ currency: string; buckets: Map<string, CategorySpending> }> {
   const buckets = new Map<string, CategorySpending>();
 
@@ -262,11 +294,19 @@ export async function queryCategorySpendingBuckets(
       .andWhere("t.transaction_date <= :periodEnd", { periodEnd })
       .andWhere("t.status != :void", { void: "VOID" })
       .andWhere("t.is_split = false");
-    const directRows = await excludeBudgetAccounts(directQb, excludedAccountIds)
-      .groupBy("t.category_id")
-      .addGroupBy("t.currency_code")
-      .addGroupBy("t.transaction_date")
-      .getRawMany();
+    const directRows = await reportingRawMany(
+      manager,
+      userId,
+      withEnteredRates(
+        excludeBudgetAccounts(directQb, excludedAccountIds)
+          .groupBy("t.category_id")
+          .addGroupBy("t.currency_code")
+          .addGroupBy("t.transaction_date"),
+        userId,
+        basis,
+      ),
+      basis,
+    );
     categoryRows.push(...directRows);
 
     const splitQb = splitsRepository
@@ -281,11 +321,19 @@ export async function queryCategorySpendingBuckets(
       .andWhere("t.transaction_date >= :periodStart", { periodStart })
       .andWhere("t.transaction_date <= :periodEnd", { periodEnd })
       .andWhere("t.status != :void", { void: "VOID" });
-    const splitRows = await excludeBudgetAccounts(splitQb, excludedAccountIds)
-      .groupBy("s.category_id")
-      .addGroupBy("t.currency_code")
-      .addGroupBy("t.transaction_date")
-      .getRawMany();
+    const splitRows = await reportingRawMany(
+      manager,
+      userId,
+      withEnteredRates(
+        excludeBudgetAccounts(splitQb, excludedAccountIds)
+          .groupBy("s.category_id")
+          .addGroupBy("t.currency_code")
+          .addGroupBy("t.transaction_date"),
+        userId,
+        basis,
+      ),
+      basis,
+    );
     categoryRows.push(...splitRows);
   }
 
@@ -301,26 +349,35 @@ export async function queryCategorySpendingBuckets(
     };
 
     transferRows.push(
-      ...(await outgoingParentTransfers(transactionsRepository, window)
-        .select(PARENT_TRANSFER_DESTINATION, "key")
-        .addSelect("t.currency_code", "currencyCode")
-        .addSelect(dateExpr, "txDate")
-        .addSelect(`COALESCE(ABS(SUM(${PARENT_TRANSFER_AMOUNT})), 0)`, "total")
-        .groupBy(PARENT_TRANSFER_DESTINATION)
-        .addGroupBy("t.currency_code")
-        .addGroupBy("t.transaction_date")
-        .getRawMany()),
+      ...(await withEnteredRates(
+        outgoingParentTransfers(transactionsRepository, window)
+          .select(PARENT_TRANSFER_DESTINATION, "key")
+          .addSelect("t.currency_code", "currencyCode")
+          .addSelect(dateExpr, "txDate")
+          .addSelect(
+            `COALESCE(ABS(SUM(${PARENT_TRANSFER_AMOUNT})), 0)`,
+            "total",
+          )
+          .groupBy(PARENT_TRANSFER_DESTINATION)
+          .addGroupBy("t.currency_code")
+          .addGroupBy("t.transaction_date"),
+        userId,
+        basis,
+      ).getRawMany()),
     );
     transferRows.push(
-      ...(await outgoingSplitTransfers(splitsRepository, window)
-        .select(SPLIT_TRANSFER_DESTINATION, "key")
-        .addSelect("t.currency_code", "currencyCode")
-        .addSelect(dateExpr, "txDate")
-        .addSelect(`COALESCE(ABS(SUM(${SPLIT_TRANSFER_AMOUNT})), 0)`, "total")
-        .groupBy(SPLIT_TRANSFER_DESTINATION)
-        .addGroupBy("t.currency_code")
-        .addGroupBy("t.transaction_date")
-        .getRawMany()),
+      ...(await withEnteredRates(
+        outgoingSplitTransfers(splitsRepository, window)
+          .select(SPLIT_TRANSFER_DESTINATION, "key")
+          .addSelect("t.currency_code", "currencyCode")
+          .addSelect(dateExpr, "txDate")
+          .addSelect(`COALESCE(ABS(SUM(${SPLIT_TRANSFER_AMOUNT})), 0)`, "total")
+          .groupBy(SPLIT_TRANSFER_DESTINATION)
+          .addGroupBy("t.currency_code")
+          .addGroupBy("t.transaction_date"),
+        userId,
+        basis,
+      ).getRawMany()),
     );
   }
 
@@ -341,13 +398,46 @@ export async function queryCategorySpendingBuckets(
   ): { totals: Map<string, FxAggregate>; pairs: Set<string> } => {
     const totals = new Map<string, FxAggregate>();
     const pairs = new Set<string>();
-    for (const row of rows) {
+    for (const [index, row] of rows.entries()) {
       let agg = totals.get(row.key);
       if (!agg) {
         agg = new FxAggregate();
         totals.set(row.key, agg);
       }
       const amount = parseFloat(row.total || "0");
+      if (basis !== "cash" && reportingExecutionBasis(userId) === "accrual") {
+        const source = {
+          currencyCode: row.currencyCode,
+          transactionDate: row.txDate,
+          originalCurrencyCode: row.originalCurrencyCode,
+          exchangeRate: row.exchangeRate,
+        };
+        const partial = currentBudgetPartialScope(userId);
+        const value = partial
+          ? tryReportingConversion(amount, source, currency, rateIndex)
+          : reportingConversion(amount, source, currency, rateIndex);
+        agg.add(value.amount, row.currencyCode, currency);
+        if (partial)
+          recordBudgetComponent(
+            userId,
+            createHash("sha256")
+              .update(
+                JSON.stringify([
+                  budgetCategories[0].budgetId,
+                  periodStart,
+                  periodEnd,
+                  index,
+                  row,
+                ]),
+              )
+              .digest("hex"),
+            currency,
+            row.txDate,
+            value.amount,
+            value.missingRatePair,
+          );
+        continue;
+      }
       // Same currency needs no rate, and neither does zero: a foreign group
       // that nets to nothing moves the category by nothing.
       if (row.currencyCode === currency || amount === 0) {

@@ -467,7 +467,9 @@
     "toasts": {
       "loadFailed": "Không thể tải báo cáo",
       "executeFailed": "Không thể thực thi báo cáo"
-    }
+    },
+    "limitedResults": "Giới hạn ở {limit, number} giao dịch phù hợp đầu tiên. Tất cả số liệu hiển thị đều là một phần. Thu hẹp ngày hoặc bộ lọc để có kết quả đầy đủ.",
+    "partialFigure": "(một phần)"
   },
   "debtPayoff": {
     "empty": "Không tìm thấy tài khoản nợ. Thêm khoản vay, thế chấp hoặc hạn mức tín dụng để xem lịch trình thanh toán.",
@@ -1944,7 +1946,10 @@
     "knownValue": "Giá trị đã biết",
     "weightingIntro": "Tỷ lệ phần trăm chỉ bao gồm các vị thế đã định giá được.",
     "weightingNoPrice": "Không có giá cho {symbols}: làm mới hoặc thêm giá trên trang chứng khoán.",
-    "weightingNoRate": "Không có tỷ giá cho {pairs}: thêm tỷ giá trên trang Tiền tệ."
+    "weightingNoRate": "Không có tỷ giá cho {pairs}: thêm tỷ giá trên trang Tiền tệ.",
+    "detailsLimited": "Một số chi tiết đã được lược bỏ. Thu hẹp ngày hoặc bộ lọc để xem thêm.",
+    "resultUnavailable": "Kết quả này chưa đầy đủ. Tổng và điểm tính toán không khả dụng cho đến khi thêm các tỷ giá còn thiếu.",
+    "knownComponents": "Các khoản tiền đã biết"
   },
   "sankey": {
     "help": "Tiền vào chảy qua phần giữa tới những gì đã chi tiêu, phần đã tiết kiệm hoặc đầu tư và phần đã trả nợ. Theo mặc định, báo cáo bao gồm các tài khoản thanh toán, tiết kiệm, tiền mặt, thẻ tín dụng và hạn mức tín dụng đang mở của bạn, và chuyển khoản giữa hai tài khoản trong số đó không được hiển thị. Hãy bỏ một tài khoản tiết kiệm khỏi bộ lọc tài khoản để xem bạn đã chuyển bao nhiêu vào đó. Thanh toán thẻ tín dụng không bao giờ là trả nợ: các giao dịch mua mà nó tất toán đã được tính là chi tiêu.",

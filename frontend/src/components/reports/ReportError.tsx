@@ -2,8 +2,11 @@
 
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
+import { BudgetFxIncompleteError } from '@/lib/budget-partial';
+import { BudgetFxPartialNotice } from './BudgetFxPartialNotice';
 
 interface ReportErrorProps {
+  error?: unknown;
   /** Optional override message; defaults to a generic load-failure note. */
   message?: string;
   /** When provided, renders a "Try Again" button that re-runs the fetch. */
@@ -16,8 +19,9 @@ interface ReportErrorProps {
  * genuinely no data or the request had failed. Paired with `useReportData`, this
  * gives every adopting report a visible, retryable error state.
  */
-export function ReportError({ message, onRetry }: ReportErrorProps) {
+export function ReportError({ message, onRetry, error }: ReportErrorProps) {
   const t = useTranslations('reports');
+  if (error instanceof BudgetFxIncompleteError) return <BudgetFxPartialNotice data={error.details} onRetry={onRetry} />;
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6 text-center">
       <p className="text-sm text-red-600 dark:text-red-400">

@@ -467,7 +467,9 @@
     "toasts": {
       "loadFailed": "Impossible de charger le rapport",
       "executeFailed": "Impossible d'exécuter le rapport"
-    }
+    },
+    "limitedResults": "Résultats limités aux {limit, number} premières transactions correspondantes. Tous les chiffres sont partiels. Réduisez les dates ou les filtres pour obtenir des résultats complets.",
+    "partialFigure": "(partiel)"
   },
   "debtPayoff": {
     "empty": "Aucun compte de dette trouvé. Ajoutez un prêt, un prêt hypothécaire ou une ligne de crédit pour voir le calendrier de remboursement.",
@@ -1944,7 +1946,10 @@
     "knownValue": "Valeur connue",
     "weightingIntro": "Les pourcentages ne couvrent que les positions qui ont pu être valorisées.",
     "weightingNoPrice": "Aucun cours pour {symbols} : actualisez ou ajoutez un cours sur la page du titre.",
-    "weightingNoRate": "Aucun taux de change pour {pairs} : ajoutez-en un sur la page Devises."
+    "weightingNoRate": "Aucun taux de change pour {pairs} : ajoutez-en un sur la page Devises.",
+    "detailsLimited": "Certains détails sont omis. Réduisez les dates ou les filtres pour en voir davantage.",
+    "resultUnavailable": "Ce résultat est incomplet. Les totaux et les scores calculés sont indisponibles tant que les taux de change manquants ne sont pas ajoutés.",
+    "knownComponents": "Montants connus"
   },
   "sankey": {
     "help": "L’argent reçu passe par le centre vers ce à quoi il a été dépensé, ce qui a été épargné ou placé et ce qui a remboursé des dettes. Par défaut, le rapport couvre vos comptes chèques, d’épargne, d’espèces, de carte de crédit et de marge de crédit ouverts, et un virement entre deux d’entre eux n’est pas affiché. Retirez un compte d’épargne du filtre de comptes pour voir ce que vous y avez transféré. Un paiement de carte de crédit n’est jamais un remboursement de dette : les achats qu’il règle sont déjà comptés comme dépenses.",

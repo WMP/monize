@@ -140,6 +140,8 @@ describe("TransactionConversionService", () => {
     manager.update.mockResolvedValue({ affected: 1 });
     manager.delete.mockResolvedValue({ affected: 1 });
     manager.find.mockResolvedValue([]);
+    // No accrual schedule anywhere unless a test says otherwise.
+    manager.query.mockResolvedValue([{ present: false }]);
 
     transactionsService = {
       findOne: jest.fn(),
@@ -478,6 +480,22 @@ describe("TransactionConversionService", () => {
       ).rejects.toBeInstanceOf(ConflictException);
       expect(manager.update).not.toHaveBeenCalled();
       expect(manager.save).not.toHaveBeenCalled();
+    });
+
+    it("refuses a row that is the source of an accrual schedule, writing nothing", async () => {
+      arrangeRow({ isSplit: true });
+      manager.query.mockResolvedValue([{ present: true }]);
+
+      await expect(
+        service.convertToTransfer(USER, ROW, transferDto),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(manager.query).toHaveBeenLastCalledWith(
+        expect.stringContaining("source_transaction_id=$2"),
+        [USER, ROW],
+      );
+      expect(manager.delete).not.toHaveBeenCalled();
+      expect(manager.update).not.toHaveBeenCalled();
+      expect(accountsService.updateBalance).not.toHaveBeenCalled();
     });
 
     it("reports a row that vanished under the lock as not found", async () => {

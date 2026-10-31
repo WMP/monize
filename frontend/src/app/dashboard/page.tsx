@@ -1,5 +1,6 @@
 'use client';
 
+import { ReportingBasisScope, ReportingBasisControl, useReportingBasis } from '@/components/reports/ReportingBasis';
 import { Fragment, useState, useEffect, useCallback, useMemo } from 'react';
 import { subMonths, format } from 'date-fns';
 import { useOnUndoRedo } from '@/hooks/useOnUndoRedo';
@@ -7,6 +8,8 @@ import { useOnAiAction } from '@/hooks/useOnAiAction';
 import { useTranslations } from 'next-intl';
 import { useAuthStore } from '@/store/authStore';
 import { usePreferencesStore } from '@/store/preferencesStore';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
 import { GettingStarted } from '@/components/dashboard/GettingStarted';
 import { CustomizeDashboardModal } from '@/components/dashboard/CustomizeDashboardModal';
 import {
@@ -26,7 +29,6 @@ import { TopMover, PortfolioSummary, FavouriteSecurityQuote } from '@/types/inve
 import { MonthlyNetWorth } from '@/types/net-worth';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { Button } from '@/components/ui/Button';
 import { Cog6ToothIcon } from '@heroicons/react/24/outline';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { usePriceRefresh } from '@/hooks/usePriceRefresh';
@@ -41,13 +43,15 @@ const logger = createLogger('Dashboard');
 export default function DashboardPage() {
   return (
     <ProtectedRoute>
-      <DashboardContent />
+      <ReportingBasisScope surface="dashboard" resetOnBasis><DashboardContent /></ReportingBasisScope>
     </ProtectedRoute>
   );
 }
 
 function DashboardContent() {
+  const basis = useReportingBasis();
   const t = useTranslations('dashboard');
+  const tc = useTranslations('common.recognitionDetails');
   const user = useAuthStore((s) => s.user);
   const actingAsUserId = useAuthStore((s) => s.actingAsUserId);
   const isDelegateView = !!actingAsUserId;
@@ -72,6 +76,8 @@ function DashboardContent() {
   const [favouriteSecurities, setFavouriteSecurities] = useState<FavouriteSecurityQuote[]>([]);
   const [hasSecurities, setHasSecurities] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [failedSources, setFailedSources] = useState<Array<'accounts' | 'scheduledTransactions'>>([]);
   const [showCustomize, setShowCustomize] = useState(false);
 
   const brokerageMarketValues = useMemo(() => {
@@ -166,9 +172,9 @@ function DashboardContent() {
         const twelveMonthsAgo = format(subMonths(new Date(), 12), 'yyyy-MM-dd');
 
         const [accountsData, scheduledData, netWorth, favouriteSecs, securitiesList] = await Promise.all([
-          accountsApi.getAll(),
-          scheduledTransactionsApi.getAll(),
-          netWorthApi.getMonthly({ startDate: twelveMonthsAgo, endDate: today }).catch((error) => {
+          accountsApi.getAll().catch(error => { logger.error('Failed to load dashboard accounts:', error); return null; }),
+          scheduledTransactionsApi.getAll().catch(error => { logger.error('Failed to load dashboard scheduled data:', error); return null; }),
+          netWorthApi.getMonthly({ basis, startDate: twelveMonthsAgo, endDate: today }).catch((error) => {
             logger.error('Failed to load net worth history:', error);
             return null;
           }),
@@ -176,14 +182,16 @@ function DashboardContent() {
           investmentsApi.getSecurities().catch(() => []),
         ]);
 
-        setAccounts(accountsData);
-        setScheduledTransactions(scheduledData);
+        setAccounts(accountsData ?? []);
+        setScheduledTransactions(scheduledData ?? []);
+        setFailedSources([...(accountsData === null ? ['accounts' as const] : []), ...(scheduledData === null ? ['scheduledTransactions' as const] : [])]);
+        setLoadError(false);
         setNetWorthData(netWorth ?? []);
         setNetWorthFailed(netWorth === null);
         setFavouriteSecurities(favouriteSecs);
         setHasSecurities(securitiesList.length > 0);
 
-        const investmentAccounts = accountsData.filter(
+        const investmentAccounts = (accountsData ?? []).filter(
           (a: Account) => a.accountType === 'INVESTMENT' && !a.isClosed,
         );
         // A linked pair is one investment account, not two.
@@ -204,12 +212,13 @@ function DashboardContent() {
         }
       } catch (error) {
         logger.error('Failed to load dashboard data:', error);
+        setLoadError(true);
       } finally {
         setIsLoading(false);
       }
     };
     return run();
-  }, [authHydrated, isDelegateView, delegateBills]);
+  }, [authHydrated, isDelegateView, delegateBills, basis]);
 
   const loadDashboardData = useCallback(() => {
     if (authHydrated) setIsLoading(true);
@@ -234,6 +243,7 @@ function DashboardContent() {
   const widgetContext: DashboardWidgetContext = {
     accounts,
     scheduledTransactions,
+    failedSources,
     topMovers,
     favouriteSecurities,
     netWorthData,
@@ -288,17 +298,19 @@ function DashboardContent() {
             }
           />
 
+          <ReportingBasisControl />
           {!isDelegateView && <GettingStarted />}
 
+          {loadError && <div role="alert" className="mb-4"><p>{tc('failed')}</p><Button onClick={() => loadDashboardData()}>{tc('retry')}</Button></div>}
           {/* Widget grid: consecutive visible widgets pair up into rows */}
           <div
             {...tourAnchor(TOUR_ANCHORS.dashboardWidgets)}
             className="grid grid-cols-1 lg:grid-cols-2 gap-6"
           >
-            {visibleWidgets
-              .filter((w) => !w.shouldRender || w.shouldRender(widgetContext))
+            {!loadError && visibleWidgets
+              .filter((w) => w.requires?.some(source => failedSources.includes(source)) || !w.shouldRender || w.shouldRender(widgetContext))
               .map((w) => (
-                <Fragment key={w.id}>{w.render(widgetContext)}</Fragment>
+                <Fragment key={w.id}>{w.requires?.some(source => failedSources.includes(source)) ? <Card className="p-6" role="alert"><h2 className="text-lg font-semibold mb-2">{t(`${w.titleSection}.title`)}</h2><p>{tc('failed')}</p><Button onClick={() => loadDashboardData()}>{tc('retry')}</Button></Card> : w.render(widgetContext)}</Fragment>
               ))}
           </div>
 

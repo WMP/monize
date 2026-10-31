@@ -1,3 +1,5 @@
+import { BudgetFxIncompleteError } from '@/lib/budget-partial';
+import { usePreferencesStore } from '@/store/preferencesStore';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, act, fireEvent, waitFor, within } from '@/test/render';
 import toast from 'react-hot-toast';
@@ -14,10 +16,11 @@ const mockPush = vi.fn();
 const stableRouter = { push: mockPush, replace: vi.fn() };
 /** Mutable so a test can arrive with `?tab=` the way a deep link does. */
 const searchParams = { current: new URLSearchParams() };
+const routeParams = { current: { id: 'payee-1' } };
 vi.mock('next/navigation', () => ({
   useRouter: () => stableRouter,
   usePathname: () => '/payees/payee-1',
-  useParams: () => ({ id: 'payee-1' }),
+  useParams: () => routeParams.current,
   useSearchParams: () => searchParams.current,
 }));
 
@@ -190,7 +193,9 @@ async function renderPage() {
 
 describe('PayeeDetailPage', () => {
   beforeEach(() => {
+    usePreferencesStore.setState({preferences:{accrualEnabled:true,reportingBasis:"accrual"} as never});
     vi.clearAllMocks();
+    routeParams.current = { id: 'payee-1' };
     chartProps.length = 0;
     searchParams.current = new URLSearchParams();
     mockGetDetail.mockResolvedValue(detailFixture());
@@ -209,6 +214,52 @@ describe('PayeeDetailPage', () => {
     });
   });
 
+  it('uses the user basis for trends and supports a view override', async () => {
+    usePreferencesStore.getState().updatePreferences({reportingBasis:'cash'});
+    await renderPage();
+    expect(mockGetMonthlyTotals).toHaveBeenLastCalledWith({basis:'cash', payeeIds:['payee-1']});
+    await act(async()=>fireEvent.click(screen.getByRole('button', { name: /^Accrual(?: \(user default\))?$/ })));
+    expect(mockGetMonthlyTotals).toHaveBeenLastCalledWith({basis:'accrual', payeeIds:['payee-1']});
+    expect(usePreferencesStore.getState().preferences?.reportingBasis).toBe('cash');
+    await act(async()=>usePreferencesStore.setState({preferences:null}));
+  });
+  it('keeps a failed monthly read local with retry rather than showing empty history', async () => {
+    mockGetMonthlyTotals.mockRejectedValueOnce(new Error('trend unavailable'));
+    await renderPage();
+    expect(screen.getAllByText(/failed to load report data/i)).toHaveLength(2);
+    expect(screen.getByRole('heading',{name:'Starbucks'})).toBeInTheDocument();
+    expect(screen.queryByTestId('chart')).not.toBeInTheDocument();
+    await act(async () => fireEvent.click(screen.getAllByRole('button',{name:/try again/i})[0]));
+    expect(screen.getByTestId('chart')).toBeInTheDocument();
+  });
+  it('shows known monthly amounts and repair guidance while withholding chart and seasonality', async () => {
+    mockGetMonthlyTotals.mockRejectedValueOnce(new BudgetFxIncompleteError(partialMonthly));
+    await renderPage();
+    expect(screen.getAllByTestId('budget-fx-partial')).toHaveLength(2);
+    for (const panel of screen.getAllByTestId('budget-fx-partial')) {
+      expect(panel).toHaveTextContent('USD → EUR');
+      expect(panel).toHaveTextContent('80');
+    }
+    expect(screen.queryByTestId('chart')).not.toBeInTheDocument();
+    expect(screen.queryByText('Seasonality')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading',{name:'Starbucks'})).toBeInTheDocument();
+  });
+
+  it('discards an old monthly partial response after switching payees', async () => {
+    let rejectOld!: (error: unknown) => void;
+    mockGetMonthlyTotals.mockReturnValueOnce(new Promise((_,reject) => {rejectOld = reject;}));
+    const next = detailFixture();
+    next.payee = {...next.payee,id:'payee-2',name:'Next payee'};
+    mockGetDetail.mockResolvedValueOnce(detailFixture()).mockResolvedValueOnce(next);
+    const view = await act(async () => render(<PayeeDetailPage />));
+    routeParams.current = {id:'payee-2'};
+    await act(async () => view.rerender(<PayeeDetailPage />));
+    expect(screen.getByRole('heading',{name:'Next payee'})).toBeInTheDocument();
+    await act(async () => rejectOld(new BudgetFxIncompleteError(partialMonthly)));
+    expect(screen.getByRole('heading',{name:'Next payee'})).toBeInTheDocument();
+    expect(screen.queryByTestId('budget-fx-partial')).not.toBeInTheDocument();
+    expect(screen.getByTestId('chart')).toBeInTheDocument();
+  });
   it('renders the header, cards and overview panels', async () => {
     await renderPage();
 
@@ -239,7 +290,7 @@ describe('PayeeDetailPage', () => {
     );
   });
 
-  it('survives every analytics call failing: the page still renders', async () => {
+  it('shows a retryable error when every analytics call fails', async () => {
     mockGetSummary.mockRejectedValue(new Error('summary down'));
     mockGetMonthlyTotals.mockRejectedValue(new Error('down'));
     mockGetGroupedTotals.mockRejectedValue(new Error('down'));
@@ -247,8 +298,9 @@ describe('PayeeDetailPage', () => {
 
     await renderPage();
 
-    expect(screen.getByRole('heading', { name: 'Starbucks' })).toBeInTheDocument();
-    expect(screen.getByText('Spent This Year')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    expect(screen.getByRole('button', {name:'Retry'})).toBeInTheDocument();
+    expect(screen.queryByTestId('chart')).not.toBeInTheDocument();
   });
 
   it('opens on the tab a deep link names', async () => {
@@ -266,7 +318,7 @@ describe('PayeeDetailPage', () => {
     // accountStatus=all, or the register hides payments made from an account
     // that has since been closed.
     expect(mockPush).toHaveBeenCalledWith(
-      '/transactions?payeeId=payee-1&accountStatus=all',
+      '/transactions?payeeId=payee-1&accountStatus=all&basis=accrual',
     );
   });
 
@@ -276,11 +328,12 @@ describe('PayeeDetailPage', () => {
     fireEvent.click(screen.getByText('Chequing'));
 
     expect(mockPush).toHaveBeenCalledWith(
-      '/transactions?payeeId=payee-1&accountStatus=all&accountId=acct-1',
+      '/transactions?payeeId=payee-1&accountStatus=all&accountId=acct-1&basis=accrual',
     );
   });
 
   it('carries accountStatus=all on a category row too', async () => {
+      usePreferencesStore.getState().updatePreferences({reportingBasis:'cash'});
     await renderPage();
 
     // "Coffee" is also the payee's default category in Key Information, so the
@@ -302,14 +355,14 @@ describe('PayeeDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /95\.20/ }));
 
     expect(mockPush).toHaveBeenCalledWith(
-      '/transactions?payeeId=payee-1&accountStatus=all&startDate=2025-12-24&endDate=2025-12-24',
+      '/transactions?payeeId=payee-1&accountStatus=all&startDate=2025-12-24&endDate=2025-12-24&basis=cash',
     );
   });
 
   it('asks for the whole history for the chart, not a window', async () => {
     await renderPage();
 
-    expect(mockGetMonthlyTotals).toHaveBeenCalledWith({ payeeIds: ['payee-1'] });
+    expect(mockGetMonthlyTotals).toHaveBeenCalledWith({ basis: 'accrual', payeeIds: ['payee-1'] });
   });
 
   describe('Top Categories range toggle', () => {
@@ -360,6 +413,7 @@ describe('PayeeDetailPage', () => {
     });
 
     it('drops the date filter from a category link when showing all time', async () => {
+      usePreferencesStore.getState().updatePreferences({reportingBasis:'cash'});
       await renderPage();
 
       const panel = screen.getByText('Top Categories').closest('section')!;
@@ -369,7 +423,7 @@ describe('PayeeDetailPage', () => {
       fireEvent.click(within(panel).getByText('Pastry'));
 
       expect(mockPush).toHaveBeenCalledWith(
-        '/transactions?payeeId=payee-1&accountStatus=all&categoryId=cat-2',
+        '/transactions?payeeId=payee-1&accountStatus=all&categoryId=cat-2&basis=cash',
       );
     });
 
@@ -392,6 +446,7 @@ describe('PayeeDetailPage', () => {
     });
 
     it('carries the 12-month window into a category link', async () => {
+      usePreferencesStore.getState().updatePreferences({reportingBasis:'cash'});
       await renderPage();
 
       const panel = screen.getByText('Top Categories').closest('section')!;
@@ -462,3 +517,10 @@ describe('PayeeDetailPage', () => {
     expect(mockReactivatePayee).toHaveBeenCalledWith('payee-1');
   });
 });
+
+const partialMonthly = {
+  fxComplete:false as const,result:null,total:null,currency:'EUR',
+  knownComponents:[{id:'monthly-known',currency:'EUR',date:'2026-06-15',knownSubtotal:-80}],
+  missingRatePairs:[{from:'USD',to:'EUR',date:'2026-06-30',reason:null}],
+  repair:'currency_rate_history' as const,fetchAttempted:false as const,
+};

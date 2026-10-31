@@ -1,3 +1,29 @@
+jest.mock("../accruals/reporting-money", () =>
+  jest
+    .requireActual("../test-helpers/reporting-read-testing")
+    .reportingMoneyMockModule(),
+);
+jest.mock("../accruals/reporting-custom-money", () =>
+  jest
+    .requireActual("../test-helpers/reporting-read-testing")
+    .reportingCustomMoneyMockModule(),
+);
+jest.mock("../accruals/reporting-basis", () =>
+  jest
+    .requireActual("../test-helpers/reporting-read-testing")
+    .reportingBasisMockModule(),
+);
+jest.mock("../accruals/reporting-query", () =>
+  jest
+    .requireActual("../test-helpers/reporting-read-testing")
+    .reportingQueryMockModule(),
+);
+jest.mock("../accruals/reporting-basis.interceptor", () =>
+  jest
+    .requireActual("../test-helpers/reporting-read-testing")
+    .reportingInterceptorMockModule(),
+);
+
 import { DataSource } from "typeorm";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
@@ -184,6 +210,7 @@ describe("ReportsService", () => {
     });
     qb.orWhere = jest.fn().mockReturnValue(qb);
     qb.orderBy = jest.fn().mockReturnValue(qb);
+    qb.addOrderBy = jest.fn().mockReturnValue(qb);
     qb.take = jest.fn().mockReturnValue(qb);
     qb.getMany = jest.fn().mockResolvedValue([]);
     // Apply overrides last
@@ -734,6 +761,37 @@ describe("ReportsService", () => {
 
       return { qb, report: fullReport };
     };
+
+    it.each([MetricType.TOTAL_AMOUNT, MetricType.COUNT])(
+      "returns bounded partial figures rather than a total when %s exceeds the row limit",
+      async (metric) => {
+        const transactions = Array.from({ length: 50001 }, (_, i) =>
+          createMockTransaction({ id: `limited-${i}`, amount: -1 }),
+        );
+        setupExecuteMocks(
+          { groupBy: GroupByType.NONE, config: { ...defaultConfig, metric } },
+          transactions,
+        );
+        const result = await service.execute("user-1", "report-1");
+        expect(result).toMatchObject({
+          truncated: true,
+          dataComplete: false,
+          rowLimit: 50000,
+          summary: {
+            total: null,
+            knownTotal: 50000,
+            count: 50000,
+            average: null,
+          },
+        });
+        const exported = await service.export("user-1", "report-1");
+        expect(exported).toMatchObject({
+          truncated: true,
+          dataComplete: false,
+        });
+        expect(exported.csv).toContain("dataComplete,truncated,rowLimit");
+      },
+    );
 
     it("executes a report with no transactions and returns empty data", async () => {
       setupExecuteMocks({
@@ -2013,6 +2071,8 @@ describe("ReportsService", () => {
 
           expect(result.data[0].value).toBe(2);
           expect(result.summary.total).toBe(2);
+          expect(result.data[0].percentage).toBe(100);
+          expect(result.missingCurrencies).toEqual([]);
         });
 
         it("leaves a zero amount in without a rate", async () => {
@@ -3526,7 +3586,7 @@ describe("ReportsService", () => {
         expect(groceries!.budgeted).toBe(200);
       });
 
-      it("returns original data when no budgets exist", async () => {
+      it("retains the upstream fallback when no budget exists", async () => {
         const transactions = [
           createMockTransaction({
             id: "tx-1",
@@ -3549,16 +3609,12 @@ describe("ReportsService", () => {
 
         budgetsService.findAll.mockResolvedValue([]);
 
-        const result = await service.execute("user-1", "report-1");
-
-        // Should return data without enrichment
-        const groceries = result.data.find((d) => d.label === "Groceries");
-        expect(groceries).toBeDefined();
-        expect(groceries!.value).toBe(50);
-        expect(groceries!.budgeted).toBeUndefined();
+        await expect(
+          service.execute("user-1", "report-1"),
+        ).resolves.toMatchObject({ data: [{ id: "cat-1", value: 50 }] });
       });
 
-      it("returns original data when budgets service throws an error", async () => {
+      it("propagates a failed budget lookup rather than labelling actuals as variance", async () => {
         const transactions = [
           createMockTransaction({
             id: "tx-1",
@@ -3581,12 +3637,9 @@ describe("ReportsService", () => {
 
         budgetsService.findAll.mockRejectedValue(new Error("DB error"));
 
-        const result = await service.execute("user-1", "report-1");
-
-        // Should gracefully return unenriched data
-        const groceries = result.data.find((d) => d.label === "Groceries");
-        expect(groceries).toBeDefined();
-        expect(groceries!.value).toBe(50);
+        await expect(service.execute("user-1", "report-1")).rejects.toThrow(
+          "DB error",
+        );
       });
 
       it("skips income budget categories", async () => {
@@ -4147,10 +4200,15 @@ describe("ReportsService", () => {
         );
         categoriesRepository.find.mockResolvedValue([mockCategory]);
 
-        // Mock budgets to return empty so enrichment returns original data
+        // A zero plan isolates metric precision while retaining the variance contract.
         (service as any).budgetsService = {
-          findAll: jest.fn().mockResolvedValue([]),
-          findOne: jest.fn(),
+          findAll: jest
+            .fn()
+            .mockResolvedValue([{ id: "budget-1", isActive: true }]),
+          findOne: jest.fn().mockResolvedValue({
+            currencyCode: "USD",
+            categories: [{ categoryId: "cat-1", amount: 0 }],
+          }),
         };
 
         const result = await service.execute("user-1", "report-1");

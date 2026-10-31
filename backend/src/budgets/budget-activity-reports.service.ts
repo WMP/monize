@@ -1,3 +1,4 @@
+import { ReportingRead } from "../accruals/reporting-basis";
 import { Injectable, Logger } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
@@ -40,6 +41,7 @@ export class BudgetActivityReportsService {
     private budgetsService: BudgetsService,
   ) {}
 
+  @ReportingRead()
   async getSeasonalPatterns(
     userId: string,
     budgetId: string,
@@ -118,6 +120,7 @@ export class BudgetActivityReportsService {
     return results;
   }
 
+  @ReportingRead()
   async getDailySpending(
     userId: string,
     budgetId: string,
@@ -199,6 +202,7 @@ export class BudgetActivityReportsService {
     }));
   }
 
+  @ReportingRead()
   async getFlexGroupStatus(
     userId: string,
     budgetId: string,

@@ -467,7 +467,9 @@
     "toasts": {
       "loadFailed": "Nie udało się załadować raportu",
       "executeFailed": "Nie udało się wykonać raportu"
-    }
+    },
+    "limitedResults": "Ograniczono do pierwszych {limit, number} pasujących transakcji. Wszystkie wyświetlane wartości są częściowe. Zawęź daty lub filtry, aby uzyskać pełne wyniki.",
+    "partialFigure": "(częściowe)"
   },
   "debtPayoff": {
     "empty": "Nie znaleziono kont zadłużenia. Dodaj pożyczkę, kredyt hipoteczny lub linię kredytową, aby zobaczyć harmonogram spłaty.",
@@ -1944,7 +1946,10 @@
     "knownValue": "Znana wartość",
     "weightingIntro": "Procenty obejmują tylko pozycje, które udało się wycenić.",
     "weightingNoPrice": "Brak ceny dla {symbols}: odśwież lub dodaj cenę na stronie papieru wartościowego.",
-    "weightingNoRate": "Brak kursu wymiany dla {pairs}: dodaj go na stronie Waluty."
+    "weightingNoRate": "Brak kursu wymiany dla {pairs}: dodaj go na stronie Waluty.",
+    "detailsLimited": "Pominięto część szczegółów. Zawęź daty lub filtry, aby zobaczyć więcej.",
+    "resultUnavailable": "Ten wynik jest niepełny. Sumy i obliczone oceny są niedostępne do czasu dodania brakujących kursów walut.",
+    "knownComponents": "Znane kwoty"
   },
   "sankey": {
     "help": "Pieniądze, które wpłynęły, płyną przez środek do tego, na co je wydano, co zaoszczędzono lub zainwestowano i co spłaciło długi. Domyślnie raport obejmuje Twoje otwarte konta osobiste, oszczędnościowe, gotówkowe, karty kredytowe i linie kredytowe, a przelew między dwoma z nich nie jest pokazywany. Usuń konto oszczędnościowe z filtra kont, aby zobaczyć, co na nie przelałeś. Spłata karty kredytowej nigdy nie jest spłatą długu: zakupy, które rozlicza, są już liczone jako wydatki.",

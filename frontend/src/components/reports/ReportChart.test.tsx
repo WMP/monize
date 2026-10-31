@@ -357,6 +357,48 @@ describe('ReportChart', () => {
     expect(onClick).toHaveBeenCalledWith('cat-1');
   });
 
+  it('carries incomplete-selection metadata into CSV and omits a complete PDF total', async () => {
+    const { exportToCsv } = await import('@/lib/csv-export');
+    const { exportToPdf } = await import('@/lib/pdf-export');
+    vi.mocked(exportToCsv).mockClear();
+    vi.mocked(exportToPdf).mockClear();
+    render(<ReportChart viewType={ReportViewType.TABLE} data={sampleData} groupBy={GroupByType.CATEGORY}
+      reportSubtitle="All figures are partial" completeness={{ dataComplete: false, truncated: true, rowLimit: 50000 }} />);
+    fireEvent.click(screen.getByRole('button', { name: /export/i }));
+    fireEvent.click(screen.getByText(/CSV/i));
+    const [, headers, rows] = vi.mocked(exportToCsv).mock.calls.at(-1)!;
+    expect(headers).toContain('dataComplete');
+    expect(rows[0][headers.indexOf('dataComplete')]).toBe('false');
+    expect(rows[0][headers.indexOf('rowLimit')]).toBe('50000');
+    // No unmarked Total row over a partial selection.
+    expect(rows).toHaveLength(sampleData.length);
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /export/i })); });
+    await act(async () => { fireEvent.click(screen.getByText(/PDF/i)); });
+    const pdf = vi.mocked(exportToPdf).mock.calls.at(-1)![0];
+    expect(pdf.subtitle).toBe('All figures are partial');
+    expect(pdf.tableData?.totalRow).toBeUndefined();
+  });
+
+  it('keeps the Total row of an incomplete selection when it is marked as a subtotal', async () => {
+    const { exportToCsv } = await import('@/lib/csv-export');
+    const { exportToPdf } = await import('@/lib/pdf-export');
+    vi.mocked(exportToCsv).mockClear();
+    vi.mocked(exportToPdf).mockClear();
+    render(<ReportChart viewType={ReportViewType.TABLE} data={sampleData} groupBy={GroupByType.CATEGORY}
+      tableColumns={[TableColumn.LABEL, TableColumn.VALUE]}
+      partialTotal={{ value: 800, missingCurrencies: [], excludedCount: 1 }}
+      completeness={{ dataComplete: false, truncated: true, rowLimit: 50000 }} />);
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /export/i })); });
+    await act(async () => { fireEvent.click(screen.getByText(/CSV/i)); });
+    const [, headers, rows] = vi.mocked(exportToCsv).mock.calls.at(-1)!;
+    expect(rows.at(-1)!.slice(0, 2)).toEqual(['Total', '800 (partial)']);
+    expect(rows.at(-1)![headers.indexOf('rowLimit')]).toBe('');
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /export/i })); });
+    await act(async () => { fireEvent.click(screen.getByText(/PDF/i)); });
+    const pdf = vi.mocked(exportToPdf).mock.calls.at(-1)![0];
+    expect(pdf.tableData?.totalRow?.[1]).toBe('$800.00 (partial)');
+  });
+
   it('exports csv', async () => {
     const { exportToCsv } = await import('@/lib/csv-export');
     render(

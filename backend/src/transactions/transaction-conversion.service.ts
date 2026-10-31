@@ -8,6 +8,8 @@ import {
 } from "@nestjs/common";
 import { DataSource, EntityManager } from "typeorm";
 import { AccountsService } from "../accounts/accounts.service";
+import { accrualErrors } from "../accruals/accrual-errors";
+import { transactionHasAccrualSchedule } from "../accruals/accrual-user-gate";
 import { ActionHistoryService } from "../action-history/action-history.service";
 import { isTransactionInFuture } from "../common/date-utils";
 import {
@@ -118,6 +120,11 @@ export class TransactionConversionService {
       });
       if (!row) throw notFound(transactionId);
       if (row.isTransfer || row.linkedTransactionId) throw alreadyATransfer();
+      // A transfer cannot carry an accrual schedule, and the split delete below
+      // would cascade away a split's one; the person removes it first.
+      if (await transactionHasAccrualSchedule(m, userId, transactionId)) {
+        throw accrualErrors.convertToTransfer();
+      }
 
       affectedAccountIds.add(locked.accountId);
       affectedAccountIds.add(dto.fromAccountId);

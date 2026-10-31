@@ -1,9 +1,11 @@
 "use client";
 
+import { useReportExportMetadata } from '@/hooks/useReportExportMetadata';
+import { useReportingBasis, useReportingRouter } from './ReportingBasis';
 import { useState, useMemo, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Skeleton } from '@/components/ui/LoadingSkeleton';
-import { useRouter } from "next/navigation";
+
 import { endOfMonth, format } from "date-fns";
 import {
   BarChart,
@@ -26,7 +28,6 @@ import { ReportToolbarActions } from '@/components/reports/ReportToolbarActions'
 import { ChartViewToggle } from "@/components/ui/ChartViewToggle";
 import { SortableHeader } from "@/components/ui/SortableHeader";
 import { TH_CLASS, Th } from "@/components/ui/Table";
-import { exportToCsv } from "@/lib/csv-export";
 import { useReportData } from "@/hooks/useReportData";
 import { ReportError } from "@/components/reports/ReportError";
 import { PartialDataNotice } from "@/components/reports/PartialDataNotice";
@@ -107,8 +108,10 @@ function YearOverYearTooltip({ active, payload, label, formatCurrency }: YearOve
 }
 
 export function YearOverYearReport() {
+  const { exportCsvWithBasis, withPdfBasis } = useReportExportMetadata();
+  const basis = useReportingBasis();
   const t = useTranslations('reports');
-  const router = useRouter();
+  const router = useReportingRouter();
   const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatSignedPercent, defaultCurrency } =
     useNumberFormat();
   const tCommon = useTranslations('common');
@@ -125,8 +128,9 @@ export function YearOverYearReport() {
   );
 
   const { data: response, isLoading, error, reload } = useReportData(
-    () => builtInReportsApi.getYearOverYear(yearsToCompare),
-    [yearsToCompare],
+    () => builtInReportsApi.getYearOverYear(yearsToCompare, ...(basis ? [basis] as const : [])),
+    [yearsToCompare, basis],
+    { requestKey: JSON.stringify([yearsToCompare, basis]), maskStaleData: true },
   );
 
   const yearData = useMemo<YearData[]>(() => response?.data ?? [], [response]);
@@ -243,7 +247,7 @@ export function YearOverYearReport() {
       moneyText(year, "savings"),
     ]);
 
-    await exportToPdf({
+    await exportToPdf(withPdfBasis({
       title: t('yearOverYear.pdfTitle'),
       subtitle: `${t(`yearOverYear.${metric}`)} | ${years[0]} - ${years[years.length - 1]}`,
       summaryCards: cards,
@@ -255,7 +259,7 @@ export function YearOverYearReport() {
         rows: summaryRows,
       }],
       filename: "year-over-year",
-    });
+    }));
   };
 
   const handleExportCsv = () => {
@@ -264,7 +268,7 @@ export function YearOverYearReport() {
       row.name,
       ...years.map((year) => Number(row[year]) || 0),
     ]);
-    exportToCsv(`year-over-year-${metric}`, headers, rows);
+    exportCsvWithBasis(`year-over-year-${metric}`, headers, rows);
   };
 
   if (error) {

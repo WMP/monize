@@ -95,6 +95,7 @@ export function keyBearingExportTables(): readonly string[] {
 export const INTENTIONALLY_EXCLUDED_TABLES: ReadonlySet<string> = new Set([
   "users", // the account row itself; a restore targets an existing user
   "action_history", // undo/redo log, wiped on restore (not undoable to prior state)
+  "accrual_history_chunks", // transient undo payloads; parent wipe/pruning cascades them
   "ai_insights", // regenerable AI cache
   "ai_usage_logs", // usage telemetry, not user content
   // The OPERATOR's Google Places counter. Deliberately not exported while
@@ -401,6 +402,18 @@ export function buildExportTableQueries(
     {
       key: "warranty_claims",
       sql: "SELECT * FROM warranty_claims WHERE user_id = $1 ORDER BY claim_date, created_at, id",
+    },
+    {
+      key: "accrual_system_accounts",
+      sql: "SELECT * FROM accrual_system_accounts WHERE user_id = $1 ORDER BY created_at, id",
+    },
+    {
+      key: "accrual_schedules",
+      sql: "SELECT * FROM accrual_schedules WHERE user_id = $1 ORDER BY created_at, id",
+    },
+    {
+      key: "accrual_allocations",
+      sql: "SELECT * FROM accrual_allocations WHERE user_id = $1 ORDER BY schedule_id, period_index",
     },
     {
       // Attachment metadata. Restored after transactions (FK) and before

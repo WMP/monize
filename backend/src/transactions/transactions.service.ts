@@ -1,3 +1,22 @@
+import { executeReportingRead } from "../accruals/reporting-execution";
+import {
+  reportingIdentityQuery,
+  reportingIdentityPage,
+} from "../accruals/reporting-identity-query";
+import { resolveReportingExecution } from "../accruals/reporting-basis";
+import {
+  applyReportingBasis,
+  reportingEntities,
+} from "../accruals/reporting-query";
+import type { ReportingBasis } from "../accruals/reporting-basis";
+import type { IncrementalSplitPreviewDto } from "./dto/incremental-split.dto";
+import { captureAccrualHistorySnapshot } from "../accruals/accrual-history-snapshot";
+import {
+  verifySourceAccrualEdit,
+  removeReviewedAccruals,
+  deleteReplacedSplits,
+} from "../accruals/accrual-source-edit";
+import { refreshSourceAccruals } from "../accruals/accrual-lifecycle";
 import { createBondWriteGuard } from "../bonds/bond-write-guard";
 import { readEmbeddedSeriesCarry } from "../bonds/embedded-series-carry";
 import {
@@ -1288,7 +1307,16 @@ export class TransactionsService {
     hasAttachments?: boolean,
     jointAccountIds: string[] = [],
     externalId?: string,
+    basis: ReportingBasis = "cash",
   ): Promise<PaginatedTransactions> {
+    basis = await withScopedDb(this.dataSource, (manager) =>
+      resolveReportingExecution(manager, userId, basis, jointAccountIds),
+    );
+    if (basis === "accrual" && targetTransactionId) {
+      throw new BadRequestException(
+        "Open the original payment in cash view to locate a source transaction",
+      );
+    }
     // A page number for one row is counted by comparing that row against the
     // register's order, and only the date order has a comparison to make here
     // (see calculateTargetPage). Refusing is what stops a deep link silently
@@ -1454,7 +1482,7 @@ export class TransactionsService {
         // (attachment-parent.ts).
         const existsSubquery =
           `SELECT 1 FROM transaction_attachments ta WHERE ` +
-          `${attachmentReachableFromTransactionSql("ta", "transaction.id")} ` +
+          `${attachmentReachableFromTransactionSql("ta", basis === "accrual" ? "transaction.source_transaction_id" : "transaction.id")} ` +
           `AND ${primaryAttachmentSql("ta")}`;
         queryBuilder.andWhere(
           hasAttachments
@@ -1479,10 +1507,42 @@ export class TransactionsService {
 
       const skip = (safePage - 1) * safeLimit;
 
-      const [data, total] = await queryBuilder
-        .skip(skip)
-        .take(safeLimit)
-        .getManyAndCount();
+      if (basis === "accrual") {
+        queryBuilder.setParameter("analyticsScopeJointIds", jointAccountIds);
+        await applyReportingBasis(m, userId, queryBuilder, "accrual");
+      }
+      const { total, identities } = await executeReportingRead(
+        m,
+        basis,
+        async () => ({
+          total: await reportingIdentityQuery(queryBuilder, false).getCount(),
+          identities: await reportingIdentityPage(
+            queryBuilder,
+            skip,
+            safeLimit,
+          ),
+        }),
+      );
+      const pageIds = identities.map((row) => row.id);
+      let data: Transaction[] = [];
+      if (pageIds.length) {
+        const pageQuery = queryBuilder
+          .clone()
+          .andWhere("transaction.id IN (:...__registerPageIds)", {
+            __registerPageIds: pageIds,
+          });
+        data =
+          basis === "accrual"
+            ? await reportingEntities(m, userId, pageQuery, {
+                basis: "accrual",
+                preserveReportIds: true,
+              })
+            : await pageQuery.getMany();
+        const rows = new Map(data.map((row) => [row.id, row]));
+        data = pageIds
+          .map((id) => rows.get(id))
+          .filter((row): row is Transaction => row !== undefined);
+      }
 
       let startingBalance: number | undefined;
       let startingBalanceWithheld: "sort" | undefined;
@@ -1515,7 +1575,9 @@ export class TransactionsService {
         data.length > 0
       );
 
-      if (sortBy !== "date") {
+      if (basis === "accrual") {
+        // Recognition rows are not a bank balance and never seed reconciliation.
+      } else if (sortBy !== "date") {
         // A running balance is a figure about the row above, so it means
         // nothing beside a register ordered by payee or amount. It is withheld
         // rather than computed-and-ignored (three queries saved), and the flag
@@ -2463,7 +2525,9 @@ export class TransactionsService {
     m: EntityManager,
     data: Transaction[],
   ): Promise<TransactionWithInvestmentLink[]> {
-    const transactionIds = data.map((tx) => tx.id);
+    const sourceId = (tx: Transaction) =>
+      tx.reportingProvenance?.sourceTransactionId ?? tx.id;
+    const transactionIds = data.map(sourceId);
     const investmentLinkMap = new Map<string, string>();
     const attachmentCountMap = new Map<string, number>();
     const warrantyCountMap = new Map<string, number>();
@@ -2534,9 +2598,10 @@ export class TransactionsService {
       isCleared: tx.isCleared,
       isReconciled: tx.isReconciled,
       isVoid: tx.isVoid,
-      linkedInvestmentTransactionId: investmentLinkMap.get(tx.id) || null,
-      attachmentCount: attachmentCountMap.get(tx.id) ?? 0,
-      warrantyCount: warrantyCountMap.get(tx.id) ?? 0,
+      linkedInvestmentTransactionId:
+        investmentLinkMap.get(sourceId(tx)) || null,
+      attachmentCount: attachmentCountMap.get(sourceId(tx)) ?? 0,
+      warrantyCount: warrantyCountMap.get(sourceId(tx)) ?? 0,
     }));
   }
 
@@ -2661,6 +2726,9 @@ export class TransactionsService {
        * (an AI review request marked applied) commits or rolls back with it.
        */
       beforeWrite?: (m: EntityManager) => Promise<void>;
+      /** Combined accrual editor verifies its complete preview under this lock. */
+      reviewAccrualEditor?: (m: EntityManager) => Promise<string | null>;
+      afterSourceWrite?: (m: EntityManager) => Promise<void>;
       /**
        * Tag names to ADD to the transaction, inside the write's transaction:
        * the user's tag of that name (case-insensitively) or a new one, linked
@@ -2690,6 +2758,7 @@ export class TransactionsService {
   ): Promise<Transaction> {
     const transaction = await this.findOne(userId, id);
     const beforeSnapshot = this.snapshotTransaction(transaction);
+    const afterAccrualSnapshot: Record<string, unknown> = {};
     const oldAccountId = transaction.accountId;
     // Accounts touched by split-transfer counterpart propagation, reported by the
     // helper because this method cannot know them in advance. The authoritative
@@ -2701,7 +2770,13 @@ export class TransactionsService {
     // commit (INV-BOND-005, INV-CACHE-001).
     const touchedSecurityIds = new Set<string>();
 
-    const { splits, tagIds, createdAt, ...updateData } = updateTransactionDto;
+    const {
+      splits,
+      tagIds,
+      createdAt,
+      accrualImpactFingerprint,
+      ...updateData
+    } = updateTransactionDto;
 
     // The account the row will belong to after this update, which is what its
     // primary currency must match. Loaded here so the currency assertion and the
@@ -2722,18 +2797,15 @@ export class TransactionsService {
     // payee record -- mirroring create().
     if (updateData.payeeId) {
       await this.payeesService.findOne(userId, updateData.payeeId);
-    } else if (
+    }
+    // Defer this write until all locked source/accrual expectations pass.
+    const deferredPayeeName =
+      !updateData.payeeId &&
       options?.createPayeeIfMissing &&
       typeof updateData.payeeName === "string" &&
       updateData.payeeName.trim().length > 0
-    ) {
-      const payee = await this.payeesService.findOrCreate(
-        userId,
-        updateData.payeeName.trim(),
-      );
-      updateData.payeeId = payee.id;
-      updateData.payeeName = payee.name;
-    }
+        ? updateData.payeeName.trim()
+        : null;
     // Provider rate lookups for cross-currency transfer children happen out
     // here, before the transaction opens; see prewarmSplitTransferRates.
     if (Array.isArray(splits) && splits.length > 0) {
@@ -2859,8 +2931,39 @@ export class TransactionsService {
           ),
         );
       }
+      const editorImpact = options?.reviewAccrualEditor
+        ? await options.reviewAccrualEditor(m)
+        : undefined;
+      const accrualEdit = await verifySourceAccrualEdit(
+        m,
+        userId,
+        id,
+        updateTransactionDto,
+        editorImpact === undefined
+          ? accrualImpactFingerprint
+          : (editorImpact ?? undefined),
+      );
+      const maintainsAccrual =
+        accrualEdit.impacts.length > 0 || Boolean(options?.afterSourceWrite);
+      if (maintainsAccrual)
+        await captureAccrualHistorySnapshot(
+          m,
+          userId,
+          id,
+          beforeSnapshot,
+          Boolean(options?.afterSourceWrite),
+        );
       if (options?.beforeWrite) await options.beforeWrite(m);
       if (changesAccount) this.assertAccountOpen(effectiveAccount);
+      await removeReviewedAccruals(m, userId, accrualEdit);
+      if (deferredPayeeName) {
+        const payee = await this.payeesService.findOrCreate(
+          userId,
+          deferredPayeeName,
+        );
+        updateData.payeeId = payee.id;
+        updateData.payeeName = payee.name;
+      }
 
       const oldAmount = locked.amount;
       const oldLockedAccountId = locked.accountId;
@@ -2899,9 +3002,7 @@ export class TransactionsService {
           )) {
             counterpartAccountIds.add(acc);
           }
-          await m.delete(TransactionSplit, {
-            transactionId: id,
-          });
+          await deleteReplacedSplits(m, id, accrualEdit.retainedCategoryIds);
 
           // Fallbacks come off the locked row, never the caller's snapshot: the
           // counterpart and embedded investment rows describe the parent's
@@ -2926,6 +3027,9 @@ export class TransactionsService {
                 ((locked.status ?? undefined) as TransactionStatus | undefined),
               carriedSeries,
               touchedSecurityIds,
+              ...(accrualEdit.retainedCategoryIds.size
+                ? { retainedCategoryIds: accrualEdit.retainedCategoryIds }
+                : {}),
             },
             counterpartAccountIds,
           );
@@ -2943,9 +3047,7 @@ export class TransactionsService {
           )) {
             counterpartAccountIds.add(acc);
           }
-          await m.delete(TransactionSplit, {
-            transactionId: id,
-          });
+          await deleteReplacedSplits(m, id, accrualEdit.retainedCategoryIds);
           await m.update(Transaction, id, {
             isSplit: false,
           });
@@ -3165,6 +3267,16 @@ export class TransactionsService {
           await this.accountsService.touchAccount(userId, newAccountId);
         }
       }
+      if (maintainsAccrual) await refreshSourceAccruals(m, userId, id);
+      if (options?.afterSourceWrite) await options.afterSourceWrite(m);
+      if (maintainsAccrual)
+        await captureAccrualHistorySnapshot(
+          m,
+          userId,
+          id,
+          afterAccrualSnapshot,
+          Boolean(beforeSnapshot.accrualState?.schedules.length),
+        );
     });
 
     const finalTransaction = await this.findOne(userId, id);
@@ -3211,7 +3323,10 @@ export class TransactionsService {
       entityId: id,
       action: "update",
       beforeData: beforeSnapshot,
-      afterData: this.snapshotTransaction(finalTransaction),
+      afterData: {
+        ...this.snapshotTransaction(finalTransaction),
+        ...afterAccrualSnapshot,
+      },
       description: `Updated transaction ${finalTransaction.payeeName || ""} ${formatCurrency(Number(finalTransaction.amount), finalTransaction.currencyCode)}`,
       descriptionKey: "updatedTransaction",
       descriptionParams: {
@@ -3312,6 +3427,8 @@ export class TransactionsService {
         throw investmentCashLegLockedError();
       }
       if (options?.beforeWrite) await options.beforeWrite(m);
+
+      await captureAccrualHistorySnapshot(m, userId, id, beforeSnapshot);
 
       // The locked row's account joins the fan-out set: a concurrent edit could
       // have moved the row, and the balance reversal below uses locked.accountId.
@@ -3482,6 +3599,7 @@ export class TransactionsService {
     userId: string,
     id: string,
     status: TransactionStatus,
+    accrualImpactFingerprint?: string,
   ): Promise<Transaction> {
     return this.reconciliationService.updateStatus(
       userId,
@@ -3490,6 +3608,9 @@ export class TransactionsService {
       (accountId: string, userId: string) =>
         this.netWorthService.triggerDebouncedRecalc(accountId, userId),
       this.findOne.bind(this),
+      ...(accrualImpactFingerprint === undefined
+        ? []
+        : [accrualImpactFingerprint]),
     );
   }
 
@@ -3705,23 +3826,64 @@ export class TransactionsService {
     userId: string,
     transactionId: string,
     splits: CreateTransactionSplitDto[],
+    accrualImpactFingerprint?: string,
   ) {
     const transaction = await this.findOne(userId, transactionId);
-    return this.splitService.updateSplits(transaction, splits, userId);
+    return accrualImpactFingerprint === undefined
+      ? this.splitService.updateSplits(transaction, splits, userId)
+      : this.splitService.updateSplits(
+          transaction,
+          splits,
+          userId,
+          accrualImpactFingerprint,
+        );
+  }
+
+  async previewIncrementalSplit(
+    userId: string,
+    transactionId: string,
+    command: IncrementalSplitPreviewDto,
+  ) {
+    const transaction = await this.findOne(userId, transactionId);
+    return this.splitService.previewIncrementalSplit(
+      transaction,
+      command,
+      userId,
+    );
   }
 
   async addSplit(
     userId: string,
     transactionId: string,
     splitDto: CreateTransactionSplitDto,
+    accrualImpactFingerprint?: string,
   ) {
     const transaction = await this.findOne(userId, transactionId);
-    return this.splitService.addSplit(transaction, splitDto, userId);
+    return accrualImpactFingerprint === undefined
+      ? this.splitService.addSplit(transaction, splitDto, userId)
+      : this.splitService.addSplit(
+          transaction,
+          splitDto,
+          userId,
+          accrualImpactFingerprint,
+        );
   }
 
-  async removeSplit(userId: string, transactionId: string, splitId: string) {
+  async removeSplit(
+    userId: string,
+    transactionId: string,
+    splitId: string,
+    accrualImpactFingerprint?: string,
+  ) {
     const transaction = await this.findOne(userId, transactionId);
-    return this.splitService.removeSplit(transaction, splitId, userId);
+    return accrualImpactFingerprint === undefined
+      ? this.splitService.removeSplit(transaction, splitId, userId)
+      : this.splitService.removeSplit(
+          transaction,
+          splitId,
+          userId,
+          accrualImpactFingerprint,
+        );
   }
 
   async createTransfer(
@@ -3988,6 +4150,10 @@ export class TransactionsService {
     }
 
     return result;
+  }
+
+  previewBulkUpdate(userId: string, dto: BulkUpdateDto) {
+    return this.bulkUpdateService.previewBulkUpdate(userId, dto);
   }
 
   async bulkUpdate(

@@ -1,5 +1,6 @@
-'use client';
+"use client";
 
+import { ReportingBasisScope, ReportingBasisControl, useReportingBasis } from '@/components/reports/ReportingBasis';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -25,13 +26,16 @@ import { docsUrl } from '@/lib/docs-links';
 export default function BudgetsPage() {
   return (
     <ProtectedRoute>
-      <BudgetsContent />
+      <ReportingBasisScope surface="budgets" resetOnBasis>
+        <BudgetsContent />
+      </ReportingBasisScope>
     </ProtectedRoute>
   );
 }
 
 function BudgetsContent() {
-  const t = useTranslations('budgets');
+  const basis = useReportingBasis();
+  const t = useTranslations("budgets");
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,25 +48,29 @@ function BudgetsContent() {
     // Writes live in `run` so they land after the request, not during the effect.
     const run = async () => {
       try {
-        const data = await budgetsApi.getAll();
+        const data = await budgetsApi.getAll(
+          ...(basis ? ([basis] as const) : []),
+        );
         setBudgets(data);
       } catch (error) {
         // A 403 here means a delegate hit /budgets without the section
         // grant; DelegateSectionGuard already shows the single, consistent
         // "no access" message and redirects, so don't double-toast.
         const status =
-          typeof error === 'object' && error && 'response' in error
+          typeof error === "object" && error && "response" in error
             ? (error as { response?: { status?: number } }).response?.status
             : undefined;
         if (status !== 403) {
-          toast.error(getErrorMessage(error, t('pages.detail.toasts.loadFailed')));
+          toast.error(
+            getErrorMessage(error, t("pages.detail.toasts.loadFailed")),
+          );
         }
       } finally {
         setIsLoading(false);
       }
     };
     return run();
-  }, [t]);
+  }, [t, basis]);
 
   const loadBudgets = useCallback(() => {
     setIsLoading(true);
@@ -71,7 +79,10 @@ function BudgetsContent() {
 
   useEffect(() => {
     fetchBudgets();
-    accountsApi.getAll().then(setAccounts).catch(() => {});
+    accountsApi
+      .getAll()
+      .then(setAccounts)
+      .catch(() => {});
   }, [fetchBudgets]);
 
   useOnUndoRedo(loadBudgets);
@@ -87,9 +98,10 @@ function BudgetsContent() {
     return (
       <PageLayout>
         <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">
+          <ReportingBasisControl />
           <PageHeader
-            title={t('pages.create.title')}
-            subtitle={t('pages.create.subtitle')}
+            title={t("pages.create.title")}
+            subtitle={t("pages.create.subtitle")}
           />
           <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
             <BudgetWizard
@@ -107,13 +119,14 @@ function BudgetsContent() {
   return (
     <PageLayout>
       <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">
+        <ReportingBasisControl />
         <PageHeader
           title={t('pages.list.title')}
           subtitle={t('pages.list.subtitle')}
           helpUrl={docsUrl('budgets')}
           actions={
             <Button onClick={() => setShowWizard(true)}>
-              {t('pages.list.newBudget')}
+              {t("pages.list.newBudget")}
             </Button>
           }
         />

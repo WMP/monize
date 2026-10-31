@@ -1,5 +1,8 @@
 'use client';
 
+import { useAuthStore } from '@/store/authStore';
+import { useDemoMode } from '@/hooks/useDemoMode';
+import { useAccrualBadges } from './useAccrualBadges';
 import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
@@ -49,6 +52,7 @@ import { balanceColor, gainLossColor } from '@/lib/format';
 import { DocumentArrowDownIcon } from '@heroicons/react/24/outline';
 
 interface TransactionListProps {
+  readOnly?: boolean;
   transactions: Transaction[];
   onEdit?: (transaction: Transaction) => void;
   onDuplicate?: (transaction: Transaction) => void;
@@ -258,6 +262,7 @@ function CompactDatesToggle({
 }
 
 export function TransactionList({
+  readOnly = false,
   transactions,
   onEdit,
   onDuplicate,
@@ -305,6 +310,17 @@ export function TransactionList({
 }: TransactionListProps) {
   const t = useTranslations('transactions');
   const tc = useTranslations('common');
+  const ownerId = useAuthStore(state => state.user?.id);
+  const isDelegate = useAuthStore(state => !!state.actingAsUserId);
+  const isDemoMode = useDemoMode();
+  const accrualEnabled = usePreferencesStore(state => state.preferences?.accrualEnabled ?? false);
+  const canAccrue = (transaction: Transaction) => accrualEnabled && !isDelegate && !isDemoMode && transaction.userId === ownerId && !transaction.account?.isJoint && !jointPermissionsByAccount?.has(transaction.accountId) && !transaction.isTransfer && !transaction.parentTransactionId && !transaction.linkedInvestmentTransactionId;
+  const accrualSources = transactions.filter(value => !readOnly && !value.reportingProvenance && canAccrue(value));
+  // The combined editor updates the source revision even for schedule-only changes.
+  // Array copies, selection and enrichment must not refetch unchanged badges.
+  const accrualRevision = JSON.stringify(accrualSources.map(value => [value.id, value.updatedAt]).sort((a, b) => a[0].localeCompare(b[0])));
+  const accrualBadges = useAccrualBadges(accrualSources.map(value => value.id), accrualRevision);
+
   const { formatDate, formatDateWithoutYear } = useDateFormat();
   const { formatCurrency } = useNumberFormat();
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -340,6 +356,7 @@ export function TransactionList({
   const LONG_PRESS_MOVE_THRESHOLD = 10;
 
   const handleLongPressStart = useCallback((transaction: Transaction, e: React.MouseEvent) => {
+    if (transaction.reportingProvenance) return;
     if (e.button !== 0) return;
     touchStartPos.current = null;
     longPressTriggered.current = false;
@@ -350,6 +367,7 @@ export function TransactionList({
   }, []);
 
   const handleLongPressStartTouch = useCallback((transaction: Transaction, e: React.TouchEvent) => {
+    if (transaction.reportingProvenance) return;
     if (e?.touches?.[0]) {
       touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     } else {
@@ -383,6 +401,7 @@ export function TransactionList({
   }, []);
 
   const handleContextMenu = useCallback((transaction: Transaction, e: React.MouseEvent) => {
+    if (transaction.reportingProvenance) { e.preventDefault(); return; }
     e.preventDefault();
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
@@ -545,13 +564,17 @@ export function TransactionList({
   // the set as a prop). A hidden column's header and cells are absent from the
   // DOM at every width, never hidden by a class; the tiers decide the rest.
   const {
-    hidden: hiddenColumns,
-    isVisible,
+    hidden: savedHiddenColumns,
+    isVisible: savedIsVisible,
     hide: hideColumn,
     show: showColumn,
     showAll: showAllColumns,
     hideable,
   } = useHiddenColumns('transactions');
+  // Status belongs to the parent payment, not to each recognition row.
+  // This applicability rule never changes the reader's saved column choices.
+  const hiddenColumns = useMemo(() => readOnly ? new Set([...savedHiddenColumns, 'status' as const]) : savedHiddenColumns, [readOnly, savedHiddenColumns]);
+  const isVisible = (id: string) => !(readOnly && id === 'status') && savedIsVisible(id);
   const hideableColumns = useMemo<ColumnChooserItem<HideableColumn<'transactions'>>[]>(
     () => {
       const labels: Record<HideableColumn<'transactions'>, string> = {
@@ -561,9 +584,9 @@ export function TransactionList({
         attachments: t('list.header.attachments'),
         status: t('list.header.status'),
       };
-      return hideable.map((id) => ({ id, label: labels[id] }));
+      return hideable.filter(id => !readOnly || id !== 'status').map((id) => ({ id, label: labels[id] }));
     },
-    [hideable, t],
+    [hideable, readOnly, t],
   );
   // A plain click on a hideable header is the sort it always was, where the
   // column sorts and the surface offers sorting; Tags and Attachments sort
@@ -599,7 +622,7 @@ export function TransactionList({
   // instant a reader clicks Date would draw it over rows that still carry no
   // balance, a strip of dashes under the line promising one.
   const sortedByDate = isSortedByDate(dataSort);
-  const showRunningBalance =
+  const showRunningBalance = !readOnly &&
     (isSingleAccountView || startingBalance !== undefined) && sortedByDate;
   // Row-invariant, so computed once rather than per row: ten unconditional
   // columns (register-columns.ts order, minus Account/FX/Balance, which are
@@ -984,6 +1007,7 @@ export function TransactionList({
                   )}
                   <TransactionRow
                     transaction={transaction}
+                    financialToday={today}
                     index={index}
                     density={density}
                     cellPadding={cellPadding}
@@ -1009,20 +1033,21 @@ export function TransactionList({
                     onCategoryClick={onCategoryClick}
                     onTagClick={onTagClick}
                     onCycleStatus={handleCycleStatus}
-                    onEdit={
+                    onEdit={readOnly ? onEdit :
                       jointPermissionsByAccount?.get(transaction.accountId) &&
                       !jointPermissionsByAccount.get(transaction.accountId)!.canEdit
                         ? undefined
                         : onEdit
                     }
-                    onDuplicate={onDuplicate}
-                    onScheduleRecurring={onScheduleRecurring}
+                    onDuplicate={readOnly ? undefined : onDuplicate}
+                    onScheduleRecurring={readOnly ? undefined : onScheduleRecurring}
+                    accrualCount={accrualBadges.counts?.get(transaction.id)}
                     onDeleteClick={handleDeleteClick}
-                    hideDelete={
+                    hideDelete={readOnly ||
                       !!jointPermissionsByAccount?.get(transaction.accountId) &&
                       !jointPermissionsByAccount.get(transaction.accountId)!.canDelete
                     }
-                    selectionMode={selectionMode}
+                    selectionMode={!readOnly && selectionMode}
                     isSelected={selectionMode ? (selectAllMatching ? !excludedIds?.has(transaction.id) : (selectedIds?.has(transaction.id) || false)) : undefined}
                     onToggleSelection={selectionMode ? () => onToggleSelection?.(transaction.id) : undefined}
                     categoryColorMap={categoryColorMap}
@@ -1060,6 +1085,9 @@ export function TransactionList({
         onTagFilterClick={onTagClick}
         categoryLabelMap={categoryLabelMap}
       />
+
+      {accrualBadges.failed && <div role="alert"><p>{t('accrual.failed')}</p><button type="button" onClick={accrualBadges.retry} className="text-blue-600 focus-visible:outline-2">{t('accrual.retry')}</button></div>}
+
 
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog

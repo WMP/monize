@@ -1,5 +1,6 @@
 'use client';
 
+import { useReportExportMetadata } from '@/hooks/useReportExportMetadata';
 import { useState } from 'react';
 import { gainLossColor } from '@/lib/format';
 import { Skeleton } from '@/components/ui/LoadingSkeleton';
@@ -13,7 +14,6 @@ import { useDateFormat } from '@/hooks/useDateFormat';
 import { useDateRange } from '@/hooks/useDateRange';
 import { DateRangeSelector } from '@/components/ui/DateRangeSelector';
 import { ReportToolbarActions } from '@/components/reports/ReportToolbarActions';
-import { exportToCsv } from '@/lib/csv-export';
 import { useReportData } from '@/hooks/useReportData';
 import { ReportError } from '@/components/reports/ReportError';
 import { LinkifiedText } from '@/components/ui/LinkifiedText';
@@ -23,6 +23,7 @@ import { CheckCircleIcon } from '@heroicons/react/24/outline';
 import { EmptyState } from '@/components/ui/EmptyState';
 
 export function DuplicateTransactionReport() {
+  const { exportCsvWithBasis, withPdfBasis } = useReportExportMetadata('cash');
   const t = useTranslations('reports');
   const router = useRouter();
   const { formatCurrency } = useNumberFormat();
@@ -106,13 +107,13 @@ export function DuplicateTransactionReport() {
 
   const handleExportCsv = () => {
     const { headers, rows } = getExportData();
-    exportToCsv('duplicate-transactions', headers, rows);
+    exportCsvWithBasis('duplicate-transactions', headers, rows);
   };
 
   const handleExportPdf = async () => {
     const { exportToPdf } = await import('@/lib/pdf-export');
     const { headers, rows } = getExportData();
-    await exportToPdf({
+    await exportToPdf(withPdfBasis({
       title: t('duplicateTransactions.pdfTitle'),
       subtitle: `${summary.totalGroups} ${t('duplicateTransactions.groupsFound')} | ${t('duplicateTransactions.potentialImpact')}: ${formatCurrency(summary.potentialSavings)}`,
       summaryCards: [
@@ -123,7 +124,7 @@ export function DuplicateTransactionReport() {
       ],
       tableData: { headers, rows },
       filename: 'duplicate-transactions',
-    });
+    }));
   };
 
   return (

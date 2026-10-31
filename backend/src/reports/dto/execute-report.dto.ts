@@ -1,8 +1,16 @@
-import { IsOptional, IsDateString, IsEnum } from "class-validator";
+import type { ReportFxGap } from "../report-row-converter";
+import type { ReportingProvenance } from "../../accruals/reporting-provenance";
+import type { ReportingBasis } from "../../accruals/reporting-basis";
+import { IsOptional, IsDateString, IsEnum, IsIn } from "class-validator";
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import { TimeframeType, TableColumn } from "../entities/custom-report.entity";
 
 export class ExecuteReportDto {
+  @ApiPropertyOptional({ enum: ["cash", "accrual"] })
+  @IsOptional()
+  @IsIn(["cash", "accrual"])
+  basis?: ReportingBasis;
+
   @ApiPropertyOptional({
     description: "Override timeframe type",
     enum: TimeframeType,
@@ -24,6 +32,7 @@ export class ExecuteReportDto {
 
 // Response interfaces
 export interface AggregatedDataPoint {
+  reportingProvenance?: ReportingProvenance;
   label: string;
   value: number;
   id?: string;
@@ -68,6 +77,14 @@ export interface ReportSummary {
 }
 
 export interface ReportResult {
+  /** Bounded selection: every displayed figure is partial when false. */
+  dataComplete?: false;
+  rowLimit?: number;
+  missingRatePairs?: ReportFxGap[];
+  repair?: "currency_rate_history";
+  fetchAttempted?: false;
+  basis?: ReportingBasis;
+  fxComplete?: boolean;
   reportId: string;
   name: string;
   viewType: string;

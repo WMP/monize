@@ -1,3 +1,9 @@
+import { reportingRawMany } from "../accruals/reporting-query";
+import { Budget } from "./entities/budget.entity";
+import {
+  ReportingRead,
+  reportingExecutionBasis,
+} from "../accruals/reporting-basis";
 import { Injectable, Logger } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
@@ -15,13 +21,14 @@ import {
   HealthScoreHistoryPoint,
   SavingsRatePoint,
 } from "./budget-reports.service";
-import { roundMoney, roundToDecimals, sumMoney } from "../common/round.util";
 import {
   budgetExcludedAccountIds,
   excludeBudgetAccounts,
+  queryCategorySpending,
   queryCategorySpendingBuckets,
   resolveCategorySpent,
 } from "./budget-spending.util";
+import { roundMoney, roundToDecimals, sumMoney } from "../common/round.util";
 
 @Injectable()
 export class BudgetHealthReportsService {
@@ -32,6 +39,7 @@ export class BudgetHealthReportsService {
     private budgetsService: BudgetsService,
   ) {}
 
+  @ReportingRead()
   async getHealthScore(
     userId: string,
     budgetId: string,
@@ -121,6 +129,7 @@ export class BudgetHealthReportsService {
     };
   }
 
+  @ReportingRead()
   async getHealthScoreHistory(
     userId: string,
     budgetId: string,
@@ -154,6 +163,18 @@ export class BudgetHealthReportsService {
         (pc) => !pc.budgetCategory?.isIncome,
       );
 
+      const actuals =
+        reportingExecutionBasis(userId) === "accrual"
+          ? await this.periodSpending(
+              userId,
+              cats.map((pc) => ({
+                ...pc.budgetCategory,
+                categoryId: pc.categoryId,
+              })),
+              period,
+              budget.currencyCode,
+            )
+          : undefined;
       let overBudgetDeductions = 0;
       let underBudgetBonus = 0;
       let essentialWeightPenalty = 0;
@@ -163,8 +184,13 @@ export class BudgetHealthReportsService {
         if (budgeted <= 0) continue;
 
         let actual = Number(pc.actualAmount) || 0;
-        // For open periods, compute actuals from transactions
-        if (period.status === PeriodStatus.OPEN && pc.categoryId) {
+        if (actuals) {
+          actual = resolveCategorySpent(
+            { ...pc.budgetCategory, categoryId: pc.categoryId },
+            actuals.spendingMap,
+            actuals.transferSpendingMap,
+          );
+        } else if (period.status === PeriodStatus.OPEN && pc.categoryId) {
           actual = await this.computeCategoryActual(
             userId,
             pc.categoryId,
@@ -209,6 +235,7 @@ export class BudgetHealthReportsService {
     return result;
   }
 
+  @ReportingRead()
   async getSavingsRate(
     userId: string,
     budgetId: string,
@@ -253,28 +280,32 @@ export class BudgetHealthReportsService {
         today.getMonth() + 1,
       );
       const rows = await withScopedDb(this.dataSource, (m) =>
-        excludeBudgetAccounts(
-          m
-            .getRepository(Transaction)
-            .createQueryBuilder("t")
-            .select(
-              "TO_CHAR(DATE_TRUNC('month', t.transaction_date), 'YYYY-MM')",
-              "month",
-            )
-            .addSelect("t.currency_code", "currencyCode")
-            .addSelect("COALESCE(SUM(t.amount), 0)", "total")
-            .where("t.user_id = :userId", { userId })
-            .andWhere("t.amount > 0")
-            .andWhere("t.is_transfer = false")
-            .andWhere("t.transaction_date >= :start", { start: rangeStart })
-            .andWhere("t.transaction_date <= :end", { end: rangeEnd })
-            .andWhere("t.status != :void", { void: "VOID" })
-            .groupBy(
-              "TO_CHAR(DATE_TRUNC('month', t.transaction_date), 'YYYY-MM')",
-            )
-            .addGroupBy("t.currency_code"),
-          excludedAccountIds,
-        ).getRawMany(),
+        reportingRawMany(
+          m,
+          userId,
+          excludeBudgetAccounts(
+            m
+              .getRepository(Transaction)
+              .createQueryBuilder("t")
+              .select(
+                "TO_CHAR(DATE_TRUNC('month', t.transaction_date), 'YYYY-MM')",
+                "month",
+              )
+              .addSelect("t.currency_code", "currencyCode")
+              .addSelect("COALESCE(SUM(t.amount), 0)", "total")
+              .where("t.user_id = :userId", { userId })
+              .andWhere("t.amount > 0")
+              .andWhere("t.is_transfer = false")
+              .andWhere("t.transaction_date >= :start", { start: rangeStart })
+              .andWhere("t.transaction_date <= :end", { end: rangeEnd })
+              .andWhere("t.status != :void", { void: "VOID" })
+              .groupBy(
+                "TO_CHAR(DATE_TRUNC('month', t.transaction_date), 'YYYY-MM')",
+              )
+              .addGroupBy("t.currency_code"),
+            excludedAccountIds,
+          ),
+        ),
       );
       for (const row of rows) {
         if (row.currencyCode !== budget.currencyCode) {
@@ -366,12 +397,20 @@ export class BudgetHealthReportsService {
 
   private async computeTrendBonus(
     userId: string,
-    budget: { id: string },
+    budget: Budget,
   ): Promise<number> {
     // Get the last 2 closed periods for trend comparison
     const recentPeriods = await withScopedDb(this.dataSource, (m) =>
       m.getRepository(BudgetPeriod).find({
         where: { budgetId: budget.id, status: PeriodStatus.CLOSED },
+        ...(reportingExecutionBasis(userId) === "accrual"
+          ? {
+              relations: [
+                "periodCategories",
+                "periodCategories.budgetCategory",
+              ],
+            }
+          : {}),
         order: { periodStart: "DESC" },
         take: 2,
       }),
@@ -384,9 +423,17 @@ export class BudgetHealthReportsService {
     const previousBudgeted = Number(previous.totalBudgeted) || 1;
 
     const latestPercent =
-      (Number(latest.actualExpenses) / latestBudgeted) * 100;
+      ((reportingExecutionBasis(userId) === "accrual"
+        ? await this.periodExpenseTotal(userId, budget, latest)
+        : Number(latest.actualExpenses)) /
+        latestBudgeted) *
+      100;
     const previousPercent =
-      (Number(previous.actualExpenses) / previousBudgeted) * 100;
+      ((reportingExecutionBasis(userId) === "accrual"
+        ? await this.periodExpenseTotal(userId, budget, previous)
+        : Number(previous.actualExpenses)) /
+        previousBudgeted) *
+      100;
 
     // Improving = spending less of budget than previous month
     if (latestPercent < previousPercent) {
@@ -394,6 +441,55 @@ export class BudgetHealthReportsService {
     }
 
     return 0;
+  }
+
+  private periodSpending(
+    userId: string,
+    categories: BudgetCategory[],
+    period: BudgetPeriod,
+    currencyCode: string,
+  ) {
+    return withScopedDb(this.dataSource, (manager) =>
+      queryCategorySpending(
+        manager.getRepository(Transaction),
+        manager.getRepository(TransactionSplit),
+        userId,
+        categories,
+        period.periodStart,
+        period.periodEnd,
+        currencyCode,
+      ),
+    );
+  }
+
+  private async periodExpenseTotal(
+    userId: string,
+    budget: Budget,
+    period: BudgetPeriod,
+  ) {
+    const members =
+      period.status === PeriodStatus.CLOSED
+        ? (period.periodCategories ?? []).map((row) => ({
+            ...row.budgetCategory,
+            categoryId: row.categoryId,
+          }))
+        : (budget.categories ?? []);
+    const categories = members.filter((category) => !category.isIncome);
+    const actuals = await this.periodSpending(
+      userId,
+      categories,
+      period,
+      budget.currencyCode,
+    );
+    return sumMoney(
+      categories.map((category) =>
+        resolveCategorySpent(
+          category,
+          actuals.spendingMap,
+          actuals.transferSpendingMap,
+        ),
+      ),
+    );
   }
 
   private async computeCategoryActual(

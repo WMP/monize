@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act, cleanup } from '@/test/render';
+import { useAuthStore } from '@/store/authStore';
+import type { User, UserPreferences } from '@/types/auth';
+import { accrualsApi } from '@/lib/accruals';
+import { AxiosError } from 'axios';
+vi.mock('@/lib/accruals', async importOriginal => ({ ...(await importOriginal<typeof import('@/lib/accruals')>()), accrualsApi: { sourcePreview: vi.fn(), sources: vi.fn().mockResolvedValue([]), sourceSchedules:vi.fn().mockResolvedValue([]), editorPreview:vi.fn().mockResolvedValue({fingerprint:"preview",previews:[]}), editorSave:vi.fn() } }));
 import { TransactionForm } from './TransactionForm';
 import { TransactionStatus } from '@/types/transaction';
 import { getLocalDateString } from '@/lib/utils';
@@ -9,7 +14,6 @@ import {
 } from '@/hooks/useTransactionSubmitMode';
 import toast from 'react-hot-toast';
 import { usePreferencesStore } from '@/store/preferencesStore';
-import { useAuthStore } from '@/store/authStore';
 
 // ---- Mock data ----
 
@@ -408,6 +412,7 @@ vi.mock('./SplitEditor', () => ({
   ],
   toSplitRows: (splits: any[]) => splits.map((s: any, i: number) => ({
     id: `split-${i}`,
+    sourceSplitId: s.id,
     splitType: 'category',
     amount: s.amount,
     categoryId: s.categoryId,
@@ -5893,5 +5898,121 @@ describe('TransactionForm initialStagedFiles', () => {
 
     await waitFor(() => expect(mockCreate).toHaveBeenCalled());
     expect(mockAttachmentUpload).not.toHaveBeenCalled();
+  });
+  describe('source accrual impact before ordinary edits', () => {
+    beforeEach(() => {
+      usePreferencesStore.setState({ preferences: { accrualEnabled: true } as UserPreferences });
+    });
+    it('includes the displayed default accrual when saving from a newly selected Accrual tab', async () => {
+      useAuthStore.setState({user:{id:'user-1'} as User,actingAsUserId:null});
+      const source=createExistingTransaction();
+      await act(async()=>{render(<TransactionForm transaction={source} />);});
+      await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Accrual'}));});
+      await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Review Accrual Changes'}));});
+      expect(accrualsApi.editorPreview).toHaveBeenLastCalledWith(source.id,expect.objectContaining({settings:[expect.objectContaining({sourceTransactionId:source.id,preset:'NTM'})]}));
+      expect(mockUpdate).not.toHaveBeenCalled();
+      expect(accrualsApi.editorSave).not.toHaveBeenCalled();
+      await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Save Changes'}));});
+      expect(accrualsApi.editorSave).toHaveBeenCalledWith(source.id,expect.objectContaining({settings:[expect.objectContaining({sourceTransactionId:source.id,preset:'NTM'})]}));
+    });
+    it('opens scheduled sources on a persistent Accrual tab and preserves source edits when returning', async () => {
+      useAuthStore.setState({user:{id:'user-1'} as User,actingAsUserId:null});
+      vi.mocked(accrualsApi.sourceSchedules).mockResolvedValueOnce([{id:'schedule',sourceSplitId:null,preset:'NTM',startMonth:'2026-06',monthCount:12,revision:1,family:'expense'}]);
+      await act(async()=>{render(<TransactionForm transaction={createExistingTransaction()} />);});
+      const tab=screen.getByRole('button',{name:'Accrual'});
+      expect(tab).toHaveAttribute('aria-pressed','true');
+      await act(async()=>{fireEvent.click(tab);});
+      expect(tab).toHaveAttribute('aria-pressed','true');
+      await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Transaction'}));});
+      await act(async()=>{fireEvent.change(screen.getByLabelText('Amount'),{target:{value:'75.00'}});});
+      await act(async()=>{fireEvent.click(tab);});
+      expect(screen.getByLabelText('Amount')).not.toBeVisible();
+      await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Transaction'}));});
+      expect(screen.getByLabelText('Amount')).toHaveValue('-75.00');
+      expect(screen.getByRole('button',{name:'Review Accrual Changes'})).toBeInTheDocument();
+      // An edit converts in place (#1937); a row with accrual schedules is
+      // refused at submit instead of hiding the mode.
+      expect(screen.getByRole('button', {name:'Transfer'})).toBeInTheDocument();
+      expect(tab).toBeVisible();
+      expect(tab).toBeEnabled();
+    });
+
+    it('offers no Accrual tab on a transfer leg, whose conversion the accrual save would bypass', async () => {
+      useAuthStore.setState({user:{id:'user-1'} as User,actingAsUserId:null});
+      await act(async()=>{render(<TransactionForm transaction={createTransferTransaction()} />);});
+      await act(async()=>{fireEvent.click(screen.getByRole('button',{name:/^Transaction$/}));});
+      expect(screen.queryByRole('button',{name:'Accrual'})).not.toBeInTheDocument();
+    });
+    it('refuses converting a row with an accrual schedule to a transfer before calling the server', async () => {
+      useAuthStore.setState({user:{id:'user-1'} as User,actingAsUserId:null});
+      vi.mocked(accrualsApi.sourceSchedules).mockResolvedValueOnce([{id:'schedule',sourceSplitId:null,preset:'NTM',startMonth:'2026-06',monthCount:12,revision:1,family:'expense'}]);
+      mockConvertToTransfer.mockClear();
+      await act(async()=>{render(<TransactionForm transaction={createExistingTransaction({ amount: -50, accountId: 'acc-1' })} />);});
+      await act(async()=>{fireEvent.click(screen.getByRole('button',{name:/^Transfer$/}));});
+      await waitFor(() => expect(screen.getByLabelText('To Account')).toBeInTheDocument());
+      fireEvent.change(screen.getByLabelText('To Account'), { target: { value: 'acc-2' } });
+      await act(async()=>{fireEvent.click(screen.getByRole('button',{name:/Convert to Transfer/i}));});
+      expect(toast.error).toHaveBeenCalled();
+      expect(mockConvertToTransfer).not.toHaveBeenCalled();
+    });
+
+    afterEach(() => { cleanup(); useAuthStore.setState({user:null,actingAsUserId:null}); });
+    it('does not fetch accrual data or preview an ordinary save while disabled', async () => {
+      usePreferencesStore.setState({preferences:{accrualEnabled:false} as UserPreferences});
+      useAuthStore.setState({user:{id:'user-1'} as User,actingAsUserId:null});
+      mockUpdate.mockReset().mockResolvedValue({});
+      await act(async()=>{render(<TransactionForm transaction={createExistingTransaction()} onSuccess={mockOnSuccess} />);});
+      await act(async()=>{fireEvent.click(screen.getByRole('button',{name:/Update Transaction/i}));});
+      expect(mockUpdate).toHaveBeenCalledTimes(1);
+      expect(accrualsApi.sourceSchedules).not.toHaveBeenCalled();
+      expect(accrualsApi.sourcePreview).not.toHaveBeenCalled();
+      expect(accrualsApi.editorPreview).not.toHaveBeenCalled();
+      expect(mockOnSuccess).toHaveBeenCalledTimes(1);
+    });
+    it('reviews retained schedules on the server-specific conflict even while disabled', async () => {
+      usePreferencesStore.setState({preferences:{accrualEnabled:false} as UserPreferences});
+      useAuthStore.setState({user:{id:'user-1'} as User,actingAsUserId:null});
+      vi.mocked(accrualsApi.sourcePreview).mockResolvedValue({fingerprint:'first-token',impacts:[]});
+      mockUpdate.mockReset().mockRejectedValueOnce(new AxiosError('review',undefined,undefined,undefined,{status:409,data:{code:'ACCRUAL_REVIEW_REQUIRED'}} as never)).mockResolvedValue({});
+      await act(async()=>{render(<TransactionForm transaction={createExistingTransaction()} onSuccess={mockOnSuccess} />);});
+      await act(async()=>{fireEvent.click(screen.getByRole('button',{name:/Update Transaction/i}));});
+      expect(mockUpdate).toHaveBeenCalledTimes(1);
+      expect(accrualsApi.sourcePreview).toHaveBeenCalledTimes(1);
+      expect(mockOnSuccess).not.toHaveBeenCalled();
+      await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Save Reviewed Changes'}));});
+      expect(mockUpdate).toHaveBeenCalledTimes(2);
+      expect(mockUpdate.mock.calls[1][1]).toMatchObject({accrualImpactFingerprint:'first-token'});
+      expect(mockOnSuccess).toHaveBeenCalledTimes(1);
+    });
+    it('preserves ordinary conflict messages without requesting an accrual preview', async () => {
+      useAuthStore.setState({user:{id:'user-1'} as User,actingAsUserId:null});
+      mockUpdate.mockReset().mockRejectedValueOnce(new AxiosError('locked',undefined,undefined,undefined,{status:409,data:{message:'Reconciled transaction is locked'}} as never));
+      await act(async()=>{render(<TransactionForm transaction={createExistingTransaction()} />);});
+      await act(async()=>{fireEvent.click(screen.getByRole('button',{name:/Update Transaction/i}));});
+      expect(accrualsApi.sourcePreview).not.toHaveBeenCalled();
+      expect(mockOnSuccess).not.toHaveBeenCalled();
+    });
+    it('retains category split identities in both preview and the saved patch', async () => {
+      useAuthStore.setState({user:{id:'user-1'} as User,actingAsUserId:null});
+      vi.mocked(accrualsApi.sourcePreview).mockResolvedValue({fingerprint:'split-token',impacts:[]});
+      mockUpdate.mockReset().mockRejectedValueOnce(new AxiosError('review',undefined,undefined,undefined,{status:409,data:{code:'ACCRUAL_REVIEW_REQUIRED'}} as never)).mockResolvedValue({});
+      const id='123e4567-e89b-12d3-a456-426614174001';
+      const tx=createExistingTransaction({isSplit:true,splits:[{id,amount:-50,categoryId:'cat-1',kind:'category'}]});
+      await act(async () => { render(<TransactionForm transaction={tx} />); });
+      await act(async () => { fireEvent.click(screen.getByRole('button',{name:/Update Transaction/i})); });
+      expect(vi.mocked(accrualsApi.sourcePreview).mock.calls[0][1].splits).toEqual([expect.objectContaining({id,amount:-50})]);
+      await act(async () => { fireEvent.click(screen.getByRole('button',{name:'Save Reviewed Changes'})); });
+      expect(mockUpdate.mock.calls[1][1].splits).toEqual([expect.objectContaining({id,amount:-50})]);
+    });
+    it('does not update when review is cancelled', async () => {
+      mockUpdate.mockReset().mockRejectedValueOnce(new AxiosError('review',undefined,undefined,undefined,{status:409,data:{code:'ACCRUAL_REVIEW_REQUIRED'}} as never));
+      useAuthStore.setState({user:{id:'user-1'} as User,actingAsUserId:null});
+      vi.mocked(accrualsApi.sourcePreview).mockResolvedValue({fingerprint:'token',impacts:[]});
+      await act(async () => { render(<TransactionForm transaction={createExistingTransaction()} />); });
+      await act(async () => { fireEvent.click(screen.getByRole('button',{name:/Update Transaction/i})); });
+      const dialog=screen.getByRole('dialog');
+      await act(async () => { fireEvent.click(Array.from(dialog.querySelectorAll('button')).find(button=>button.textContent==='Cancel')!); });
+      expect(mockUpdate).toHaveBeenCalledTimes(1);
+    });
   });
 });

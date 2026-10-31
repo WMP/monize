@@ -467,7 +467,9 @@
     "toasts": {
       "loadFailed": "Rapport kon niet worden geladen",
       "executeFailed": "Rapport uitvoeren mislukt"
-    }
+    },
+    "limitedResults": "Beperkt tot de eerste {limit, number} overeenkomende transacties. Alle getoonde cijfers zijn gedeeltelijk. Beperk de datums of filters voor volledige resultaten.",
+    "partialFigure": "(gedeeltelijk)"
   },
   "debtPayoff": {
     "empty": "Geen schuldenrekeningen gevonden. Voeg een lening, hypotheek of kredietlijn toe om de aflossingstijdlijn te zien.",
@@ -1944,7 +1946,10 @@
     "knownValue": "Bekende waarde",
     "weightingIntro": "De percentages betreffen alleen de posities die gewaardeerd konden worden.",
     "weightingNoPrice": "Geen koers voor {symbols}: ververs of voeg een koers toe op de pagina van het effect.",
-    "weightingNoRate": "Geen wisselkoers voor {pairs}: voeg er een toe op de pagina Valuta's."
+    "weightingNoRate": "Geen wisselkoers voor {pairs}: voeg er een toe op de pagina Valuta's.",
+    "detailsLimited": "Sommige details zijn weggelaten. Beperk de datums of filters om meer te zien.",
+    "resultUnavailable": "Dit resultaat is onvolledig. Totalen en berekende scores zijn niet beschikbaar totdat de ontbrekende wisselkoersen zijn toegevoegd.",
+    "knownComponents": "Bekende bedragen"
   },
   "sankey": {
     "help": "Binnengekomen geld stroomt door het midden naar waaraan het is uitgegeven, wat is gespaard of belegd en wat schulden heeft afgelost. Standaard omvat het rapport uw open betaal-, spaar-, contant-, creditcard- en kredietlijnrekeningen, en een overboeking tussen twee daarvan wordt niet getoond. Laat een spaarrekening weg uit het rekeningfilter om te zien wat u ernaar hebt overgemaakt. Een creditcardbetaling is nooit een aflossing: de aankopen die ze vereffent, zijn al als uitgaven geteld.",

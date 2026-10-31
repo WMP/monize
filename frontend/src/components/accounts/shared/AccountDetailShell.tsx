@@ -1,5 +1,6 @@
 'use client';
 
+import { CashReportingNotice } from '@/components/reports/CashReportingNotice';
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
@@ -186,6 +187,7 @@ export function AccountDetailShell({
           </div>
         </div>
       </div>
+      <CashReportingNotice />
       {error ? (
         <div
           role="alert"

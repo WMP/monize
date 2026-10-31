@@ -467,7 +467,9 @@
     "toasts": {
       "loadFailed": "Falha ao carregar relatório",
       "executeFailed": "Falha ao executar relatório"
-    }
+    },
+    "limitedResults": "Limitado às primeiras {limit, number} transações correspondentes. Todos os valores exibidos são parciais. Restrinja as datas ou os filtros para obter resultados completos.",
+    "partialFigure": "(parcial)"
   },
   "debtPayoff": {
     "empty": "Nenhuma conta de dívida encontrada. Adicione um empréstimo, hipoteca ou linha de crédito para ver o cronograma de pagamento.",
@@ -1944,7 +1946,10 @@
     "knownValue": "Valor conhecido",
     "weightingIntro": "Os percentuais cobrem apenas as posições que puderam ser avaliadas.",
     "weightingNoPrice": "Sem preço para {symbols}: atualize ou adicione um preço na página do ativo.",
-    "weightingNoRate": "Sem taxa de câmbio para {pairs}: adicione uma na página Moedas."
+    "weightingNoRate": "Sem taxa de câmbio para {pairs}: adicione uma na página Moedas.",
+    "detailsLimited": "Alguns detalhes foram omitidos. Restrinja as datas ou os filtros para ver mais.",
+    "resultUnavailable": "Este resultado está incompleto. Os totais e as pontuações calculadas ficam indisponíveis até que as taxas de câmbio ausentes sejam adicionadas.",
+    "knownComponents": "Valores conhecidos"
   },
   "sankey": {
     "help": "O dinheiro que entrou flui pelo centro para aquilo em que foi gasto, o que foi poupado ou investido e o que pagou dívidas. Por padrão, o relatório abrange suas contas correntes, poupanças, contas de dinheiro, cartões de crédito e linhas de crédito abertas, e uma transferência entre duas delas não é exibida. Tire uma conta poupança do filtro de contas para ver o que você transferiu para ela. Um pagamento de cartão de crédito nunca é um pagamento de dívida: as compras que ele quita já são contadas como despesas.",

@@ -46,7 +46,12 @@ const BALANCE_WRITING_ROUTES = [
  * Sub-routes that hang off a balance-affecting path but write no money. A
  * receipt attached to a transaction changes nothing any balance sums.
  */
-const NO_MONEY_ROUTES = [/\/attachments/];
+const NO_MONEY_ROUTES = [
+  /\/attachments/,
+  // POST carries the unsaved draft; this exact endpoint only returns a preview.
+  // Its neighboring commit route still writes and must invalidate balances.
+  /['`]\/transactions\/\$\{[^}]+\}\/accrual-editor\/preview['`]/,
+];
 
 /**
  * Writes on a balance-affecting route that move no money, so they are allowed
@@ -108,6 +113,24 @@ describe('a write that moves money drops the cached balances', () => {
     // Each of these writes transaction rows. Add `invalidateBalanceCaches()`
     // after the await, before the return.
     expect(offenders).toEqual([]);
+  });
+
+  it('exempts only the exact read-only editor preview, not neighboring writes', () => {
+    const isReadOnly = (route: string) => NO_MONEY_ROUTES.some((pattern) => pattern.test(route));
+    expect(isReadOnly('`/transactions/${id}/accrual-editor/preview`')).toBe(true);
+    for (const route of [
+      '`/transactions/${id}/accrual-editor`',
+      '`/transactions/${id}/accrual-editor/preview-save`',
+      '`/transactions/${id}/splits`',
+      '`/transactions/${id}`',
+    ]) {
+      expect(isReadOnly(route)).toBe(false);
+      expect(BALANCE_WRITING_ROUTES.some((pattern) => pattern.test(route))).toBe(true);
+    }
+    const source = sources['/src/lib/accruals.ts'];
+    const commit = methodsOf(source).find(({ name }) => name === 'editorSave');
+    expect(commit).toBeDefined();
+    expect(INVALIDATES.test(commit!.body)).toBe(true);
   });
 
   it('still matches the methods it is meant to police', () => {

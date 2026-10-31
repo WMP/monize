@@ -218,6 +218,11 @@ const REQUIRED_NULLABLE_PARENTS = new Set([
  * other kind needs one (`ck_ai_review_requests_transaction_required`).
  */
 const PRODUCTION_SHAPED_VALUES: Record<string, Record<string, unknown>> = {
+  accrual_history_chunks: {
+    side: "before",
+    part_index: 0,
+    payload: Buffer.from("{}"),
+  },
   ai_review_requests: { kind: "email_trade" },
   backup_offsite_uploads: {
     destination: "s3",
@@ -334,7 +339,19 @@ export class RlsRowSeeder {
             private_key_enc: null,
             access_url_enc: "rls-fixture-ciphertext",
           }
-        : {};
+        : table === "accrual_system_accounts"
+          ? { family: "expense" }
+          : table === "accrual_schedules"
+            ? {
+                family: "expense",
+                preset: "CUSTOM",
+                start_month: "2026-01-01",
+                month_count: 12,
+                source_fingerprint: "a".repeat(64),
+              }
+            : table === "accrual_allocations"
+              ? { period_index: 0, recognition_date: "2026-01-31" }
+              : {};
     const entry = this.entry(table);
     const overrides = { ...PRODUCTION_SHAPED_VALUES[table], ...explicit };
     const rowValues = { ...rowDefaults, ...overrides };

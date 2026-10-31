@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import apiClient from './api';
+import { BudgetFxIncompleteError } from './budget-partial';
 import { budgetsApi } from './budgets';
 import { invalidateCache, invalidateBalanceCaches, getCached, clearAllCache } from './apiCache';
 
@@ -11,6 +12,17 @@ describe('budgetsApi', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     invalidateCache('budgets:');
+  });
+
+  it('isolates cached budget lists and dashboard summaries by basis', async () => {
+    vi.mocked(apiClient.get).mockImplementation(async (_url, config) => ({data: (config?.params as {basis?:string} | undefined)?.basis}));
+    expect(await budgetsApi.getAll('cash')).toBe('cash');
+    expect(await budgetsApi.getAll('accrual')).toBe('accrual');
+    expect(await budgetsApi.getDashboardSummary('cash')).toBe('cash');
+    expect(await budgetsApi.getDashboardSummary('accrual')).toBe('accrual');
+    await budgetsApi.getAll('cash');
+    await budgetsApi.getDashboardSummary('accrual');
+    expect(apiClient.get).toHaveBeenCalledTimes(4);
   });
 
   it('create posts to /budgets', async () => {
@@ -112,13 +124,13 @@ describe('budgetsApi', () => {
   it('getPeriods fetches periods', async () => {
     vi.mocked(apiClient.get).mockResolvedValue({ data: [] });
     await budgetsApi.getPeriods('b-1');
-    expect(apiClient.get).toHaveBeenCalledWith('/budgets/b-1/periods');
+    expect(apiClient.get).toHaveBeenCalledWith('/budgets/b-1/periods', {params:{basis:'cash'}});
   });
 
   it('getPeriodDetail fetches a single period', async () => {
     vi.mocked(apiClient.get).mockResolvedValue({ data: { id: 'p-1' } });
     await budgetsApi.getPeriodDetail('b-1', 'p-1');
-    expect(apiClient.get).toHaveBeenCalledWith('/budgets/b-1/periods/p-1');
+    expect(apiClient.get).toHaveBeenCalledWith('/budgets/b-1/periods/p-1', {params:{basis:'cash'}});
   });
 
   it('closePeriod posts to close', async () => {
@@ -236,4 +248,26 @@ describe('budgetsApi category status race (INV-CACHE-001)', () => {
 
     expect(getCached('budgets:cat-status:c1')).toBeUndefined();
   });
+});
+
+it('isolates category budget status by explicit reporting basis',async()=>{
+ vi.mocked(apiClient.post).mockResolvedValueOnce({data:{cash:{}}}).mockResolvedValueOnce({data:{accrual:{}}});
+ await budgetsApi.getCategoryBudgetStatus(['basis-category'],'cash');
+ await budgetsApi.getCategoryBudgetStatus(['basis-category'],'accrual');
+ expect(apiClient.post).toHaveBeenCalledWith('/budgets/category-budget-status',{categoryIds:['basis-category']},{params:{basis:'cash'}});
+ expect(apiClient.post).toHaveBeenLastCalledWith('/budgets/category-budget-status',{categoryIds:['basis-category']},{params:{basis:'accrual'}});
+});
+
+const partial = {
+  fxComplete: false as const, total: null, result: null, currency: 'EUR',
+  knownComponents: [{ id: 'known', currency: 'EUR', date: '2026-10-31', knownSubtotal: -80 }],
+  missingRatePairs: [{ from: 'USD', to: 'EUR', date: '2026-10-31', reason: null }],
+  repair: 'currency_rate_history' as const, fetchAttempted: false as const,
+};
+
+it('rejects a partial budget read and permits a repaired retry instead of caching it as a budget', async () => {
+  clearAllCache();
+  vi.mocked(apiClient.get).mockResolvedValueOnce({ data: partial }).mockResolvedValueOnce({ data: { totalSpent: 160 } });
+  await expect(budgetsApi.getDashboardSummary('accrual')).rejects.toBeInstanceOf(BudgetFxIncompleteError);
+  expect(await budgetsApi.getDashboardSummary('accrual')).toEqual({ totalSpent: 160 });
 });

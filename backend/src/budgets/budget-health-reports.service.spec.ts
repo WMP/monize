@@ -1,3 +1,24 @@
+jest.mock("../accruals/reporting-money", () =>
+  jest
+    .requireActual("../test-helpers/reporting-read-testing")
+    .reportingMoneyMockModule(),
+);
+jest.mock("../accruals/reporting-basis", () =>
+  jest
+    .requireActual("../test-helpers/reporting-read-testing")
+    .reportingBasisMockModule(),
+);
+jest.mock("../accruals/reporting-query", () =>
+  jest
+    .requireActual("../test-helpers/reporting-read-testing")
+    .reportingQueryMockModule(),
+);
+jest.mock("../accruals/reporting-basis.interceptor", () =>
+  jest
+    .requireActual("../test-helpers/reporting-read-testing")
+    .reportingInterceptorMockModule(),
+);
+
 import { DataSource } from "typeorm";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
@@ -140,7 +161,12 @@ describe("BudgetHealthReportsService", () => {
       createQueryBuilder: jest.fn(() => createMockQueryBuilder()),
     };
     splitsRepository = {
-      createQueryBuilder: jest.fn(() => createMockQueryBuilder()),
+      createQueryBuilder: jest.fn(() =>
+        createMockQueryBuilder({
+          getRawOne: jest.fn().mockResolvedValue({ total: "0" }),
+          getRawMany: jest.fn().mockResolvedValue([]),
+        }),
+      ),
     };
     budgetsService = {
       findOne: jest.fn().mockResolvedValue(mockBudget),

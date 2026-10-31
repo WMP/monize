@@ -1,3 +1,19 @@
+jest.mock("../accruals/reporting-basis", () =>
+  jest
+    .requireActual("../test-helpers/reporting-read-testing")
+    .reportingBasisMockModule(),
+);
+jest.mock("../accruals/reporting-query", () =>
+  jest
+    .requireActual("../test-helpers/reporting-read-testing")
+    .reportingQueryMockModule(),
+);
+jest.mock("../accruals/reporting-basis.interceptor", () =>
+  jest
+    .requireActual("../test-helpers/reporting-read-testing")
+    .reportingInterceptorMockModule(),
+);
+
 import { DataSource } from "typeorm";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
@@ -387,7 +403,7 @@ describe("ComparisonReportsService", () => {
       expect(currencyService.getDefaultCurrency).toHaveBeenCalledWith(
         mockUserId,
       );
-      expect(currencyService.buildRateMap).toHaveBeenCalledWith("USD");
+      expect(currencyService.buildRateMap).toHaveBeenCalledWith("USD", []);
     });
   });
 
@@ -808,7 +824,7 @@ describe("ComparisonReportsService", () => {
       expect(currencyService.getDefaultCurrency).toHaveBeenCalledWith(
         mockUserId,
       );
-      expect(currencyService.buildRateMap).toHaveBeenCalledWith("USD");
+      expect(currencyService.buildRateMap).toHaveBeenCalledWith("USD", []);
     });
   });
 

@@ -1,6 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { ReportError } from '@/components/reports/ReportError';
+
+import { ReportingBasisScope, ReportingBasisControl, useReportingBasis, useReportingRouter, CashReportingNotice } from '@/components/reports/ReportingBasis';
+import { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -120,6 +123,7 @@ interface PayeeAnalytics {
   thisYearSummary: TransactionSummary | null;
   lastYearSummary: TransactionSummary | null;
   monthlyTotals: MonthlyTotal[];
+  monthlyError?: unknown;
   /** Trailing 12 months, the default range for the Top Categories panel. */
   categoryTotals: GroupedTotal[];
   /** The same breakdown over the payee's whole history. */
@@ -132,19 +136,24 @@ type CategoryRange = 'year' | 'all';
 const CATEGORY_RANGES: readonly CategoryRange[] = ['year', 'all'];
 
 export default function PayeeDetailPage() {
+  const viewQuery = useSearchParams();
+  const initialBasis = viewQuery.get('basis') === 'cash' ? 'cash' : viewQuery.get('basis') === 'accrual' ? 'accrual' : undefined;
+  const params = useParams();
   return (
     <ProtectedRoute>
-      <PayeeDetailContent />
+      <ReportingBasisScope initialBasis={initialBasis} resetOnBasis surface={`payees:${params.id}`}><PayeeDetailContent /></ReportingBasisScope>
     </ProtectedRoute>
   );
 }
 
 function PayeeDetailContent() {
+  const basis = useReportingBasis();
   const t = useTranslations('payeeDetail');
   // The edit modal reuses the payees list's form, heading and toasts.
   const tp = useTranslations('payees');
   const params = useParams();
   const router = useRouter();
+  const reportingRouter = useReportingRouter();
   const searchParams = useSearchParams();
   const payeeId = params.id as string;
 
@@ -190,12 +199,17 @@ function PayeeDetailContent() {
   }
 
   // The mount / payee-switch load: the state already says loading.
+  const shownPayeeRef = useRef(payeeId);
+  useLayoutEffect(() => { shownPayeeRef.current = payeeId; });
+  const requestSeqRef = useRef(0);
   const fetchData = useCallback(() => {
     // Writes live in `run` so they land after the request, not during the effect.
     const run = async () => {
+      const sequence = ++requestSeqRef.current;
+      const isStale = () => sequence !== requestSeqRef.current || shownPayeeRef.current !== payeeId;
       try {
-        // The detail is the page; the analytics feed the cards and panels, so a
-        // failure in any of them costs its panel, never the page.
+        // Summary failures remain unknown. Required history reads reach the
+        // retryable page error rather than appearing as empty charts.
         const detailData = await payeesApi.getDetail(payeeId);
 
         const today = isoDaysAgo(0);
@@ -204,6 +218,7 @@ function PayeeDetailContent() {
         const lastYearStart = `${Number(today.slice(0, 4)) - 1}-01-01`;
         const lastYearSameDate = `${Number(today.slice(0, 4)) - 1}${today.slice(4)}`;
 
+        let monthlyError: unknown = null;
         const [
           lifetimeSummary,
           thisYearSummary,
@@ -213,15 +228,15 @@ function PayeeDetailContent() {
           categoryTotalsAllTime,
           recurringCharges,
         ] = await Promise.all([
-          transactionsApi.getSummary({ payeeIds: [payeeId] }).catch((err) => {
+          transactionsApi.getSummary({ basis, payeeIds: [payeeId] }).catch((err) => {
             logger.error(err);
             return null;
           }),
           transactionsApi
-            .getSummary({ payeeIds: [payeeId], startDate: thisYearStart, endDate: today })
+            .getSummary({ basis, payeeIds: [payeeId], startDate: thisYearStart, endDate: today })
             .catch(() => null),
           transactionsApi
-            .getSummary({
+            .getSummary({ basis,
               payeeIds: [payeeId],
               startDate: lastYearStart,
               endDate: lastYearSameDate,
@@ -231,54 +246,52 @@ function PayeeDetailContent() {
           // own granularity control buckets by quarter or year once that history
           // outgrows monthly bars. A window here would silently hide the years
           // before it, which is the opposite of what a detail page is for.
-          transactionsApi
-            .getMonthlyTotals({ payeeIds: [payeeId] })
-            .catch(() => [] as MonthlyTotal[]),
-          transactionsApi
-            .getGroupedTotals({
-              groupBy: 'category',
-              payeeIds: [payeeId],
-              startDate: yearAgo,
-              endDate: today,
-              limit: 25,
-            })
-            .catch(() => [] as GroupedTotal[]),
+          // Its error travels with analytics; monthly and seasonality panels render it.
+          transactionsApi.getMonthlyTotals({ basis, payeeIds: [payeeId] }).catch((error: unknown) => { monthlyError = error; return [] as MonthlyTotal[]; }),
+          transactionsApi.getGroupedTotals({ basis,
+            groupBy: 'category',
+            payeeIds: [payeeId],
+            startDate: yearAgo,
+            endDate: today,
+            limit: 25,
+          }),
           // Both ranges are fetched up front so the Top Categories toggle is
           // instant. They are two cheap grouped queries, and switching range is a
           // comparison -- putting a spinner between the two halves of it would
           // make the comparison harder than the request is expensive.
-          transactionsApi
-            .getGroupedTotals({
-              groupBy: 'category',
-              payeeIds: [payeeId],
-              limit: 25,
-            })
-            .catch(() => [] as GroupedTotal[]),
+          transactionsApi.getGroupedTotals({ basis,
+            groupBy: 'category',
+            payeeIds: [payeeId],
+            limit: 25,
+          }),
           transactionsApi
             .getRecurringCharges({ payeeIds: [payeeId], startDate: yearAgo, endDate: today })
             .catch(() => [] as RecurringChargeInfo[]),
         ]);
 
+        if (isStale()) return;
         setDetail(detailData);
         setAnalytics({
           lifetimeSummary,
           thisYearSummary,
           lastYearSummary,
           monthlyTotals,
+          monthlyError,
           categoryTotals,
           categoryTotalsAllTime,
           recurringCharges,
         });
         setRefreshKey((key) => key + 1);
       } catch (err) {
+        if (isStale()) return;
         logger.error(err);
         setError(getErrorMessage(err, t('loadFailed')));
       } finally {
-        setIsLoading(false);
+        if (!isStale()) setIsLoading(false);
       }
     };
     return run();
-  }, [payeeId, t]);
+  }, [payeeId, t, basis]);
 
   const loadData = useCallback(() => {
     setIsLoading(true);
@@ -445,22 +458,23 @@ function PayeeDetailContent() {
   // account would link to an empty list. Same reasoning as the Institutions
   // page and `ai-entity-links.ts`, which pass it for the same reason.
   const goToRegister = useCallback(
-    (query: Record<string, string> = {}) => {
+    (query: Record<string, string> = {}, recognized = false) => {
       const search = new URLSearchParams({
         payeeId,
         accountStatus: 'all',
         ...query,
       });
-      router.push(`/transactions?${search.toString()}`);
+      if (!recognized && !search.has('basis') && basis) search.set('basis', basis);
+      (recognized ? reportingRouter : router).push(`/transactions?${search.toString()}`);
     },
-    [router, payeeId],
+    [basis, router, reportingRouter, payeeId],
   );
 
   // Stable, so the memoized chart is not re-rendered by unrelated page state
   // (the Top Categories range, say). A re-render replays the bars' entry
   // animation, and Recharts hides their value labels until it finishes.
   const handleMonthClick = useCallback(
-    (startDate: string, endDate: string) => goToRegister({ startDate, endDate }),
+    (startDate: string, endDate: string) => goToRegister({ startDate, endDate }, true),
     [goToRegister],
   );
 
@@ -558,6 +572,7 @@ function PayeeDetailContent() {
     return (
       <PageLayout>
         <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">
+          <ReportingBasisControl detail />
           <LoadingSpinner text={t('loading')} />
         </main>
       </PageLayout>
@@ -568,6 +583,7 @@ function PayeeDetailContent() {
     return (
       <PageLayout>
         <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">
+          <ReportingBasisControl detail />
           <div
             role="alert"
             className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800"
@@ -610,6 +626,7 @@ function PayeeDetailContent() {
           onSelectPayee={(id) => router.push(`/payees/${id}`)}
         />
 
+        <ReportingBasisControl detail />
         <div className="space-y-6">
           <PayeeSummaryCards
             detail={detail}
@@ -644,26 +661,31 @@ function PayeeDetailContent() {
                     division as the security detail page. */}
                 <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
                   <div className="lg:col-span-2">
+                  {analytics?.monthlyError ? <ReportError error={analytics.monthlyError} onRetry={loadData} /> : (
                     <CategoryPayeeBarChart
                       data={analytics?.monthlyTotals ?? []}
                       isLoading={false}
                       onMonthClick={handleMonthClick}
                       filterLabel={payee.name}
                     />
+                  )}
                   </div>
+                  <div>
+                  <CashReportingNotice />
                   <PayeeKeyInfoCard
                     detail={detail}
                     categoryLabelMap={categoryLabelMap}
                     // The largest transaction narrows the register to its own
                     // day, so the row it names is the one on screen.
                     onSelectDate={(date) =>
-                      goToRegister({ startDate: date, endDate: date })
+                      goToRegister({ startDate: date, endDate: date, basis: 'cash' })
                     }
                     onSelectAccount={(accountId) =>
                       router.push(`/accounts/${accountId}`)
                     }
                     onContactLookedUp={loadData}
                   />
+                  </div>
                 </div>
 
                 <div className="grid gap-6 lg:grid-cols-2">
@@ -696,7 +718,7 @@ function PayeeDetailContent() {
                                 ? { startDate: isoDaysAgo(365), endDate: isoDaysAgo(0) }
                                 : {}),
                             }
-                          : {},
+                          : {}, true,
                       )
                     }
                     selectableWhenUnidentified
@@ -735,11 +757,13 @@ function PayeeDetailContent() {
                     currencyStrategy={currencyStrategy}
                     isLoading={false}
                   />
+                  {analytics?.monthlyError ? <ReportError error={analytics.monthlyError} onRetry={loadData} /> : (
                   <PayeeSeasonalityPanel
                     monthly={analytics?.monthlyTotals ?? []}
                     currencyStrategy={currencyStrategy}
                     isLoading={false}
                   />
+                  )}
                 </div>
               </TabPanel>
 
@@ -753,6 +777,8 @@ function PayeeDetailContent() {
                 className="mt-6"
               >
                 <PayeeTransactionsTab
+                  key={basis}
+                  basis={basis}
                   payeeId={payee.id}
                   refreshKey={refreshKey}
                   categoryLabelMap={categoryLabelMap}

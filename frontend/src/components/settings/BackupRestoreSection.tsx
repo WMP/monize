@@ -66,6 +66,11 @@ const UNRECOVERED_SERIES_REASONS: ReadonlySet<string> = new Set([
 export function BackupRestoreSection({ user }: BackupRestoreSectionProps) {
   const t = useTranslations('settings.backupRestore');
   const tc = useTranslations('common');
+  const accrualRestoreLabels: Record<string, string> = {
+    accrualSystemAccounts: t('restoreResult.accrualSystemAccounts'),
+    accrualSchedules: t('restoreResult.accrualSchedules'),
+    accrualAllocations: t('restoreResult.accrualAllocations'),
+  };
   const { formatNumber } = useNumberFormat();
   const isOidc = user.authProvider === 'oidc';
   const timezonePref = usePreferencesStore((s) => s.preferences?.timezone);
@@ -708,7 +713,7 @@ export function BackupRestoreSection({ user }: BackupRestoreSectionProps) {
                   .map(([key, count]) => (
                     <div key={key} className="flex justify-between text-sm">
                       <dt className="text-gray-600 dark:text-gray-400">
-                        {RESTORE_LABELS[key] ?? key}
+                        {accrualRestoreLabels[key] ?? RESTORE_LABELS[key] ?? key}
                       </dt>
                       <dd className="font-medium text-gray-900 dark:text-gray-100">
                         {formatNumber(count, 0)}

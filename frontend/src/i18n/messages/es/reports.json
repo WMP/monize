@@ -467,7 +467,9 @@
     "toasts": {
       "loadFailed": "Error al cargar el informe",
       "executeFailed": "Error al ejecutar el informe"
-    }
+    },
+    "limitedResults": "Se muestran las primeras {limit, number} transacciones coincidentes. Todas las cifras son parciales. Reduzca el intervalo de fechas o los filtros para obtener resultados completos.",
+    "partialFigure": "(parcial)"
   },
   "debtPayoff": {
     "empty": "No se encontraron cuentas de deuda. Agrega un préstamo, hipoteca o línea de crédito para ver el cronograma de pago.",
@@ -1944,7 +1946,10 @@
     "knownValue": "Valor conocido",
     "weightingIntro": "Los porcentajes solo cubren las posiciones que se pudieron valorar.",
     "weightingNoPrice": "Sin precio para {symbols}: actualiza o añade un precio en la página del valor.",
-    "weightingNoRate": "Sin tipo de cambio para {pairs}: añade uno en la página Divisas."
+    "weightingNoRate": "Sin tipo de cambio para {pairs}: añade uno en la página Divisas.",
+    "detailsLimited": "Se omiten algunos detalles. Reduzca las fechas o los filtros para ver más.",
+    "resultUnavailable": "Este resultado está incompleto. Los totales y las puntuaciones calculadas no están disponibles hasta que se añadan los tipos de cambio que faltan.",
+    "knownComponents": "Importes conocidos"
   },
   "sankey": {
     "help": "El dinero que entró fluye por el centro hacia aquello en lo que se gastó, lo que se ahorró o invirtió y lo que pagó deudas. De forma predeterminada, el informe abarca sus cuentas corrientes, de ahorro, de efectivo, de tarjeta de crédito y de línea de crédito abiertas, y una transferencia entre dos de ellas no se muestra. Excluya una cuenta de ahorro del filtro de cuentas para ver lo que transfirió a ella. Un pago de tarjeta de crédito nunca es un pago de deuda: las compras que liquida ya se cuentan como gastos.",

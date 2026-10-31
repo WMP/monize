@@ -1,3 +1,9 @@
+jest.mock("../../accruals/reporting-basis", () =>
+  jest
+    .requireActual("../../test-helpers/reporting-read-testing")
+    .reportingBasisMockModule(),
+);
+import { reportToolFixture } from "../../test-helpers/reporting-tool-fixture";
 import { McpReportsTools } from "./reports.tool";
 import { mcpTestCtx, McpTestContext } from "../testing/mcp-test-context";
 
@@ -23,7 +29,10 @@ describe("McpReportsTools", () => {
       getLlmHistory: jest.fn(),
     };
 
-    tool = new McpReportsTools(reportsService as any, netWorthService as any);
+    reportsService.getLlmReport = jest.fn(
+      reportToolFixture(reportsService, netWorthService),
+    );
+    tool = new McpReportsTools(reportsService as any);
 
     server = {
       registerTool: jest.fn((name, _opts, handler) => {
@@ -74,7 +83,7 @@ describe("McpReportsTools", () => {
       expect(result.isError).toBeUndefined();
     });
 
-    it("should pass a withheld total and its gap through unchanged (INV-FX-001)", async () => {
+    it("returns partial report data with its existing completeness fields (INV-FX-001)", async () => {
       ctx.setUser({ userId: "u1", scopes: "read" });
       const report = {
         data: [],
@@ -95,7 +104,13 @@ describe("McpReportsTools", () => {
         ctx,
       );
 
-      expect(result.structuredContent).toEqual(report);
+      expect(result.isError).toBeUndefined();
+      expect(result.structuredContent).toMatchObject({
+        totalSpending: null,
+        knownSpending: 50,
+        missingCurrencies: ["JPY"],
+        excludedCount: 1,
+      });
     });
 
     it("should run spending_by_payee report", async () => {
